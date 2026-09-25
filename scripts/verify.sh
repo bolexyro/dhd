@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 scope="${1:-all}"
 
 run_node() {
-  (cd "$root" && pnpm typecheck && pnpm test)
+  (cd "$root" && pnpm typecheck && pnpm lint && pnpm test)
 }
 
 run_legacy() {

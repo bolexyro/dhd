@@ -42,6 +42,11 @@ jobs:
           set -euo pipefail
           pnpm typecheck
 
+      - name: Lint
+        run: |
+          set -euo pipefail
+          pnpm lint
+
       - name: Test
         run: |
           set -euo pipefail
