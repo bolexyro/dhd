@@ -6,7 +6,7 @@ import { PhoneControlError } from "../errors.js";
 
 // The bundled ADB distribution lives at the workspace root. Keep this lookup
 // independent of the package's current working directory.
-const PACKAGE_ROOT = resolve(fileURLToPath(import.meta.url), "../../../../..");
+const PACKAGE_ROOT = resolve(fileURLToPath(import.meta.url), "../../../..");
 
 export interface AdbPathResolutionOptions {
   env?: NodeJS.ProcessEnv;

@@ -7,10 +7,10 @@ import { PhoneControlError } from "../src/errors.js";
 import { isAllowedPackage } from "../src/policy-guard.js";
 
 const exampleConfigPath = fileURLToPath(
-  new URL("../../../config/phone-control.example.json", import.meta.url)
+  new URL("../../config/phone-control.example.json", import.meta.url)
 );
 const unrestrictedConfigPath = fileURLToPath(
-  new URL("../../../config/phone-control-unrestricted.example.json", import.meta.url)
+  new URL("../../config/phone-control-unrestricted.example.json", import.meta.url)
 );
 
 describe("policy configuration", () => {

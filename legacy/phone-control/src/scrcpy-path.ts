@@ -13,7 +13,7 @@ export interface ScrcpyPathResolutionOptions {
 
 // The bundled scrcpy distribution is kept at the workspace root so all apps
 // resolve the same executable.
-const PACKAGE_ROOT = resolve(fileURLToPath(import.meta.url), "../../../..");
+const PACKAGE_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 
 function absoluteCandidate(candidate: string, cwd: string): string {
   return isAbsolute(candidate) ? candidate : resolve(cwd, candidate);

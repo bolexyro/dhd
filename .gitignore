@@ -5,12 +5,12 @@ logs/
 *.tsbuildinfo
 /\.firecrawl/
 /\.runtime/
-/config/phone-control.json
-/scrcpy-win64-v4.1/
+/legacy/config/phone-control.json
+/legacy/scrcpy-win64-v4.1/
 *.log
 .env
 .env.*
 !.env.example
 
-!/config/phone-control.example.json
+!/legacy/config/phone-control.example.json
 .artifacts/

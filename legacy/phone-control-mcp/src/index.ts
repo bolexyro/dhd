@@ -16,7 +16,7 @@ import {
 } from "@dhd/phone-control";
 import { createMcpServer } from "./server.js";
 
-const WORKSPACE_ROOT = resolve(fileURLToPath(import.meta.url), "../../../..");
+const WORKSPACE_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 const DEFAULT_HTTP_HOST = "127.0.0.1";
 const DEFAULT_HTTP_PORT = 3000;
 const MAX_HTTP_BODY_BYTES = 1_048_576;

@@ -49,7 +49,7 @@ export function resolveElectronExecutable(
   if (configured) return configured;
 
   const viewerPackageJson = new URL(
-    "../../../apps/phone-viewer/package.json",
+    "../../phone-viewer/package.json",
     import.meta.url
   );
   const requireAnchors: Array<string | URL> = [import.meta.url, viewerPackageJson];
@@ -73,7 +73,7 @@ export function resolveElectronExecutable(
 
 function resolveViewerMainPath(): string {
   const viewerMainPath = fileURLToPath(
-    new URL("../../../apps/phone-viewer/dist/viewer/main.js", import.meta.url)
+    new URL("../../phone-viewer/dist/viewer/main.js", import.meta.url)
   );
   if (!existsSync(viewerMainPath)) {
     throw new PhoneControlError(
@@ -141,7 +141,7 @@ export class ElectronCursorOverlayController implements CursorOverlayController 
   async #startProcess(): Promise<void> {
     const electronPath = this.#resolveElectronPath();
     const viewerMainPath = this.#resolveViewerMainPath();
-    const workspaceRoot = fileURLToPath(new URL("../../../", import.meta.url));
+    const workspaceRoot = fileURLToPath(new URL("../../", import.meta.url));
     let child: ChildProcess;
     try {
       child = this.#spawnProcess(

@@ -141,5 +141,5 @@ Type a request in DHD on the phone. Keep the desktop companion window running wh
 - The Android app lives in [`apps/dhd-android/`](apps/dhd-android/); see its [README](apps/dhd-android/README.md) for Android development details.
 - The desktop companion lives in [`apps/dhd-companion/`](apps/dhd-companion/).
 - To change the isolated Codex home or companion working directory, set `PHONE_ASSISTANT_CODEX_HOME` or `PHONE_ASSISTANT_CODEX_CWD` before running setup and the dashboard.
-- The `packages/phone-control/` and `apps/phone-control-mcp/` folders provide reusable phone-control tooling. They are not separate services you need to set up for DHD.
+- The [`legacy/`](legacy/) folder holds the older USB adb phone-control tooling in its own pnpm workspace. DHD does not use it, and a normal install skips it. See its [README](legacy/README.md).
 - If Wi-Fi discovery is blocked, `adb forward tcp:8765 tcp:8765` is available as a loopback development fallback.

@@ -9,7 +9,7 @@ export const DEFAULT_PROFILE = "local";
 export const DEFAULT_CONFIG_PATH = ["config", "phone-control.json"];
 
 // Policy fallback files are workspace-level configuration, not package data.
-const PACKAGE_ROOT = resolve(fileURLToPath(import.meta.url), "../../../..");
+const PACKAGE_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 
 export interface LoadedPolicy extends PolicyProfile {
   configPath: string;
