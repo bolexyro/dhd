@@ -1,8 +1,12 @@
 package com.phonecontrol.assistant.bridge.protocol
 
+import com.phonecontrol.assistant.bridge.SequenceExecutionResult
+import com.phonecontrol.assistant.bridge.SequenceStepResult
+import com.phonecontrol.assistant.domain.PhoneAction
 import com.phonecontrol.assistant.domain.StaleObservationDiagnostics
 import com.phonecontrol.assistant.execution.TransportResult
 import com.phonecontrol.assistant.session.ActionExecutionResult
+import org.json.JSONObject
 
 internal fun TransportResult.resultMessage(): String = when (this) {
     is TransportResult.Rejected -> message
@@ -53,3 +57,41 @@ internal fun ActionExecutionResult.sequenceStepFailureCode(): String = when (thi
 }
 
 internal const val SESSION_NOT_RUNNING_MESSAGE = "The phone session is no longer running."
+
+internal fun failedActionCompletion(
+    requestId: String,
+    action: String,
+    code: String,
+    message: String,
+    outcome: String = "failed",
+    executed: Any = false,
+): JSONObject = JSONObject()
+    .put("type", "completed")
+    .put("requestId", requestId)
+    .put("ok", false)
+    .put("action", action)
+    .put("outcome", outcome)
+    .put("executed", executed)
+    .put("code", code)
+    .put("message", message)
+
+internal fun unstartedSequenceFailure(
+    actions: List<PhoneAction>,
+    code: String,
+    message: String,
+): SequenceExecutionResult {
+    val failure = SequenceStepResult(
+        index = 0,
+        action = ActionParser.wireActionName(actions.first()),
+        status = SequenceStepResult.Status.FAILED,
+        message = message,
+        code = code,
+        outcome = "failed",
+        executed = false,
+    )
+    return SequenceExecutionResult(
+        requestedSteps = actions.size,
+        steps = listOf(failure),
+        failure = failure,
+    )
+}

@@ -19,10 +19,12 @@ import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.PACKAGE_PATTERN
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.POST_ACTION_SETTLE_DELAY_MS
 import com.phonecontrol.assistant.bridge.protocol.InvalidSequencePayloadException
 import com.phonecontrol.assistant.bridge.protocol.beforeScreenshotOrNull
+import com.phonecontrol.assistant.bridge.protocol.failedActionCompletion
 import com.phonecontrol.assistant.bridge.protocol.failureCode
 import com.phonecontrol.assistant.bridge.protocol.isSuccessful
 import com.phonecontrol.assistant.bridge.protocol.resultMessage
 import com.phonecontrol.assistant.bridge.protocol.staleDetailsOrNull
+import com.phonecontrol.assistant.bridge.protocol.unstartedSequenceFailure
 import com.phonecontrol.assistant.core.AndroidBase64Codec
 import com.phonecontrol.assistant.core.Base64Codec
 import com.phonecontrol.assistant.core.BuildDeviceInfo
@@ -1782,15 +1784,12 @@ class DevBridgeServer internal constructor(
         if (taskDisplayRequiredProvider() && runSessionKey == null) {
             write(
                 writer,
-                JSONObject()
-                    .put("type", "completed")
-                    .put("requestId", requestId)
-                    .put("ok", false)
-                    .put("action", wireActionName(parsedAction))
-                    .put("outcome", "failed")
-                    .put("executed", false)
-                    .put("code", "TASK_DISPLAY_UNAVAILABLE")
-                    .put("message", "No active task display is available; the physical display was not touched."),
+                failedActionCompletion(
+                    requestId = requestId,
+                    action = wireActionName(parsedAction),
+                    code = "TASK_DISPLAY_UNAVAILABLE",
+                    message = "No active task display is available; the physical display was not touched.",
+                ),
             )
             return
         }
@@ -1824,15 +1823,12 @@ class DevBridgeServer internal constructor(
                 } else {
                     write(
                         writer,
-                        JSONObject()
-                            .put("type", "completed")
-                            .put("requestId", requestId)
-                            .put("ok", false)
-                            .put("action", wireActionName(parsedAction))
-                            .put("outcome", "failed")
-                            .put("executed", false)
-                            .put("code", targetResolution.code)
-                            .put("message", targetResolution.message),
+                        failedActionCompletion(
+                            requestId = requestId,
+                            action = wireActionName(parsedAction),
+                            code = targetResolution.code,
+                            message = targetResolution.message,
+                        ),
                     )
                     return
                 }
@@ -1844,15 +1840,12 @@ class DevBridgeServer internal constructor(
         ) {
             write(
                 writer,
-                JSONObject()
-                    .put("type", "completed")
-                    .put("requestId", requestId)
-                    .put("ok", false)
-                    .put("action", wireActionName(parsedAction))
-                    .put("outcome", "failed")
-                    .put("executed", false)
-                    .put("code", "DISPLAY_CHANGED")
-                    .put("message", "The supplied observation belongs to a different task display; call dhd_observe with the selected display before retrying."),
+                failedActionCompletion(
+                    requestId = requestId,
+                    action = wireActionName(parsedAction),
+                    code = "DISPLAY_CHANGED",
+                    message = "The supplied observation belongs to a different task display; call dhd_observe with the selected display before retrying.",
+                ),
             )
             return
         }
@@ -1871,18 +1864,12 @@ class DevBridgeServer internal constructor(
                 is ObservationCaptureResult.Failed -> {
                     write(
                         writer,
-                        JSONObject()
-                            .put("type", "completed")
-                            .put("requestId", requestId)
-                            .put("ok", false)
-                            .put("action", "open_app")
-                            .put("outcome", "failed")
-                            .put("executed", false)
-                            .put("code", "OBSERVATION_FAILED")
-                            .put(
-                                "message",
-                                "Could not establish a launch baseline; the app was not opened: ${captured.message}",
-                            ),
+                        failedActionCompletion(
+                            requestId = requestId,
+                            action = "open_app",
+                            code = "OBSERVATION_FAILED",
+                            message = "Could not establish a launch baseline; the app was not opened: ${captured.message}",
+                        ),
                     )
                     return
                 }
@@ -1898,15 +1885,12 @@ class DevBridgeServer internal constructor(
         if (observation == null && parsedAction !is OpenAppAction) {
             write(
                 writer,
-                JSONObject()
-                    .put("type", "completed")
-                    .put("requestId", requestId)
-                    .put("ok", false)
-                    .put("action", wireActionName(parsedAction))
-                    .put("outcome", "failed")
-                    .put("executed", false)
-                    .put("code", "OBSERVATION_MISSING")
-                    .put("message", "The supplied observationId is missing or expired; observe the phone before retrying."),
+                failedActionCompletion(
+                    requestId = requestId,
+                    action = wireActionName(parsedAction),
+                    code = "OBSERVATION_MISSING",
+                    message = "The supplied observationId is missing or expired; observe the phone before retrying.",
+                ),
             )
             return
         }
@@ -1987,15 +1971,14 @@ class DevBridgeServer internal constructor(
             is ObservationCaptureResult.Failed -> {
                 write(
                     writer,
-                    JSONObject()
-                        .put("type", "completed")
-                        .put("requestId", requestId)
-                        .put("ok", false)
-                        .put("action", wireActionName(action))
-                        .put("outcome", "unknown")
-                        .put("executed", "unknown")
-                        .put("code", if (captured.code == "OBSERVATION_FAILED") "POST_OBSERVATION_FAILED" else captured.code)
-                        .put("message", "The action may have run, but the phone could not produce a post-action observation: ${captured.message}"),
+                    failedActionCompletion(
+                        requestId = requestId,
+                        action = wireActionName(action),
+                        code = if (captured.code == "OBSERVATION_FAILED") "POST_OBSERVATION_FAILED" else captured.code,
+                        message = "The action may have run, but the phone could not produce a post-action observation: ${captured.message}",
+                        outcome = "unknown",
+                        executed = "unknown",
+                    ),
                 )
             }
 
@@ -2048,68 +2031,38 @@ class DevBridgeServer internal constructor(
             observations[request.observationId]
         }
         if (observation == null) {
-            val firstAction = request.actions.first()
-            val failure = SequenceStepResult(
-                index = 0,
-                action = wireActionName(firstAction),
-                status = SequenceStepResult.Status.FAILED,
-                message = "The supplied observationId is missing or expired; observe the phone before retrying.",
-                code = "OBSERVATION_MISSING",
-                outcome = "failed",
-                executed = false,
-            )
             writeSequenceResult(
                 writer,
                 requestId,
-                SequenceExecutionResult(
-                    requestedSteps = request.actions.size,
-                    steps = listOf(failure),
-                    failure = failure,
+                unstartedSequenceFailure(
+                    actions = request.actions,
+                    code = "OBSERVATION_MISSING",
+                    message = "The supplied observationId is missing or expired; observe the phone before retrying.",
                 ),
             )
             return
         }
         val runSessionKey = coordinator.activeSessionId()
         if (taskDisplayRequiredProvider() && runSessionKey == null) {
-            val firstAction = request.actions.first()
-            val failure = SequenceStepResult(
-                index = 0,
-                action = wireActionName(firstAction),
-                status = SequenceStepResult.Status.FAILED,
-                message = "No active task display is available; the physical display was not touched.",
-                code = "TASK_DISPLAY_UNAVAILABLE",
-                outcome = "failed",
-                executed = false,
-            )
             writeSequenceResult(
                 writer,
                 requestId,
-                SequenceExecutionResult(
-                    requestedSteps = request.actions.size,
-                    steps = listOf(failure),
-                    failure = failure,
+                unstartedSequenceFailure(
+                    actions = request.actions,
+                    code = "TASK_DISPLAY_UNAVAILABLE",
+                    message = "No active task display is available; the physical display was not touched.",
                 ),
             )
             return
         }
         if (!coordinator.awaitPhoneAccessForTool()) {
-            val firstAction = request.actions.first()
-            val failure = SequenceStepResult(
-                index = 0,
-                action = wireActionName(firstAction),
-                status = SequenceStepResult.Status.FAILED,
-                message = "Phone access is no longer available; the sequence was not executed.",
-                code = "DEVELOPER_MODE_UNAVAILABLE",
-                outcome = "failed",
-                executed = false,
-            )
             writeSequenceResult(
                 writer,
                 requestId,
-                SequenceExecutionResult(
-                    requestedSteps = request.actions.size,
-                    steps = listOf(failure),
-                    failure = failure,
+                unstartedSequenceFailure(
+                    actions = request.actions,
+                    code = "DEVELOPER_MODE_UNAVAILABLE",
+                    message = "Phone access is no longer available; the sequence was not executed.",
                 ),
             )
             return
@@ -2124,23 +2077,13 @@ class DevBridgeServer internal constructor(
             )) {
                 is TaskDisplayResolution.Ready -> resolution.target
                 is TaskDisplayResolution.Unavailable -> {
-                    val firstAction = request.actions.first()
-                    val failure = SequenceStepResult(
-                        index = 0,
-                        action = wireActionName(firstAction),
-                        status = SequenceStepResult.Status.FAILED,
-                        message = resolution.message,
-                        code = resolution.code,
-                        outcome = "failed",
-                        executed = false,
-                    )
                     writeSequenceResult(
                         writer,
                         requestId,
-                        SequenceExecutionResult(
-                            requestedSteps = request.actions.size,
-                            steps = listOf(failure),
-                            failure = failure,
+                        unstartedSequenceFailure(
+                            actions = request.actions,
+                            code = resolution.code,
+                            message = resolution.message,
                         ),
                     )
                     return
@@ -2153,23 +2096,13 @@ class DevBridgeServer internal constructor(
             (observation.taskSessionKey != target.session.sessionKey ||
                 observation.displayId != target.session.displayId)
         ) {
-            val firstAction = request.actions.first()
-            val failure = SequenceStepResult(
-                index = 0,
-                action = wireActionName(firstAction),
-                status = SequenceStepResult.Status.FAILED,
-                message = "The observation belongs to a different task display; no input was sent.",
-                code = "DISPLAY_CHANGED",
-                outcome = "failed",
-                executed = false,
-            )
             writeSequenceResult(
                 writer,
                 requestId,
-                SequenceExecutionResult(
-                    requestedSteps = request.actions.size,
-                    steps = listOf(failure),
-                    failure = failure,
+                unstartedSequenceFailure(
+                    actions = request.actions,
+                    code = "DISPLAY_CHANGED",
+                    message = "The observation belongs to a different task display; no input was sent.",
                 ),
             )
             return
