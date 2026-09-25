@@ -62,10 +62,6 @@ import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.chat.composer.PendingSteerDraft
 import com.phonecontrol.assistant.ui.chat.composer.RequestComposer
 import com.phonecontrol.assistant.ui.chat.composer.SteerDraftBar
-import com.phonecontrol.assistant.ui.chat.composer.SteerDraftQueue
-import com.phonecontrol.assistant.ui.chat.composer.forActiveSession
-import com.phonecontrol.assistant.ui.chat.composer.promoteAfterCompletion
-import com.phonecontrol.assistant.ui.chat.composer.steerDraftsSaver
 import com.phonecontrol.assistant.ui.chat.status.rememberElapsedSeconds
 import com.phonecontrol.assistant.ui.chat.timeline.ConversationTimeline
 import com.phonecontrol.assistant.ui.chat.timeline.activeTaskRunIds
@@ -138,11 +134,8 @@ fun ChatScreen(
     }
     val canSteer = state is SessionState.Running
     var showStartFreshConfirmation by rememberSaveable { mutableStateOf(false) }
-    var steerDrafts by rememberSaveable(stateSaver = steerDraftsSaver) {
-        mutableStateOf(emptyList<PendingSteerDraft>())
-    }
-    var steerDraftSessionId by rememberSaveable { mutableStateOf<String?>(null) }
-    var carrySteerDraftsToNextRun by rememberSaveable { mutableStateOf(false) }
+    val steerDraftQueue by viewModel.steerDrafts.collectAsState()
+    val steerDrafts = steerDraftQueue.drafts
     var composerEditText by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(restoredRequest) {
         if (restoredRequest == null) return@LaunchedEffect
@@ -156,24 +149,16 @@ fun ChatScreen(
         it.sessionId == activeSessionId && it.status == DhdToolCallStatus.RUNNING
     }
     LaunchedEffect(activeSessionId) {
-        val next = SteerDraftQueue(steerDrafts, steerDraftSessionId, carrySteerDraftsToNextRun)
-            .forActiveSession(activeSessionId)
-        steerDrafts = next.drafts
-        steerDraftSessionId = next.sessionId
-        carrySteerDraftsToNextRun = next.carryToNextRun
+        viewModel.followActiveSession(activeSessionId)
     }
     LaunchedEffect(state) {
         val completed = state as? SessionState.Completed ?: return@LaunchedEffect
-        val promotion = SteerDraftQueue(steerDrafts, steerDraftSessionId, carrySteerDraftsToNextRun)
-            .promoteAfterCompletion(completed.sessionId)
-            ?: return@LaunchedEffect
-        steerDrafts = promotion.queue.drafts
-        carrySteerDraftsToNextRun = promotion.queue.carryToNextRun
+        val draft = viewModel.promoteSteerDraftAfter(completed.sessionId) ?: return@LaunchedEffect
         onRunRequest(
-            promotion.draft.text.trim(),
+            draft.text.trim(),
             DHD_CONVERSATION_ID,
-            promotion.draft.reasoningEffort,
-            promotion.draft.fastMode,
+            draft.reasoningEffort,
+            draft.fastMode,
         )
     }
     val continuationRunId = state.continuationSessionIdOrNullForUi()
@@ -384,36 +369,16 @@ fun ChatScreen(
                                         text = draft.text,
                                         onSteer = {
                                             if (onSteerRequest(draft.text)) {
-                                                steerDrafts = steerDrafts.toMutableList().also {
-                                                    it.removeAt(index)
-                                                }
-                                                if (steerDrafts.isEmpty()) {
-                                                    steerDraftSessionId = null
-                                                    carrySteerDraftsToNextRun = false
-                                                }
+                                                viewModel.removeSteerDraft(index)
                                                 true
                                             } else {
                                                 false
                                             }
                                         },
-                                        onDismiss = {
-                                            steerDrafts = steerDrafts.toMutableList().also {
-                                                it.removeAt(index)
-                                            }
-                                            if (steerDrafts.isEmpty()) {
-                                                steerDraftSessionId = null
-                                                carrySteerDraftsToNextRun = false
-                                            }
-                                        },
+                                        onDismiss = { viewModel.removeSteerDraft(index) },
                                         onEdit = {
                                             composerEditText = draft.text
-                                            steerDrafts = steerDrafts.toMutableList().also {
-                                                it.removeAt(index)
-                                            }
-                                            if (steerDrafts.isEmpty()) {
-                                                steerDraftSessionId = null
-                                                carrySteerDraftsToNextRun = false
-                                            }
+                                            viewModel.removeSteerDraft(index)
                                         },
                                     )
                                 }
@@ -437,12 +402,14 @@ fun ChatScreen(
                             onEditTextConsumed = { composerEditText = null },
                             onSend = { request ->
                                 if (canSteer) {
-                                    steerDrafts = steerDrafts + PendingSteerDraft(
-                                        text = request,
-                                        reasoningEffort = reasoningEffort.codexValue,
-                                        fastMode = fastMode,
+                                    viewModel.queueSteerDraft(
+                                        PendingSteerDraft(
+                                            text = request,
+                                            reasoningEffort = reasoningEffort.codexValue,
+                                            fastMode = fastMode,
+                                        ),
+                                        activeSessionId,
                                     )
-                                    steerDraftSessionId = activeSessionId
                                     true
                                 } else {
                                     onRunRequest(
@@ -484,9 +451,6 @@ fun ChatScreen(
             confirmLabel = stringResource(R.string.chat_start_fresh),
             onConfirm = {
                 showStartFreshConfirmation = false
-                steerDrafts = emptyList()
-                steerDraftSessionId = null
-                carrySteerDraftsToNextRun = false
                 composerEditText = null
                 viewModel.startFresh()
                 onStartFresh()

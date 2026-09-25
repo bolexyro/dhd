@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.ui
 
-import androidx.compose.runtime.saveable.SaverScope
 import androidx.compose.ui.geometry.Offset
 import com.phonecontrol.assistant.data.TimelineItem
 import com.phonecontrol.assistant.domain.ReasoningEffort
@@ -10,7 +9,8 @@ import com.phonecontrol.assistant.ui.chat.composer.SteerDraftPromotion
 import com.phonecontrol.assistant.ui.chat.composer.SteerDraftQueue
 import com.phonecontrol.assistant.ui.chat.composer.forActiveSession
 import com.phonecontrol.assistant.ui.chat.composer.promoteAfterCompletion
-import com.phonecontrol.assistant.ui.chat.composer.steerDraftsSaver
+import com.phonecontrol.assistant.ui.chat.composer.decodeSteerDrafts
+import com.phonecontrol.assistant.ui.chat.composer.encodeSteerDrafts
 import com.phonecontrol.assistant.ui.chat.timeline.activeTaskRunIds
 import com.phonecontrol.assistant.ui.chat.timeline.recentTimelineItems
 import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
@@ -190,16 +190,15 @@ class UiStateLogicTest {
     }
 
     @Test
-    fun `steer drafts survive the saver round trip`() {
+    fun `steer drafts survive the saved state round trip`() {
         val drafts = listOf(
             PendingSteerDraft("Use the blue one", "high", fastMode = false),
             PendingSteerDraft("Then pay", "xhigh", fastMode = true),
         )
-        val scope = SaverScope { true }
-        val saved = with(steerDraftsSaver) { scope.save(drafts) }
+        val saved = encodeSteerDrafts(drafts)
         assertEquals(listOf("Use the blue one", "high", "false", "Then pay", "xhigh", "true"), saved)
-        assertEquals(drafts, steerDraftsSaver.restore(saved!!))
-        assertEquals(drafts.take(1), steerDraftsSaver.restore(listOf("Use the blue one", "high", "false", "dangling")))
+        assertEquals(drafts, decodeSteerDrafts(saved))
+        assertEquals(drafts.take(1), decodeSteerDrafts(listOf("Use the blue one", "high", "false", "dangling")))
     }
 
     private fun message(id: String, runId: String?, timestamp: Long) =

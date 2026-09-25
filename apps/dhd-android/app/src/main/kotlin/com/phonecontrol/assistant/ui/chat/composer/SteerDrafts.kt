@@ -1,7 +1,5 @@
 package com.phonecontrol.assistant.ui.chat.composer
 
-import androidx.compose.runtime.saveable.listSaver
-
 internal data class PendingSteerDraft(
     val text: String,
     val reasoningEffort: String,
@@ -40,20 +38,30 @@ internal fun SteerDraftQueue.promoteAfterCompletion(completedSessionId: String):
     )
 }
 
-internal val steerDraftsSaver = listSaver<List<PendingSteerDraft>, String>(
-    save = { drafts ->
-        drafts.flatMap { draft ->
-            listOf(draft.text, draft.reasoningEffort, draft.fastMode.toString())
-        }
-    },
-    restore = { saved ->
-        saved.chunked(3).mapNotNull { fields ->
-            if (fields.size != 3) return@mapNotNull null
-            PendingSteerDraft(
-                text = fields[0],
-                reasoningEffort = fields[1],
-                fastMode = fields[2].toBoolean(),
-            )
-        }
-    },
-)
+internal fun SteerDraftQueue.withDraft(draft: PendingSteerDraft, activeSessionId: String?): SteerDraftQueue =
+    copy(drafts = drafts + draft, sessionId = activeSessionId)
+
+internal fun SteerDraftQueue.without(index: Int): SteerDraftQueue {
+    if (index !in drafts.indices) return this
+    val remaining = drafts.toMutableList().also { it.removeAt(index) }
+    return if (remaining.isEmpty()) {
+        SteerDraftQueue(drafts = emptyList(), sessionId = null, carryToNextRun = false)
+    } else {
+        copy(drafts = remaining)
+    }
+}
+
+internal fun encodeSteerDrafts(drafts: List<PendingSteerDraft>): ArrayList<String> =
+    drafts.flatMapTo(ArrayList()) { draft ->
+        listOf(draft.text, draft.reasoningEffort, draft.fastMode.toString())
+    }
+
+internal fun decodeSteerDrafts(saved: List<String>): List<PendingSteerDraft> =
+    saved.chunked(3).mapNotNull { fields ->
+        if (fields.size != 3) return@mapNotNull null
+        PendingSteerDraft(
+            text = fields[0],
+            reasoningEffort = fields[1],
+            fastMode = fields[2].toBoolean(),
+        )
+    }
