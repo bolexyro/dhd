@@ -28,7 +28,9 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.phonecontrol.assistant.MainActivity
-import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.isActive
+import com.phonecontrol.assistant.core.needsAttention
+import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.developer.DeveloperModeStatus
 import com.phonecontrol.assistant.developer.TaskPreviewState
@@ -129,20 +131,20 @@ class OverlayWindowController(
     fun onSessionState(state: SessionState) {
         val previousState = lastState
         lastState = state
-        val isActive = state.isActiveForOverlay()
+        val isActive = state.isActive
         val nextMode = nextOverlayPanelMode(_panelMode.value, previousState, state)
 
         if (isActive) {
             _resultMessage.value = null
-        } else if (previousState.isActiveForOverlay() && state is SessionState.Completed) {
+        } else if (previousState.isActive && state is SessionState.Completed) {
             _resultMessage.value = state.message
-        } else if (previousState.isActiveForOverlay() && state is SessionState.Stopped) {
+        } else if (previousState.isActive && state is SessionState.Stopped) {
             // A user stop is a control action, not an assistant result. Keep the
             // overlay quiet and return to the composer (or the collapsed bubble).
             _resultMessage.value = null
         }
         if (state is SessionState.Completed || state is SessionState.Stopped) {
-            if (previousState.isActiveForOverlay()) {
+            if (previousState.isActive) {
                 setPanelMode(nextMode)
             }
         } else if (isActive) {
@@ -152,7 +154,7 @@ class OverlayWindowController(
 
     fun openComposer() {
         val state = coordinator.state.value
-        if (state.isActiveForOverlay()) {
+        if (state.isActive) {
             setPanelMode(overlayPanelModeForUserExpand(state))
             return
         }
@@ -618,7 +620,7 @@ class OverlayWindowController(
     }
 
     private fun canAcceptTextInput(): Boolean =
-        !coordinator.state.value.isActiveForOverlay() &&
+        !coordinator.state.value.isActive &&
             _panelMode.value in setOf(OverlayPanelMode.COMPOSER, OverlayPanelMode.RESULT)
 
     private fun setPanelFocusable(focusable: Boolean) {
@@ -786,44 +788,26 @@ private class OverlayViewTreeOwner : SavedStateRegistryOwner {
     }
 }
 
-private fun SessionState.isActiveForOverlay(): Boolean =
-    this is SessionState.Running || this is SessionState.Paused
-
-private fun SessionState.needsAttention(): Boolean =
-    when (this) {
-        is SessionState.Running -> currentPurpose.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true)
-        is SessionState.Paused -> currentPurpose.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true)
-        else -> false
-    }
-
-private fun SessionState.overlaySessionIdOrNull(): String? = when (this) {
-    is SessionState.Running -> sessionId
-    is SessionState.Paused -> sessionId
-    is SessionState.Stopped -> sessionId
-    is SessionState.Completed -> sessionId
-    SessionState.Idle -> null
-}
-
 internal fun nextOverlayPanelMode(
     currentMode: OverlayPanelMode,
     previousState: SessionState,
     state: SessionState,
 ): OverlayPanelMode {
-    val wasActive = previousState.isActiveForOverlay()
-    val isActive = state.isActiveForOverlay()
+    val wasActive = previousState.isActive
+    val isActive = state.isActive
     if (isActive) {
         val newSession = !wasActive ||
-            previousState.overlaySessionIdOrNull() != state.overlaySessionIdOrNull()
-        val attentionStarted = state.needsAttention() && !previousState.needsAttention()
+            previousState.sessionIdOrNull != state.sessionIdOrNull
+        val attentionStarted = state.needsAttention && !previousState.needsAttention
         return when {
             attentionStarted -> OverlayPanelMode.ATTENTION
-            newSession -> if (state.needsAttention()) {
+            newSession -> if (state.needsAttention) {
                 OverlayPanelMode.ATTENTION
             } else {
                 OverlayPanelMode.WORKING
             }
             currentMode == OverlayPanelMode.BUBBLE -> OverlayPanelMode.BUBBLE
-            state.needsAttention() -> OverlayPanelMode.ATTENTION
+            state.needsAttention -> OverlayPanelMode.ATTENTION
             else -> OverlayPanelMode.WORKING
         }
     }
@@ -843,8 +827,8 @@ internal fun nextOverlayPanelMode(
 }
 
 internal fun overlayPanelModeForUserExpand(state: SessionState): OverlayPanelMode =
-    if (state.isActiveForOverlay()) {
-        if (state.needsAttention()) OverlayPanelMode.ATTENTION else OverlayPanelMode.WORKING
+    if (state.isActive) {
+        if (state.needsAttention) OverlayPanelMode.ATTENTION else OverlayPanelMode.WORKING
     } else {
         OverlayPanelMode.COMPOSER
     }
@@ -853,7 +837,7 @@ internal fun shouldShowOverlayGlow(
     mode: OverlayPanelMode,
     state: SessionState,
     hidden: Boolean,
-): Boolean = !hidden && mode == OverlayPanelMode.COMPOSER && !state.isActiveForOverlay()
+): Boolean = !hidden && mode == OverlayPanelMode.COMPOSER && !state.isActive
 
 internal fun bubblePositionForHorizontalSwipe(
     direction: OverlaySwipeDirection,

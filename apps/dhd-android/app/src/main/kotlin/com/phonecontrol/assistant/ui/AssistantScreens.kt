@@ -155,6 +155,8 @@ import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.DevBridgeServer
 import com.phonecontrol.assistant.bridge.PendingCompanionPairing
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.isActive
+import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_BROWSE_APP_TOOL
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
@@ -286,7 +288,7 @@ fun AssistantScreen(
     val state by coordinator.state.collectAsState()
     val toolCalls by coordinator.toolCalls.collectAsState()
     val timeline by store.timeline(DHD_CONVERSATION_ID).collectAsState()
-    val active = state.isActive()
+    val active = state.isActive
     val combinePhoneAndCompanionRecovery = shouldCombineRecoveryBanners(
         state = state,
         developerStatus = developerStatus,
@@ -317,7 +319,7 @@ fun AssistantScreen(
     var composerEditText by rememberSaveable { mutableStateOf<String?>(null) }
     var showReasoningSelector by rememberSaveable { mutableStateOf(false) }
     var topRecoverySlotHeightPx by remember { mutableStateOf(0) }
-    val activeSessionId = state.sessionIdOrNullForUi()
+    val activeSessionId = state.sessionIdOrNull
     val currentToolCall = toolCalls.lastOrNull {
         it.sessionId == activeSessionId && it.status == DhdToolCallStatus.RUNNING
     }
@@ -1075,9 +1077,9 @@ private fun ConversationTimeline(
     // A stopped/completed run can still own a retained display. Keep the
     // preview attached to its historical task group while the display is
     // retained; stopping the run only removes action authority.
-    val previewBelongsToCurrentTimeline = state.sessionIdOrNullForUi() != null &&
+    val previewBelongsToCurrentTimeline = state.sessionIdOrNull != null &&
             previewState?.let { preview ->
-                preview.belongsToRun(state.sessionIdOrNullForUi()) &&
+                preview.belongsToRun(state.sessionIdOrNull) &&
                         groups.any { group ->
                             group.runIds.any { runId -> preview.belongsToGroup(runId) }
                         }
@@ -1107,7 +1109,7 @@ private fun ConversationTimeline(
             listState.scrollToItem(groups.lastIndex, scrollOffset = Int.MAX_VALUE)
         }
     }
-    val expandSessionKey = previewState?.sessionKey ?: state.sessionIdOrNullForUi()
+    val expandSessionKey = previewState?.sessionKey ?: state.sessionIdOrNull
     Box(
         modifier = Modifier.onGloballyPositioned { coordinates ->
             timelineBounds = coordinates.boundsInRoot()
@@ -1143,8 +1145,8 @@ private fun ConversationTimeline(
                         expandButtonBounds = bounds
                     },
                     expandedPreviewSessionKey = expandedPreviewSessionKey,
-                    active = state.isActive() &&
-                            state.sessionIdOrNullForUi()?.let(group.runIds::contains) == true,
+                    active = state.isActive &&
+                            state.sessionIdOrNull?.let(group.runIds::contains) == true,
                 )
             }
         }
@@ -1211,7 +1213,7 @@ private fun TaskGroupCard(
     var earlierActionsExpanded by rememberSaveable(group.id) { mutableStateOf(false) }
 
     val terminalDurationMs = state.workedDurationMsOrNullForUi()
-        ?.takeIf { state.sessionIdOrNullForUi()?.let(group.runIds::contains) == true }
+        ?.takeIf { state.sessionIdOrNull?.let(group.runIds::contains) == true }
     val durationSeconds = remember(group, terminalDurationMs) {
         terminalDurationMs?.let { maxOf(1L, it / 1_000L) } ?: run {
             val start = group.userMessage?.timestampEpochMs ?: group.timestampEpochMs
@@ -1262,7 +1264,7 @@ private fun TaskGroupCard(
 
         val taskPreviewState = previewState?.let { preview ->
             if (preview.sessionKey == null) {
-                preview.copy(sessionKey = state.sessionIdOrNullForUi())
+                preview.copy(sessionKey = state.sessionIdOrNull)
             } else {
                 preview
             }
@@ -5419,8 +5421,6 @@ private fun LiveDisplayPreviewState.isExpanded(expandedSessionKey: String?): Boo
     expandedSessionKey != null &&
             (sessionKey == expandedSessionKey || runSessionKey == expandedSessionKey)
 
-private fun SessionState.isActive(): Boolean = this is SessionState.Running || this is SessionState.Paused
-
 internal fun shouldCombineRecoveryBanners(
     state: SessionState,
     developerStatus: DeveloperModeStatus,
@@ -5444,14 +5444,6 @@ private fun SessionState.showsPhoneAccessRecovery(): Boolean = when (this) {
             attentionActionLabel.equals(CoordinatorCopy.VIEW_INSTRUCTIONS, ignoreCase = true)
 
     else -> false
-}
-
-private fun SessionState.sessionIdOrNullForUi(): String? = when (this) {
-    SessionState.Idle -> null
-    is SessionState.Running -> sessionId
-    is SessionState.Paused -> sessionId
-    is SessionState.Stopped -> sessionId
-    is SessionState.Completed -> sessionId
 }
 
 internal fun activeTaskRunIds(

@@ -17,6 +17,8 @@ import com.phonecontrol.assistant.MainActivity
 import com.phonecontrol.assistant.PhoneControlApplication
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.conversationIdOrNull
+import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.overlay.OverlayPreferences
 import com.phonecontrol.assistant.overlay.OverlayWindowController
@@ -87,7 +89,7 @@ class AssistantForegroundService : Service() {
 
             ACTION_DISABLE_OVERLAY -> {
                 overlayWindowController.hide()
-                if (!coordinator.state.value.isActiveForService()) {
+                if (!coordinator.state.value.isActive) {
                     stopForegroundIfNeeded()
                     stopSelfResult(startId)
                 }
@@ -96,7 +98,7 @@ class AssistantForegroundService : Service() {
             ACTION_REFRESH -> {
                 if (overlayEnabledAndPermitted()) {
                     overlayWindowController.show()
-                } else if (!coordinator.state.value.isActiveForService()) {
+                } else if (!coordinator.state.value.isActive) {
                     overlayWindowController.hide()
                     stopForegroundIfNeeded()
                     stopSelfResult(startId)
@@ -106,7 +108,7 @@ class AssistantForegroundService : Service() {
             }
 
             ACTION_SESSION_ENDED -> {
-                if (!overlayEnabledAndPermitted() && !coordinator.state.value.isActiveForService()) {
+                if (!overlayEnabledAndPermitted() && !coordinator.state.value.isActive) {
                     overlayWindowController.hide()
                     stopForegroundIfNeeded()
                     stopSelfResult(startId)
@@ -185,7 +187,7 @@ class AssistantForegroundService : Service() {
     }
 
     private fun syncForegroundNotification(state: SessionState) {
-        if (state.isActiveForService()) {
+        if (state.isActive) {
             val notification = buildNotification(state)
             if (foregroundNotificationActive) {
                 getSystemService(NotificationManager::class.java)
@@ -205,7 +207,7 @@ class AssistantForegroundService : Service() {
     }
 
     private fun buildNotification(state: SessionState, starting: Boolean = false): Notification {
-        val isActive = state.isActiveForService() || starting
+        val isActive = state.isActive || starting
         val status = if (starting) "Starting DHD…" else {
             state.foregroundNotificationStatus(coordinator.toolCalls.value)
         }
@@ -213,7 +215,7 @@ class AssistantForegroundService : Service() {
             this,
             REQUEST_OPEN_APP,
             Intent(this, MainActivity::class.java).apply {
-                putExtra(MainActivity.EXTRA_CONVERSATION_ID, state.conversationIdOrNull())
+                putExtra(MainActivity.EXTRA_CONVERSATION_ID, state.conversationIdOrNull)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or pendingIntentImmutableFlag(),
         )
@@ -295,7 +297,7 @@ class AssistantForegroundService : Service() {
         fun reconcileLifetime(context: Context) {
             val appContext = context.applicationContext
             val application = appContext as? PhoneControlApplication ?: return
-            val active = application.sessionCoordinator.state.value.isActiveForService()
+            val active = application.sessionCoordinator.state.value.isActive
             val overlayAvailable = OverlayPreferences.isEnabled(appContext) && Settings.canDrawOverlays(appContext)
             if (!overlayAvailable && !active) {
                 appContext.stopService(Intent(appContext, AssistantForegroundService::class.java))
@@ -406,17 +408,6 @@ class AssistantForegroundService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
     }
 }
-
-private fun SessionState.conversationIdOrNull(): String? = when (this) {
-    SessionState.Idle -> null
-    is SessionState.Running -> conversationId
-    is SessionState.Paused -> conversationId
-    is SessionState.Stopped -> conversationId
-    is SessionState.Completed -> conversationId
-}
-
-internal fun SessionState.isActiveForService(): Boolean =
-    this is SessionState.Running || this is SessionState.Paused
 
 internal fun SessionState.foregroundNotificationStatus(toolCalls: List<DhdToolCall>): String = when (this) {
     SessionState.Idle -> "Ready"

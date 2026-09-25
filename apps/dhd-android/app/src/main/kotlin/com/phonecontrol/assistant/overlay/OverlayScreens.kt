@@ -79,6 +79,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.phonecontrol.assistant.developer.TaskPreviewState
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.needsAttention
+import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.developer.DeveloperModeStatus
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.domain.TaskPointerEvent
@@ -216,7 +218,7 @@ fun OverlayGlow(
     val colors = LocalAssistantColors.current
     val view = LocalView.current
     val density = LocalDensity.current
-    val attention = state.needsAttention()
+    val attention = state.needsAttention
 
     val deviceCornerRadius = remember(view) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -929,7 +931,7 @@ fun OverlayPanel(
         developerStatus = currentDeveloperStatus,
         companionConnected = isCompanionConnected,
     )
-    val hasRecovery = state.needsAttention() || recoveryKind != null
+    val hasRecovery = state.needsAttention || recoveryKind != null
 
     val effectiveMode = effectiveOverlayPanelMode(mode, active, hasRecovery)
 
@@ -1135,7 +1137,7 @@ fun OverlayPanel(
                 hasDisplaySession = displaySession != null,
             )) {
             val displayPointerEvent = latestPointerEvent?.takeIf { event ->
-                event.sessionId == state.sessionIdOrNull() ||
+                event.sessionId == state.sessionIdOrNull ||
                     event.sessionId == displaySession?.sessionKey
             }
             Popup(
@@ -2312,7 +2314,7 @@ private fun WorkingRow(
 ) {
     val colors = LocalAssistantColors.current
     val sessionCalls = workingRowSessionCalls(state, calls)
-    val attention = state.needsAttention() || recoveryKind != null
+    val attention = state.needsAttention || recoveryKind != null
     val preToolStatus = rememberPreToolStatus(
         enabled = sessionCalls.isEmpty() && !attention && state is SessionState.Running,
     )
@@ -2416,11 +2418,11 @@ private fun WorkingContent(
 ) {
     val colors = LocalAssistantColors.current
     val sessionCalls = calls.filter {
-        it.sessionId == state.sessionIdOrNull() &&
+        it.sessionId == state.sessionIdOrNull &&
             !it.toolName.equals("dhd_close_display", ignoreCase = true) &&
             !it.toolName.equals("close_display", ignoreCase = true)
     }
-    val attention = state.needsAttention()
+    val attention = state.needsAttention
     val paused = state is SessionState.Paused
     val current = sessionCalls.lastOrNull { it.status == DhdToolCallStatus.RUNNING }
         ?: sessionCalls.lastOrNull {
@@ -2665,7 +2667,7 @@ internal fun effectiveOverlayPanelMode(
 
 internal fun workingRowSessionCalls(state: SessionState, calls: List<DhdToolCall>): List<DhdToolCall> =
     calls.filter {
-        it.sessionId == state.sessionIdOrNull() &&
+        it.sessionId == state.sessionIdOrNull &&
             !it.toolName.equals("dhd_close_display", ignoreCase = true) &&
             !it.toolName.equals("close_display", ignoreCase = true)
     }
@@ -2686,25 +2688,11 @@ internal fun workingRowTask(
     }
 
     return when {
-        state.needsAttention() -> attentionReason ?: "Needs your attention"
+        state.needsAttention -> attentionReason ?: "Needs your attention"
         recoveryKind == OverlayRecoveryKind.COMPANION -> "Desktop companion not connected"
         recoveryKind == OverlayRecoveryKind.DEVELOPER -> "Phone access needed"
         else -> rawTask
     }
-}
-
-private fun SessionState.sessionIdOrNull(): String? = when (this) {
-    SessionState.Idle -> null
-    is SessionState.Running -> sessionId
-    is SessionState.Paused -> sessionId
-    is SessionState.Stopped -> sessionId
-    is SessionState.Completed -> sessionId
-}
-
-private fun SessionState.currentPurposeOrNull(): String? = when (this) {
-    is SessionState.Running -> currentPurpose
-    is SessionState.Paused -> currentPurpose
-    else -> null
 }
 
 private fun SessionState.attentionReasonOrNull(): String? = when (this) {
@@ -2719,15 +2707,12 @@ private fun SessionState.attentionActionLabelOrNull(): String? = when (this) {
     else -> null
 }
 
-private fun SessionState.needsAttention(): Boolean =
-    currentPurposeOrNull()?.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true) == true
-
 internal fun overlayRecoveryKind(
     state: SessionState,
     developerStatus: DeveloperModeStatus,
     companionConnected: Boolean,
 ): OverlayRecoveryKind? {
-    if (state.needsAttention()) return OverlayRecoveryKind.ATTENTION
+    if (state.needsAttention) return OverlayRecoveryKind.ATTENTION
 
     val developerConnectionNeedsAction = developerStatus.requiresUserAction
     if (developerConnectionNeedsAction) return OverlayRecoveryKind.DEVELOPER

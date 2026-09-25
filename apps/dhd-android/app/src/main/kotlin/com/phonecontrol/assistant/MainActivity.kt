@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.produceState
 import androidx.lifecycle.lifecycleScope
+import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.developer.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.TaskPointerEvent
@@ -107,7 +108,7 @@ class MainActivity : ComponentActivity() {
             val events by app.sessionCoordinator.events.collectAsState()
             val pointerEvent by app.sessionCoordinator.pointerEvent.collectAsState()
             val purpose = sessionState.displayPurpose()
-            val coordinatorSessionKey = sessionState.sessionKeyOrNull()
+            val coordinatorSessionKey = sessionState.sessionIdOrNull
             // A new coordinator run can claim a retained display whose native
             // owner key belongs to the previous run. Resolve that binding for
             // the inline viewer so the UI follows the selected display rather
@@ -774,12 +775,4 @@ internal fun TaskPreviewState.forSession(sessionKey: String): TaskPreviewState? 
     is TaskPreviewState.Attached -> takeIf { session.sessionKey == sessionKey }
     is TaskPreviewState.Ended -> takeIf { session.sessionKey == sessionKey }
     is TaskPreviewState.Error -> takeIf { this.sessionKey == sessionKey }
-}
-
-private fun SessionState.sessionKeyOrNull(): String? = when (this) {
-    SessionState.Idle -> null
-    is SessionState.Running -> sessionId
-    is SessionState.Paused -> sessionId
-    is SessionState.Stopped -> sessionId
-    is SessionState.Completed -> sessionId
 }

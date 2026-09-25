@@ -8,6 +8,8 @@ import com.phonecontrol.assistant.core.BuildDeviceInfo
 import com.phonecontrol.assistant.core.Clock
 import com.phonecontrol.assistant.core.DeviceInfo
 import com.phonecontrol.assistant.core.SystemClockClock
+import com.phonecontrol.assistant.core.conversationIdOrNull
+import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.DHD_BROWSE_APP_TOOL
 import com.phonecontrol.assistant.data.DHD_EXECUTE_TOOL
 import com.phonecontrol.assistant.data.DHD_FOREGROUND_APP_TOOL
@@ -1081,7 +1083,7 @@ class DevBridgeServer internal constructor(
     ) {
         val sessionId = json.optString("sessionId").trim()
         require(sessionId.isNotEmpty()) { "sessionId is required." }
-        if (coordinator.state.value.sessionIdOrNullForBridge() != sessionId) {
+        if (coordinator.state.value.sessionIdOrNull != sessionId) {
             write(
                 writer,
                 errorResponse(requestId, "The phone session is no longer active.")
@@ -1097,7 +1099,7 @@ class DevBridgeServer internal constructor(
         if (failed) {
             platform.showAttentionNotification(
                 "DHD stopped: $reason",
-                coordinator.state.value.conversationIdOrNullForBridge(),
+                coordinator.state.value.conversationIdOrNull,
             )
         }
         platform.reconcileServiceLifetime()
@@ -1127,7 +1129,7 @@ class DevBridgeServer internal constructor(
         require(text.length <= MAX_AGENT_FEEDBACK_CHARS) {
             "text must be at most $MAX_AGENT_FEEDBACK_CHARS characters."
         }
-        if (coordinator.state.value.sessionIdOrNullForBridge() != sessionId) {
+        if (coordinator.state.value.sessionIdOrNull != sessionId) {
             write(
                 writer,
                 errorResponse(requestId, "The phone session is no longer active.")
@@ -1166,7 +1168,7 @@ class DevBridgeServer internal constructor(
             .trim()
             .ifBlank { null }
             ?.take(MAX_TEXT_CHARS)
-        val activeSessionId = coordinator.state.value.sessionIdOrNullForBridge()
+        val activeSessionId = coordinator.state.value.sessionIdOrNull
         if (activeSessionId != sessionId) {
             write(
                 writer,
@@ -1182,7 +1184,7 @@ class DevBridgeServer internal constructor(
             agentMessageId = agentMessageId,
         )
         if (completed) {
-            platform.showCompletionNotification(completionMessage, coordinator.state.value.conversationIdOrNullForBridge())
+            platform.showCompletionNotification(completionMessage, coordinator.state.value.conversationIdOrNull)
         }
         platform.removeAttentionNotification()
         platform.reconcileServiceLifetime()
@@ -1193,7 +1195,7 @@ class DevBridgeServer internal constructor(
                 .put("requestId", requestId)
                 .put("ok", completed)
                 .put("sessionId", sessionId)
-                .put("conversationId", coordinator.state.value.conversationIdOrNullForBridge() ?: JSONObject.NULL)
+                .put("conversationId", coordinator.state.value.conversationIdOrNull ?: JSONObject.NULL)
                 .put("message", completionMessage)
                 .put("feedback", feedback ?: JSONObject.NULL),
         )
@@ -1241,7 +1243,7 @@ class DevBridgeServer internal constructor(
             )
             return
         }
-        platform.showAttentionNotification(reason, coordinator.state.value.conversationIdOrNullForBridge())
+        platform.showAttentionNotification(reason, coordinator.state.value.conversationIdOrNull)
         when (attention.await()) {
             AttentionResolution.Cancelled -> write(
                 writer,
@@ -3040,20 +3042,4 @@ private fun ActionExecutionResult.failureCode(): String? = when (this) {
     }
     is ActionExecutionResult.PolicyRejected -> code
     ActionExecutionResult.SessionNotRunning -> "SESSION_NOT_RUNNING"
-}
-
-private fun SessionState.sessionIdOrNullForBridge(): String? = when (this) {
-    SessionState.Idle -> null
-    is SessionState.Running -> sessionId
-    is SessionState.Paused -> sessionId
-    is SessionState.Stopped -> sessionId
-    is SessionState.Completed -> sessionId
-}
-
-private fun SessionState.conversationIdOrNullForBridge(): String? = when (this) {
-    SessionState.Idle -> null
-    is SessionState.Running -> conversationId
-    is SessionState.Paused -> conversationId
-    is SessionState.Stopped -> conversationId
-    is SessionState.Completed -> conversationId
 }

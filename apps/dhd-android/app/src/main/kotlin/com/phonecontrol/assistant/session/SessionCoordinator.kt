@@ -12,6 +12,9 @@ import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.domain.StaleObservationDiagnostics
 import com.phonecontrol.assistant.domain.userFacingActivityLabel
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.conversationIdOrNull
+import com.phonecontrol.assistant.core.isActive
+import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.RunStatus
 import com.phonecontrol.assistant.policy.PolicyContext
@@ -516,7 +519,7 @@ class SessionCoordinator(
         }
         claimedRequestSessionId = null
         clearSteers(sessionId)
-        val conversationId = current.conversationIdOrNull()
+        val conversationId = current.conversationIdOrNull
         val continuationSettings = current.continuationSettings()
         _state.value = SessionState.Stopped(
             sessionId = sessionId,
@@ -582,7 +585,7 @@ class SessionCoordinator(
         cleanupScope.launch {
             transport.retainSessionForRun(sessionId, TaskDisplayStatus.FAILED, safeReason)
         }
-        val conversationId = current.conversationIdOrNull()
+        val conversationId = current.conversationIdOrNull
         val continuationSettings = current.continuationSettings()
         _state.value = SessionState.Stopped(
             sessionId = sessionId,
@@ -634,7 +637,7 @@ class SessionCoordinator(
             transport.retainSessionForRun(sessionId, TaskDisplayStatus.COMPLETED)
         }
         claimedRequestSessionId = null
-        val conversationId = current.conversationIdOrNull()
+        val conversationId = current.conversationIdOrNull
         current.sessionIdOrNull?.let(::clearSteers)
         _state.value = SessionState.Completed(
             sessionId = sessionId,
@@ -818,7 +821,7 @@ class SessionCoordinator(
             }
 
             val conversationId = synchronized(lock) {
-                _state.value.conversationIdOrNull()
+                _state.value.conversationIdOrNull
             }
             runCatching {
                 onPhoneAccessAttentionRequested(reason, conversationId)
@@ -1276,9 +1279,6 @@ class SessionCoordinator(
     }
 }
 
-private val SessionState.isActive: Boolean
-    get() = this is SessionState.Running || this is SessionState.Paused
-
 private fun SessionState.elapsedAt(nowEpochMs: Long): Long = when (this) {
     is SessionState.Running -> elapsedBeforeStartMs +
         (nowEpochMs - startedAtEpochMs).coerceAtLeast(0L)
@@ -1287,23 +1287,6 @@ private fun SessionState.elapsedAt(nowEpochMs: Long): Long = when (this) {
     is SessionState.Completed -> workedDurationMs
     SessionState.Idle -> 0L
 }.coerceAtLeast(0L)
-
-private val SessionState.sessionIdOrNull: String?
-    get() = when (this) {
-        is SessionState.Idle -> null
-        is SessionState.Running -> sessionId
-        is SessionState.Paused -> sessionId
-        is SessionState.Stopped -> sessionId
-        is SessionState.Completed -> sessionId
-    }
-
-private fun SessionState.conversationIdOrNull(): String? = when (this) {
-    is SessionState.Idle -> null
-    is SessionState.Running -> conversationId
-    is SessionState.Paused -> conversationId
-    is SessionState.Stopped -> conversationId
-    is SessionState.Completed -> conversationId
-}
 
 private fun SessionState.continuationSettings(): Pair<String, Boolean> = when (this) {
     is SessionState.Running -> reasoningEffort to fastMode

@@ -1,5 +1,6 @@
 package com.phonecontrol.assistant.session
 
+import com.phonecontrol.assistant.core.isActive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -22,11 +23,11 @@ class ForegroundNotificationPolicyTest {
             startedAtEpochMs = 1L,
         )
 
-        assertTrue(running.isActiveForService())
-        assertTrue(paused.isActiveForService())
-        assertFalse(SessionState.Idle.isActiveForService())
-        assertFalse(SessionState.Stopped(sessionId = "run-1", reason = "Stopped").isActiveForService())
-        assertFalse(SessionState.Completed(sessionId = "run-1", message = "Done").isActiveForService())
+        assertTrue(running.isActive)
+        assertTrue(paused.isActive)
+        assertFalse(SessionState.Idle.isActive)
+        assertFalse(SessionState.Stopped(sessionId = "run-1", reason = "Stopped").isActive)
+        assertFalse(SessionState.Completed(sessionId = "run-1", message = "Done").isActive)
     }
 
     @Test
