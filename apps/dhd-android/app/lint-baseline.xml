@@ -577,27 +577,6 @@
     </issue>
 
     <issue
-        id="UnusedResources"
-        message="The resource `R.drawable.dhd_launcher_foreground` appears to be unused">
-        <location
-            file="src/main/res/drawable-nodpi/dhd_launcher_foreground.png"/>
-    </issue>
-
-    <issue
-        id="UnusedResources"
-        message="The resource `R.drawable.dhd_launcher_foreground_experiment_v1` appears to be unused">
-        <location
-            file="src/main/res/drawable-nodpi/dhd_launcher_foreground_experiment_v1.png"/>
-    </issue>
-
-    <issue
-        id="UnusedResources"
-        message="The resource `R.drawable.dhd_launcher_foreground_experiment_v2` appears to be unused">
-        <location
-            file="src/main/res/drawable-nodpi/dhd_launcher_foreground_experiment_v2.png"/>
-    </issue>
-
-    <issue
         id="MonochromeLauncherIcon"
         message="The application adaptive icon is missing a monochrome tag"
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
