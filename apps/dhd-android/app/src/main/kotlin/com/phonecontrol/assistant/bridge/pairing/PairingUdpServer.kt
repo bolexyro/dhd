@@ -58,11 +58,11 @@ internal class PairingUdpServer(
             PairingStep.Ignored -> Unit
             is PairingStep.Reply -> send(peer, step.response)
             is PairingStep.AwaitingApproval -> {
-                send(peer, step.response)
                 scope.launch {
                     delay(PairingProtocol.PAIRING_APPROVAL_TIMEOUT_MS)
                     protocol.expireApproval(step.requestId)
                 }
+                send(peer, step.response)
             }
         }
     }
