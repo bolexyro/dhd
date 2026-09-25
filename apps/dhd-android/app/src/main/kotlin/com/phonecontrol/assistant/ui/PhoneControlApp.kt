@@ -118,11 +118,7 @@ fun PhoneControlApp(
         mutableStateOf(prefs.getBoolean(KEY_FAST_MODE, false))
     }
 
-    val isDarkMode = when (themeMode) {
-        ThemeMode.SYSTEM -> isSystemDark
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-    }
+    val isDarkMode = themeMode.isDark(isSystemDark)
 
     val setThemeMode: (ThemeMode) -> Unit = { mode ->
         themeMode = mode

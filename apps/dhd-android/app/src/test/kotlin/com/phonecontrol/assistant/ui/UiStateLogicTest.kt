@@ -52,6 +52,13 @@ class UiStateLogicTest {
     }
 
     @Test
+    fun `theme mode resolves dark only for dark or a dark system`() {
+        assertEquals(listOf(true, false), listOf(true, false).map(ThemeMode.SYSTEM::isDark))
+        assertEquals(listOf(false, false), listOf(true, false).map(ThemeMode.LIGHT::isDark))
+        assertEquals(listOf(true, true), listOf(true, false).map(ThemeMode.DARK::isDark))
+    }
+
+    @Test
     fun `visible reasoning efforts come from storage in canonical order`() {
         assertEquals(allEfforts, visibleReasoningEffortsFromStorage(null))
         assertEquals(allEfforts, visibleReasoningEffortsFromStorage(" , "))

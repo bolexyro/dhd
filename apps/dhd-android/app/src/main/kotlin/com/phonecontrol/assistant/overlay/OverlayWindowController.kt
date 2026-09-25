@@ -725,11 +725,7 @@ class OverlayWindowController(
         val mode = ThemeMode.fromStorage(prefs.getString(UiPreferencesRepository.KEY_THEME_MODE, "dark"))
         val isSystemDark = (appContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
             Configuration.UI_MODE_NIGHT_NO
-        val isDark = when (mode) {
-            ThemeMode.SYSTEM -> isSystemDark
-            ThemeMode.LIGHT -> false
-            ThemeMode.DARK -> true
-        }
+        val isDark = mode.isDark(isSystemDark)
         return if (isDark) DarkAssistantColors else LightAssistantColors
     }
 
