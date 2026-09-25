@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { parsePollInterval } from "../src/assistant-companion.js";
+import { parsePollInterval } from "../src/worker/poll-loop.js";
 import { extractDynamicToolFailure, normalizeDynamicArguments } from "../src/codex/dynamic-tools.js";
 import {
   extractCompanionPlanUpdatedEvent,

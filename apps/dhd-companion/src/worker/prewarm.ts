@@ -31,3 +31,28 @@ export async function prewarmCodexClient(
   );
   return false;
 }
+
+export class CodexWarmup {
+  private inFlight: Promise<boolean> | null = null;
+
+  constructor(private readonly codexClient: CodexAppServerClient) {}
+
+  schedule(scope: string): void {
+    // Codex startup can take longer than the phone presence lease. Keep the
+    // bridge poll loop alive while warming the App Server in the background.
+    if (this.inFlight) return;
+    const operation = prewarmCodexClient(this.codexClient, scope);
+    this.inFlight = operation;
+    void operation.then(
+      () => {
+        if (this.inFlight === operation) this.inFlight = null;
+      },
+      (error) => {
+        console.error(
+          `[phone-assistant-companion] Codex warmup runner failed: ${errorMessage(error)}`,
+        );
+        if (this.inFlight === operation) this.inFlight = null;
+      },
+    );
+  }
+}

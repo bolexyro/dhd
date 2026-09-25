@@ -1,0 +1,68 @@
+import { CodexAppServerClient } from "../codex/app-server-client.js";
+import { pollIntervalSetting } from "../config/env.js";
+import { bridgeHost, bridgePort, isLoopbackBridgeHost } from "../phone/bridge-client.js";
+import { delay } from "../shared/delay.js";
+import { errorMessage } from "../shared/errors.js";
+import { currentCodexTurn } from "./active-turn.js";
+import { maintainCompanionHeartbeat } from "./heartbeat.js";
+import { PhonePoller, parsePollInterval } from "./poll-loop.js";
+import { CodexWarmup } from "./prewarm.js";
+
+function logStartupBanner(): void {
+  console.error(
+    "[phone-assistant-companion] waiting for a request typed in the Android app",
+  );
+  console.error(
+    `[phone-assistant-companion] phone bridge target ${bridgeHost}:${bridgePort}`,
+  );
+  if (isLoopbackBridgeHost(bridgeHost)) {
+    console.error(
+      "[phone-assistant-companion] loopback mode: adb forward tcp:8765 tcp:8765 is still supported",
+    );
+  } else {
+    console.error(
+      "[phone-assistant-companion] wireless mode: phone and laptop must share Wi-Fi and PHONE_ASSISTANT_BRIDGE_TOKEN must match DHD settings",
+    );
+  }
+  console.error(
+    "[phone-assistant-companion] a logged-in Codex CLI must be available on this companion host",
+  );
+}
+
+export async function runAssistantCompanion(
+  codexClient = new CodexAppServerClient(),
+): Promise<void> {
+  const pollIntervalMs = parsePollInterval(pollIntervalSetting());
+  let stopping = false;
+  const stop = () => {
+    stopping = true;
+    const active = currentCodexTurn();
+    if (active) {
+      void active.client.interrupt().catch((error) => {
+        console.error(
+          `[phone-assistant-companion] could not interrupt on shutdown: ${errorMessage(error)}`,
+        );
+      });
+    }
+  };
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
+
+  const warmup = new CodexWarmup(codexClient);
+  const poller = new PhonePoller(codexClient, warmup);
+  logStartupBanner();
+
+  const heartbeatPromise = maintainCompanionHeartbeat(() => stopping);
+  try {
+    warmup.schedule("codex-prewarm");
+    while (!stopping) {
+      await poller.pollOnce();
+      if (!stopping) await delay(pollIntervalMs);
+    }
+  } finally {
+    stopping = true;
+    await poller.waitForPendingRun();
+    await heartbeatPromise;
+    await codexClient.close();
+  }
+}
