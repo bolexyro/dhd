@@ -15,15 +15,19 @@ internal class RetentionScheduler(
 
     fun schedule(record: TaskDisplayRecord) {
         val expiresAt = record.expiresAtEpochMs ?: return
-        expiryJobs.remove(record.sessionKey)?.cancel()
-        expiryJobs[record.sessionKey] = scope.launch {
-            val remaining = expiresAt - nowEpochMs()
-            if (remaining > 0) delay(remaining)
-            onExpired(record.sessionKey, expiresAt)
+        synchronized(expiryJobs) {
+            expiryJobs.remove(record.sessionKey)?.cancel()
+            expiryJobs[record.sessionKey] = scope.launch {
+                val remaining = expiresAt - nowEpochMs()
+                if (remaining > 0) delay(remaining)
+                onExpired(record.sessionKey, expiresAt)
+            }
         }
     }
 
     fun cancel(sessionKey: String) {
-        expiryJobs.remove(sessionKey)?.cancel()
+        synchronized(expiryJobs) {
+            expiryJobs.remove(sessionKey)?.cancel()
+        }
     }
 }

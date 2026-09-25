@@ -84,7 +84,6 @@ class DhdTaskDisplayBackend internal constructor(
     private val previews = LivePreviewRegistry(
         scope = scope,
         stateLock = stateLock,
-        publishLock = records.lock,
         activeSessionKey = { _activeSession.value?.sessionKey },
     )
     private val retention = RetentionScheduler(scope, nowEpochMs) { sessionKey, expiresAt ->
@@ -208,7 +207,7 @@ class DhdTaskDisplayBackend internal constructor(
                         sessions[sessionKey] = bound
                         bindings.bind(runSessionKey, sessionKey)
                         _activeSession.value = taskSession
-                        previews.publishLocked(
+                        previews.publish(
                             sessionKey,
                             TaskPreviewState.Connecting(taskSession),
                         )
@@ -610,7 +609,7 @@ class DhdTaskDisplayBackend internal constructor(
                 // its authenticated connection and cached GOP.
                 handle.detachSurface(surface)
                 stateLock.withLock {
-                    previews.publishLocked(session.sessionKey, TaskPreviewState.Detached)
+                    previews.publish(session.sessionKey, TaskPreviewState.Detached)
                 }
             }
         } catch (error: CancellationException) {
@@ -796,7 +795,7 @@ class DhdTaskDisplayBackend internal constructor(
                         _activeSession.value = sessions.values.lastOrNull()?.taskSession
                     }
                     endedSession?.let { session ->
-                        previews.publishLocked(
+                        previews.publish(
                             sessionKey,
                             TaskPreviewState.Ended(
                                 session = session,
@@ -881,7 +880,7 @@ class DhdTaskDisplayBackend internal constructor(
                 val sessionKey = bound.taskSession.sessionKey
                 previews.stopObservingLocked(sessionKey)
                 previews.removeHandleLocked(sessionKey)?.close()
-                previews.publishLocked(
+                previews.publish(
                     sessionKey,
                     TaskPreviewState.Ended(
                         session = bound.taskSession,
@@ -983,7 +982,7 @@ class DhdTaskDisplayBackend internal constructor(
                     _activeSession.value = sessions.values.lastOrNull()?.taskSession
                 }
                 if (previews.isInlineSessionLocked(sessionKey)) {
-                    previews.publishLocked(sessionKey, TaskPreviewState.Detached)
+                    previews.publish(sessionKey, TaskPreviewState.Detached)
                 }
                 previews.removeHandleLocked(sessionKey)
             }
@@ -1033,7 +1032,7 @@ class DhdTaskDisplayBackend internal constructor(
                     _activeSession.value = sessions.values.lastOrNull()?.taskSession
                 }
                 endedSession?.let { session ->
-                    previews.publishLocked(
+                    previews.publish(
                         sessionKey,
                         if (finalStatus == TaskDisplayStatus.ENDED) {
                             TaskPreviewState.Ended(

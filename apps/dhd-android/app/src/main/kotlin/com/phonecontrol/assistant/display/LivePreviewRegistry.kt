@@ -27,9 +27,9 @@ sealed interface TaskPreviewState {
 internal class LivePreviewRegistry(
     private val scope: CoroutineScope,
     private val stateLock: Mutex,
-    private val publishLock: Any,
     private val activeSessionKey: () -> String?,
 ) {
+    private val publishLock = Any()
     private val liveHandles = mutableMapOf<String, LiveHandle>()
     private val previewStateJobs = mutableMapOf<String, Job>()
     private val _previewState = MutableStateFlow<TaskPreviewState>(TaskPreviewState.Detached)
@@ -48,7 +48,7 @@ internal class LivePreviewRegistry(
 
     fun attachLocked(session: TaskDisplaySession, surface: Surface, handle: DhdLivePreviewHandle) {
         liveHandles[session.sessionKey] = LiveHandle(surface, handle)
-        publishLocked(
+        publish(
             session.sessionKey,
             TaskPreviewState.Connecting(session),
         )
@@ -78,28 +78,26 @@ internal class LivePreviewRegistry(
     fun isInlineSessionLocked(sessionKey: String): Boolean = _previewState.value.sessionKeyOrNull() == sessionKey
 
     fun resetInlineLocked() {
-        _previewState.value = TaskPreviewState.Detached
-    }
-
-    fun publish(sessionKey: String, state: TaskPreviewState) {
         synchronized(publishLock) {
-            publishLocked(sessionKey, state)
+            _previewState.value = TaskPreviewState.Detached
         }
     }
 
-    fun publishLocked(sessionKey: String, state: TaskPreviewState) {
+    fun publish(sessionKey: String, state: TaskPreviewState) {
         // The legacy single-preview flow feeds the inline assistant card. A
         // retained display opened from the manager may attach concurrently;
         // keep that viewer in the per-session map without replacing the
         // active task's inline state.
         val activeKey = activeSessionKey()
-        if (activeKey == null || activeKey == sessionKey ||
-            _previewState.value.sessionKeyOrNull() == sessionKey
-        ) {
-            _previewState.value = state
-        }
-        _previewStates.value = _previewStates.value.toMutableMap().apply {
-            if (state is TaskPreviewState.Detached) remove(sessionKey) else put(sessionKey, state)
+        synchronized(publishLock) {
+            if (activeKey == null || activeKey == sessionKey ||
+                _previewState.value.sessionKeyOrNull() == sessionKey
+            ) {
+                _previewState.value = state
+            }
+            _previewStates.value = _previewStates.value.toMutableMap().apply {
+                if (state is TaskPreviewState.Detached) remove(sessionKey) else put(sessionKey, state)
+            }
         }
     }
 
@@ -116,7 +114,7 @@ internal class LivePreviewRegistry(
             stateLock.withLock {
                 val liveHandle = liveHandles[session.sessionKey]
                 if (liveHandle?.handle !== handle || liveHandle.surface == null) return@withLock
-                publishLocked(session.sessionKey, when (state.phase) {
+                publish(session.sessionKey, when (state.phase) {
                     DhdLivePreviewPhase.CONNECTING -> TaskPreviewState.Connecting(session)
                     DhdLivePreviewPhase.LIVE -> {
                         TaskPreviewState.Attached(session)
