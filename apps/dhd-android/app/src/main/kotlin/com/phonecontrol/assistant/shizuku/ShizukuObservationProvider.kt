@@ -71,11 +71,27 @@ private val FOCUS_REGEX = Regex(
  * failure is returned to the caller, which decides whether an action may run or
  * whether an already-dispatched action has an unknown outcome.
  */
+interface PhoneObservationSource {
+    suspend fun getForegroundApp(
+        taskSessionKey: String? = null,
+        displayId: Int? = null,
+        expectedDisplayRef: String? = null,
+    ): ForegroundAppResult
+
+    suspend fun capture(
+        expectedPackageName: String? = null,
+        guardRegions: List<GuardRegion> = emptyList(),
+        taskSessionKey: String? = null,
+        displayId: Int? = null,
+        expectedDisplayRef: String? = null,
+    ): ObservationCaptureResult
+}
+
 class PhoneObservationProvider(
     private val context: Context,
     private val processRunner: PhoneProcessRunner,
     private val taskDisplayBackend: TaskDisplayBackend? = null,
-) {
+) : PhoneObservationSource {
     /**
      * Keep the compressed capture bytes beside their observation IDs so an
      * action can define guard regions after observing the screen. The bytes
@@ -96,10 +112,10 @@ class PhoneObservationProvider(
      * an observation baseline. This is only situational context; callers must
      * still use capture() before sending any physical input.
      */
-    suspend fun getForegroundApp(
-        taskSessionKey: String? = null,
-        displayId: Int? = null,
-        expectedDisplayRef: String? = null,
+    override suspend fun getForegroundApp(
+        taskSessionKey: String?,
+        displayId: Int?,
+        expectedDisplayRef: String?,
     ): ForegroundAppResult {
         if (taskSessionKey != null) {
             val backend = taskDisplayBackend
@@ -189,12 +205,12 @@ class PhoneObservationProvider(
         )
     }
 
-    suspend fun capture(
-        expectedPackageName: String? = null,
-        guardRegions: List<GuardRegion> = emptyList(),
-        taskSessionKey: String? = null,
-        displayId: Int? = null,
-        expectedDisplayRef: String? = null,
+    override suspend fun capture(
+        expectedPackageName: String?,
+        guardRegions: List<GuardRegion>,
+        taskSessionKey: String?,
+        displayId: Int?,
+        expectedDisplayRef: String?,
     ): ObservationCaptureResult {
         if (taskSessionKey != null) {
             return captureTaskDisplay(
