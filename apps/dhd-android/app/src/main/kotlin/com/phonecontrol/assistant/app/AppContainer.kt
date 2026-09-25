@@ -34,10 +34,12 @@ class AppContainer(context: Context) {
     val phoneAccessController = PhoneAccessController(context).also { it.start() }
     val processRunner = DhdAdbProcessRunner(phoneAccessController)
     val conversationStore = ConversationStore(context)
+    val taskDisplayLayoutPreferences = TaskDisplayLayoutPreferences(context)
     val taskDisplayBackend = DhdTaskDisplayBackend(
         context,
         DhdVirtualDisplayManager(context, phoneAccessController),
         processRunner,
+        taskDisplayLayoutPreferences,
         conversationStore,
     )
 
@@ -93,7 +95,7 @@ class AppContainer(context: Context) {
             context = context,
             preferencesName = DevBridgeServer.PREFERENCES_NAME,
             installedAppsRepository = installedAppsRepository,
-            taskDisplayLayoutPreferences = TaskDisplayLayoutPreferences(context),
+            taskDisplayLayoutPreferences = taskDisplayLayoutPreferences,
             overlayVisibilityGate = overlayVisibilityGate,
         ),
         coordinator = sessionCoordinator,

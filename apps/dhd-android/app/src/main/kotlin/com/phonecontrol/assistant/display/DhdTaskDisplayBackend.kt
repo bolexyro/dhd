@@ -134,9 +134,10 @@ internal interface TaskDisplayPlatform {
     fun hasLaunchIntent(packageName: String): Boolean
 }
 
-internal class AndroidTaskDisplayPlatform(private val appContext: Context) : TaskDisplayPlatform {
-    private val layoutPreferences = TaskDisplayLayoutPreferences(appContext)
-
+internal class AndroidTaskDisplayPlatform(
+    private val appContext: Context,
+    private val layoutPreferences: TaskDisplayLayoutPreferences,
+) : TaskDisplayPlatform {
     override fun isFullSizeLayoutEnabled(packageName: String): Boolean =
         layoutPreferences.isFullSizeLayoutEnabled(packageName)
 
@@ -172,6 +173,7 @@ class DhdTaskDisplayBackend internal constructor(
         context: Context,
         nativeManager: DhdVirtualDisplayManager,
         processRunner: PhoneProcessRunner,
+        layoutPreferences: TaskDisplayLayoutPreferences,
         conversationStore: ConversationStore? = null,
         nowEpochMs: () -> Long = { System.currentTimeMillis() },
         terminalRetentionMs: Long = TERMINAL_RETENTION_MS,
@@ -181,7 +183,7 @@ class DhdTaskDisplayBackend internal constructor(
         conversationStore = conversationStore,
         nowEpochMs = nowEpochMs,
         terminalRetentionMs = terminalRetentionMs,
-        platform = AndroidTaskDisplayPlatform(context.applicationContext),
+        platform = AndroidTaskDisplayPlatform(context.applicationContext, layoutPreferences),
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
         newOwnerKey = { "dhd-${UUID.randomUUID()}" },
     )
