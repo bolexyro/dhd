@@ -63,7 +63,7 @@ internal fun TaskPointerOverlay(
     var lastSeenSequence by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(event?.sequence) {
-        val pointer = event
+        val pointer = drawablePointerEvent(event)
         if (!initialized) {
             // A new inline/full-screen surface can be created while the
             // coordinator still holds the latest event. That event was
@@ -220,7 +220,7 @@ internal fun TaskPointerOverlay(
                     point = Offset(cursorX.value * size.width, cursorY.value * size.height),
                     scaleFactor = 1f,
                 )
-            } else if (event is TaskPointerEvent.Click || event is TaskPointerEvent.Calibration) {
+            } else if (drawablePointerEvent(event).let { it is TaskPointerEvent.Click || it is TaskPointerEvent.Calibration }) {
                 drawArrow(
                     point = Offset(cursorX.value * size.width, cursorY.value * size.height),
                     scaleFactor = clickScale.value,
@@ -271,9 +271,15 @@ private fun mapDisplayPoint(
 ): Offset = normalizedPoint(x, y, displayWidth, displayHeight)
 
 internal fun normalizedPoint(x: Int, y: Int, width: Int, height: Int): Offset = Offset(
-    x = x.coerceIn(0, width - 1).toFloat() / width,
-    y = y.coerceIn(0, height - 1).toFloat() / height,
+    x = normalizedAxis(x, width),
+    y = normalizedAxis(y, height),
 )
+
+private fun normalizedAxis(value: Int, size: Int): Float =
+    if (size <= 0) 0f else value.coerceIn(0, size - 1).toFloat() / size
+
+internal fun drawablePointerEvent(event: TaskPointerEvent?): TaskPointerEvent? =
+    event?.takeIf { it.displayWidth > 0 && it.displayHeight > 0 }
 
 private fun DrawScope.drawArrow(
     point: Offset,

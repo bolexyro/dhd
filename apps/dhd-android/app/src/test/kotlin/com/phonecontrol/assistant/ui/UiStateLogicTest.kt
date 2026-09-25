@@ -3,6 +3,7 @@ package com.phonecontrol.assistant.ui
 import androidx.compose.ui.geometry.Offset
 import com.phonecontrol.assistant.data.TimelineItem
 import com.phonecontrol.assistant.domain.ReasoningEffort
+import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplayGeometry
 import com.phonecontrol.assistant.ui.chat.composer.PendingSteerDraft
 import com.phonecontrol.assistant.ui.chat.composer.SteerDraftPromotion
@@ -26,6 +27,7 @@ import com.phonecontrol.assistant.ui.displays.TaskDisplayLifecycle
 import com.phonecontrol.assistant.ui.displays.TaskDisplayUiRecord
 import com.phonecontrol.assistant.ui.displays.displayRecordsWithPreviewFallback
 import com.phonecontrol.assistant.ui.displays.inspectableTaskDisplayRecords
+import com.phonecontrol.assistant.ui.displays.drawablePointerEvent
 import com.phonecontrol.assistant.ui.displays.normalizedPoint
 import com.phonecontrol.assistant.ui.displays.sortTaskDisplayRecords
 import com.phonecontrol.assistant.ui.displays.viewerPreviewState
@@ -34,7 +36,6 @@ import com.phonecontrol.assistant.ui.theme.ThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
-import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class UiStateLogicTest {
@@ -278,8 +279,18 @@ class UiStateLogicTest {
     }
 
     @Test
-    fun `known bug pointer normalization throws for an empty display`() {
-        assertThrows(IllegalArgumentException::class.java) { normalizedPoint(0, 0, 0, 1560) }
-        assertThrows(IllegalArgumentException::class.java) { normalizedPoint(0, 0, 720, 0) }
+    fun `pointer normalization for an empty display stays at the origin instead of throwing`() {
+        assertEquals(Offset(0f, 0.25f), normalizedPoint(10, 390, 0, 1560))
+        assertEquals(Offset(0.5f, 0f), normalizedPoint(360, 10, 720, 0))
+        assertEquals(Offset(0f, 0f), normalizedPoint(5, 5, -1, -1))
+    }
+
+    @Test
+    fun `pointer events for an empty display are not drawn`() {
+        assertNull(drawablePointerEvent(TaskPointerEvent.Click(1L, "run-1", 10, 10, 0, 1560)))
+        assertNull(drawablePointerEvent(TaskPointerEvent.Calibration(1L, "run-1", 10, 10, 720, 0)))
+        val click = TaskPointerEvent.Click(1L, "run-1", 10, 10, 720, 1560)
+        assertSame(click, drawablePointerEvent(click))
+        assertNull(drawablePointerEvent(null))
     }
 }
