@@ -131,7 +131,7 @@ internal class BridgeJson(private val base64: Base64Codec) {
                 .also { result.details?.let { details -> addStaleDiagnostics(it, details) } }
             ActionExecutionResult.SessionNotRunning -> response
                 .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING)
-                .put("message", "The phone session is no longer running.")
+                .put("message", SESSION_NOT_RUNNING_MESSAGE)
         }
         return response
     }

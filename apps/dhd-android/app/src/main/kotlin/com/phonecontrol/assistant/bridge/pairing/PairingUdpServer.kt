@@ -1,5 +1,6 @@
 package com.phonecontrol.assistant.bridge.pairing
 
+import com.phonecontrol.assistant.bridge.BRIDGE_LOG_TAG
 import com.phonecontrol.assistant.bridge.BridgePlatform
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_REQUEST_CHARS
 import java.net.DatagramPacket
@@ -23,7 +24,6 @@ internal class PairingUdpServer(
     private val scope: CoroutineScope,
     private val bindHost: String,
     private val port: Int,
-    private val tag: String,
 ) {
     @Volatile private var pairingSocket: DatagramSocket? = null
 
@@ -38,14 +38,14 @@ internal class PairingUdpServer(
                 runCatching { handlePacket(socket, packet) }
                     .onFailure { error ->
                         if (!socket.isClosed) {
-                            platform.logWarning(tag, "Could not handle a pairing discovery packet", error)
+                            platform.logWarning(BRIDGE_LOG_TAG, "Could not handle a pairing discovery packet", error)
                         }
                     }
             }
         } catch (_: SocketException) {
             // Closing the pairing socket is the normal shutdown path.
         } catch (error: Throwable) {
-            platform.logWarning(tag, "Pairing discovery stopped", error)
+            platform.logWarning(BRIDGE_LOG_TAG, "Pairing discovery stopped", error)
         } finally {
             pairingSocket = null
         }
@@ -76,7 +76,7 @@ internal class PairingUdpServer(
             runCatching {
                 send(delivery.peer, delivery.response)
             }.onFailure { error ->
-                platform.logWarning(tag, "Could not send the companion pairing response", error)
+                platform.logWarning(BRIDGE_LOG_TAG, "Could not send the companion pairing response", error)
             }
         }
         return true

@@ -120,16 +120,21 @@ class CompanionBridgeServer internal constructor(
         scope = scope,
         bindHost = LAN_BIND_HOST,
         port = PAIRING_DISCOVERY_PORT,
-        tag = BRIDGE_LOG_TAG,
     )
     private val phoneActionLock = PhoneActionLock()
     private val toolCalls = ToolCallScope(coordinator, platform)
-    private val appCatalog = AppCatalogHandlers(coordinator, platform, allowedPackagesProvider, fullAccessProvider)
-    private val steers = SteerHandlers(coordinator, presence)
-    private val sessions = SessionHandlers(coordinator, platform, presence)
     private val bridgeJson = BridgeJson(base64)
     private val captures = CaptureService(coordinator, observationProvider, taskDisplayRequiredProvider)
-    private val displayTargets = DisplayTargetResolver(taskDisplayBackend, coordinator, taskDisplayRequiredProvider, clock, platform)
+    private val displayTargets = DisplayTargetResolver(
+        taskDisplayBackend,
+        coordinator,
+        taskDisplayRequiredProvider,
+        clock,
+        platform,
+    )
+    private val sessions = SessionHandlers(coordinator, platform, presence)
+    private val steers = SteerHandlers(coordinator, presence)
+    private val appCatalog = AppCatalogHandlers(coordinator, platform, allowedPackagesProvider, fullAccessProvider)
     private val displays = DisplayHandlers(taskDisplayBackend, coordinator, displayTargets, platform)
     private val observations = ObservationHandlers(
         coordinator,
