@@ -37,6 +37,22 @@ private const val CONVERSATION_EXPIRY_CHECK_INTERVAL_MS = 1_000L
 internal const val STATE_PERMISSION_SETUP_STEP = "permission_setup_step"
 internal const val STATE_NOTIFICATION_SETUP_HANDLED = "notification_setup_step_handled"
 internal const val STATE_PENDING_OVERLAY_ENABLE = "pending_overlay_enable"
+internal const val STATE_OPEN_ROUTE_CONSUMED = "open_route_consumed"
+
+internal class OpenRouteConsumption(alreadyConsumed: Boolean) {
+    var consumed: Boolean = alreadyConsumed
+        private set
+
+    fun take(route: String?): String? {
+        val next = route.takeUnless { consumed }
+        consumed = true
+        return next
+    }
+
+    fun expectNewRoute() {
+        consumed = false
+    }
+}
 
 class MainActivity : ComponentActivity() {
     private var overlayEnabled by mutableStateOf(false)
@@ -46,6 +62,7 @@ class MainActivity : ComponentActivity() {
     private var notificationSetupStepHandled = false
     private var overlayActivityToken: OverlayVisibilityGate.Token? = null
     private var conversationExpiryMonitor: Job? = null
+    private var openRoute = OpenRouteConsumption(alreadyConsumed = false)
     private val sessionCommands = SessionCommands(this)
     private val appViewModel: AppViewModel by viewModels {
         AppViewModel.factory((application as PhoneControlApplication).container)
@@ -78,6 +95,11 @@ class MainActivity : ComponentActivity() {
         pendingOverlayEnable = savedInstanceState
             ?.getBoolean(STATE_PENDING_OVERLAY_ENABLE)
             ?: false
+        openRoute = OpenRouteConsumption(
+            alreadyConsumed = savedInstanceState?.getBoolean(STATE_OPEN_ROUTE_CONSUMED) ?: false,
+        )
+        val initialRoute = openRoute.take(intent.getStringExtra(EXTRA_OPEN_ROUTE))
+        intent.removeExtra(EXTRA_OPEN_ROUTE)
         enableEdgeToEdge()
         refreshOverlayState()
         maybeStartFirstRunPermissionSetup()
@@ -92,7 +114,7 @@ class MainActivity : ComponentActivity() {
             )
             val displayForRun = displayUi.displayForRun
             PhoneControlApp(
-                initialRoute = intent.getStringExtra(EXTRA_OPEN_ROUTE),
+                initialRoute = initialRoute,
                 onRunRequest = ::startSession,
                 restoredRequest = restoredRequest,
                 onRestoredRequestConsumed = appViewModel::consumeRestoredRequest,
@@ -185,6 +207,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.hasExtra(EXTRA_OPEN_ROUTE)) {
+            openRoute.expectNewRoute()
             recreate()
             return
         }
@@ -195,6 +218,7 @@ class MainActivity : ComponentActivity() {
         outState.putString(STATE_PERMISSION_SETUP_STEP, permissionSetupStep?.name)
         outState.putBoolean(STATE_NOTIFICATION_SETUP_HANDLED, notificationSetupStepHandled)
         outState.putBoolean(STATE_PENDING_OVERLAY_ENABLE, pendingOverlayEnable)
+        outState.putBoolean(STATE_OPEN_ROUTE_CONSUMED, openRoute.consumed)
         super.onSaveInstanceState(outState)
     }
 
