@@ -1,4 +1,5 @@
 import type { PhoneAssistantToolResult } from "./dhd-tools.js";
+import { isRecord } from "./shared/guards.js";
 
 export type CompanionJsonValue =
   | null
@@ -87,8 +88,8 @@ export type CompanionPlanEvent =
 export function isCompanionToolCallEvent(
   value: unknown,
 ): value is CompanionToolCallEvent {
-  if (!value || typeof value !== "object") return false;
-  const event = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
+  const event = value;
   return (
     event.type === COMPANION_TOOL_EVENT_TYPE &&
     (event.phase === "started" || event.phase === "completed") &&
@@ -109,11 +110,10 @@ function isTokenCount(value: unknown): value is number {
 export function isCompanionTokenUsageEvent(
   value: unknown,
 ): value is CompanionTokenUsageEvent {
-  if (!value || typeof value !== "object") return false;
-  const event = value as Record<string, unknown>;
-  const usage = event.usage;
-  if (!usage || typeof usage !== "object") return false;
-  const metrics = usage as Record<string, unknown>;
+  if (!isRecord(value)) return false;
+  const event = value;
+  const metrics = event.usage;
+  if (!isRecord(metrics)) return false;
   const modelContextWindow = event.modelContextWindow;
   return (
     event.type === COMPANION_TOKEN_USAGE_EVENT_TYPE &&
@@ -135,8 +135,8 @@ export function isCompanionTokenUsageEvent(
 }
 
 export function isCompanionPlanEvent(value: unknown): value is CompanionPlanEvent {
-  if (!value || typeof value !== "object") return false;
-  const event = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
+  const event = value;
   if (event.type !== COMPANION_PLAN_EVENT_TYPE) return false;
   if (event.phase === "reset") return true;
   if (
@@ -153,13 +153,12 @@ export function isCompanionPlanEvent(value: unknown): value is CompanionPlanEven
   }
 
   return event.steps.every((step) => {
-    if (!step || typeof step !== "object") return false;
-    const entry = step as Record<string, unknown>;
+    if (!isRecord(step)) return false;
     return (
-      typeof entry.step === "string" &&
-      (entry.status === "pending" ||
-        entry.status === "in_progress" ||
-        entry.status === "completed")
+      typeof step.step === "string" &&
+      (step.status === "pending" ||
+        step.status === "in_progress" ||
+        step.status === "completed")
     );
   });
 }

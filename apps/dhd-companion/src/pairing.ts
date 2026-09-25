@@ -2,6 +2,7 @@ import dgram from "node:dgram";
 import { randomUUID } from "node:crypto";
 import { hostname, networkInterfaces } from "node:os";
 import net from "node:net";
+import { isRecord } from "./shared/guards.js";
 
 export const PAIRING_PROTOCOL_VERSION = 1;
 export const PAIRING_DISCOVERY_PORT = 8766;
@@ -90,8 +91,8 @@ function parsePhoneDiscoveryOffer(
   requestId: string,
   sourceAddress: string,
 ): PhoneDiscoveryOffer | null {
-  if (!value || typeof value !== "object") return null;
-  const message = value as Record<string, unknown>;
+  if (!isRecord(value)) return null;
+  const message = value;
   if (message.type !== "dhd_discover_offer" || message.version !== PAIRING_PROTOCOL_VERSION) return null;
   if (message.requestId !== requestId) return null;
   if (typeof message.deviceId !== "string" || !message.deviceId.trim()) return null;
@@ -127,8 +128,8 @@ function parsePairingApprovalResponse(
   deviceId: string,
   sourceAddress: string,
 ): ResolvedPairing | Error | null {
-  if (!value || typeof value !== "object") return null;
-  const message = value as Record<string, unknown>;
+  if (!isRecord(value)) return null;
+  const message = value;
   if (message.version !== PAIRING_PROTOCOL_VERSION || message.requestId !== requestId) return null;
   if (typeof message.deviceId !== "string" || message.deviceId.trim() !== deviceId) return null;
 

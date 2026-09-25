@@ -46,6 +46,7 @@ import type {
   DiscoveredPhoneSnapshot,
 } from "./api.js";
 import { errorMessage, toError } from "../shared/errors.js";
+import { isPlainRecord, isRecord } from "../shared/guards.js";
 
 export interface ConnectionConfig {
   host: string;
@@ -278,15 +279,14 @@ export function dashboardToolResponse(
   callId: string,
   value: unknown,
 ): CompanionToolCallResponse | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const result = value as Record<string, unknown>;
+  if (!isRecord(value)) return undefined;
+  const result = value;
   removeToolImages(callId);
   const images: CompanionToolCallResponse["images"] = [];
   const rawContent = Array.isArray(result.content) ? result.content : [];
 
-  rawContent.forEach((value, index) => {
-    if (!value || typeof value !== "object") return;
-    const item = value as Record<string, unknown>;
+  rawContent.forEach((item, index) => {
+    if (!isRecord(item)) return;
     if (
       item.type !== "image" ||
       typeof item.data !== "string" ||
@@ -312,9 +312,8 @@ export function dashboardToolResponse(
   const response: CompanionToolCallResponse = { images };
   const debugImages: NonNullable<CompanionToolCallResponse["debugImages"]> = [];
   const rawDebugImages = Array.isArray(result.debugImages) ? result.debugImages : [];
-  rawDebugImages.forEach((value, index) => {
-    if (!value || typeof value !== "object") return;
-    const item = value as Record<string, unknown>;
+  rawDebugImages.forEach((item, index) => {
+    if (!isRecord(item)) return;
     if (
       item.type !== "image" ||
       (item.label !== "before" && item.label !== "after") ||
@@ -340,7 +339,7 @@ export function dashboardToolResponse(
   });
   if (debugImages.length > 0) response.debugImages = debugImages;
   if (result.isError === true) response.isError = true;
-  if (result.structuredContent && typeof result.structuredContent === "object" && !Array.isArray(result.structuredContent)) {
+  if (isPlainRecord(result.structuredContent)) {
     response.structuredContent = toJsonValue(result.structuredContent) as { [key: string]: CompanionJsonValue };
   }
   return response;
@@ -1084,13 +1083,13 @@ async function applyPairedConnection(
 }
 
 async function pairWithDiscoveredDevice(value: unknown): Promise<CompanionState> {
-  if (!value || typeof value !== "object" || typeof (value as { deviceId?: unknown }).deviceId !== "string") {
+  if (!isRecord(value) || typeof value.deviceId !== "string") {
     throw new Error("A discovered phone must be selected.");
   }
-  const deviceId = (value as { deviceId: string }).deviceId.trim();
+  const deviceId = value.deviceId.trim();
   if (!deviceId) throw new Error("A discovered phone must be selected.");
   const expectedConnection = connection;
-  const replacePairing = (value as { replacePairing?: unknown }).replacePairing === true;
+  const replacePairing = value.replacePairing === true;
   if (targetHasSavedPairing(expectedConnection, deviceId) && !replacePairing && bridgeStatus === "connected") {
     return snapshot();
   }

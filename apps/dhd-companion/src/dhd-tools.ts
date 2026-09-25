@@ -31,6 +31,7 @@ import {
   type ScreenshotEvidenceMetadata,
 } from "@dhd/screenshot-markers";
 import { errorMessage } from "./shared/errors.js";
+import { isRecord, readRecord } from "./shared/guards.js";
 
 export * from "./dhd-tool-contract.js";
 
@@ -374,10 +375,9 @@ function withoutScreenshot(message: BridgeMessage): Record<string, unknown> {
 /** Remove bridge correlation, owner, and native display identifiers before a result reaches Codex. */
 function sanitizeAgentValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeAgentValue);
-  if (!value || typeof value !== "object") return value;
-  const record = value as Record<string, unknown>;
+  if (!isRecord(value)) return value;
   const sanitized: Record<string, unknown> = {};
-  for (const [key, nested] of Object.entries(record)) {
+  for (const [key, nested] of Object.entries(value)) {
     if (key === "requestId" || key === "taskId" || key === "taskSessionKey" || key === "sessionKey" || key === "displayId") {
       continue;
     }
@@ -835,12 +835,6 @@ export async function invokeDhdTool(
     default:
       throw new Error(`Unknown DHD tool: ${name}`);
   }
-}
-
-function readRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
 }
 
 export function createDhdMcpServer(

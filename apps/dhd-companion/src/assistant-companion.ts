@@ -46,6 +46,7 @@ import {
   type BridgeMessage,
 } from "./phone-assistant-bridge.js";
 import { errorMessage, toError } from "./shared/errors.js";
+import { asRecord } from "./shared/guards.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -487,7 +488,7 @@ export class CodexAppServerClient {
       input: [{ type: "text", text: safeText }],
       expectedTurnId: turnId,
     });
-    const acceptedTurnId = extractRecord(response.result)?.turnId;
+    const acceptedTurnId = asRecord(response.result)?.turnId;
     if (typeof acceptedTurnId === "string" && acceptedTurnId !== turnId) {
       throw new Error(
         `Codex accepted the steer for unexpected turn ${acceptedTurnId}.`,
@@ -656,8 +657,8 @@ export class CodexAppServerClient {
         }
       }
     } else if (message.method === "thread/status/changed") {
-      const params = extractRecord(message.params);
-      const status = extractRecord(params?.status);
+      const params = asRecord(message.params);
+      const status = asRecord(params?.status);
       if (status?.type === "notLoaded") {
         const threadId = extractThreadId(message.params);
         if (threadId) {
@@ -715,8 +716,8 @@ export class CodexAppServerClient {
       return;
     }
     if (message.method === "turn/completed") {
-      const turn = extractRecord(message.params)?.turn;
-      const status = extractRecord(turn)?.status;
+      const turn = asRecord(message.params)?.turn;
+      const status = asRecord(turn)?.status;
       this.activeTiming?.log(
         "turn/completed",
         `status=${String(status ?? "unknown")}`,
@@ -783,14 +784,14 @@ export class CodexAppServerClient {
 
   private logUserMessagePhaseFromValue(value: unknown, event: string): void {
     if (this.userMessageLogged) return;
-    const record = extractRecord(value);
+    const record = asRecord(value);
     const candidates: unknown[] = [record?.item];
-    const turn = extractRecord(record?.turn);
+    const turn = asRecord(record?.turn);
     if (Array.isArray(turn?.items)) candidates.push(...turn.items);
     if (Array.isArray(record?.items)) candidates.push(...record.items);
     if (record?.type === "userMessage") candidates.push(record);
     const userMessage = candidates
-      .map((candidate) => extractRecord(candidate))
+      .map((candidate) => asRecord(candidate))
       .find((item) => item?.type === "userMessage");
     if (!userMessage) return;
     this.userMessageLogged = true;
@@ -1304,7 +1305,7 @@ export async function handleDynamicToolCall(
   value: unknown,
   options: DynamicToolCallOptions = {},
 ): Promise<DynamicToolCallResponse> {
-  const params = extractRecord(value) ?? {};
+  const params = asRecord(value) ?? {};
   const requestedName = extractDynamicToolName(value);
   const name = requestedName.includes(".")
     ? requestedName.slice(requestedName.lastIndexOf(".") + 1)
@@ -1381,7 +1382,7 @@ export function normalizeDynamicArguments(value: unknown): NormalizedDynamicArgu
 }
 
 function extractDynamicToolName(value: unknown): string {
-  const params = extractRecord(value);
+  const params = asRecord(value);
   return typeof params?.tool === "string" ? params.tool : "";
 }
 
@@ -1391,7 +1392,7 @@ export function extractDynamicToolFailure(
   for (const item of result.contentItems) {
     if (item.type !== "inputText") continue;
     try {
-      const record = extractRecord(JSON.parse(item.text));
+      const record = asRecord(JSON.parse(item.text));
       if (!record) continue;
       const failure: Omit<PhoneToolFailure, "tool"> = {
         message:
@@ -1450,11 +1451,11 @@ function dynamicToolFailure(message: string): DynamicToolCallResponse {
 export function emptyToolAnswers(
   value: unknown,
 ): Record<string, { answers: string[] }> {
-  const questions = extractRecord(value ?? {})?.questions;
+  const questions = asRecord(value ?? {})?.questions;
   if (!Array.isArray(questions)) return {};
   const answers: Record<string, { answers: string[] }> = {};
   for (const question of questions) {
-    const id = extractRecord(question)?.id;
+    const id = asRecord(question)?.id;
     if (typeof id === "string" && id) answers[id] = { answers: [] };
   }
   return answers;
@@ -1466,7 +1467,7 @@ function logServerNotification(message: JsonRpcMessage): void {
     return;
   }
   if (message.method === "turn/completed") {
-    const turn = extractRecord(extractRecord(message.params)?.turn);
+    const turn = asRecord(asRecord(message.params)?.turn);
     console.error(
       `[codex-app-server] turn completed (${String(turn?.status ?? "unknown")})`,
     );
@@ -1474,7 +1475,7 @@ function logServerNotification(message: JsonRpcMessage): void {
   }
   if (message.method !== "item/started" && message.method !== "item/completed")
     return;
-  const item = extractRecord(extractRecord(message.params)?.item);
+  const item = asRecord(asRecord(message.params)?.item);
   if (!item) return;
   const type = typeof item.type === "string" ? item.type : "item";
   const tool = typeof item.tool === "string" ? ` ${item.tool}` : "";
@@ -2037,22 +2038,19 @@ function normalizeAgentFeedback(text: string): string {
 }
 
 export function extractThreadId(value: unknown): string | null {
-  if (!value || typeof value !== "object") return null;
-  const record = value as Record<string, unknown>;
-  const thread = record.thread;
-  if (thread && typeof thread === "object") {
-    const id = (thread as Record<string, unknown>).id;
-    if (typeof id === "string" && id) return id;
-  }
+  const record = asRecord(value);
+  if (!record) return null;
+  const threadId = asRecord(record.thread)?.id;
+  if (typeof threadId === "string" && threadId) return threadId;
   if (typeof record.threadId === "string" && record.threadId)
     return record.threadId;
   return typeof record.id === "string" && record.id ? record.id : null;
 }
 
 export function extractTurnId(value: unknown): string | null {
-  const record = extractRecord(value);
+  const record = asRecord(value);
   if (!record) return null;
-  const turn = extractRecord(record.turn);
+  const turn = asRecord(record.turn);
   if (turn && typeof turn.id === "string" && turn.id) return turn.id;
   return typeof record.id === "string" && record.id ? record.id : null;
 }
@@ -2067,12 +2065,12 @@ export function extractCompanionTokenUsageEvent(
   value: unknown,
   timestamp = Date.now(),
 ): CompanionTokenUsageEvent | null {
-  const message = extractRecord(value);
+  const message = asRecord(value);
   if (message?.method !== "thread/tokenUsage/updated") return null;
 
-  const params = extractRecord(message.params);
-  const tokenUsage = extractRecord(params?.tokenUsage);
-  const last = extractRecord(tokenUsage?.last);
+  const params = asRecord(message.params);
+  const tokenUsage = asRecord(params?.tokenUsage);
+  const last = asRecord(tokenUsage?.last);
   const threadId = typeof params?.threadId === "string" ? params.threadId : "";
   const turnId = typeof params?.turnId === "string" ? params.turnId : "";
   if (!threadId || !turnId || !last) return null;
@@ -2118,17 +2116,15 @@ export function extractCompanionTokenUsageEvent(
 }
 
 export function extractText(value: unknown): string {
-  const record = extractRecord(value);
+  const record = asRecord(value);
   if (!record) return "";
   for (const key of ["delta", "text", "message"]) {
     if (typeof record[key] === "string") return record[key] as string;
   }
-  const item = record.item;
-  if (item && typeof item === "object") {
-    const itemRecord = extractRecord(item);
-    if (!itemRecord) return "";
+  const item = asRecord(record.item);
+  if (item) {
     for (const key of ["text", "message"]) {
-      if (typeof itemRecord[key] === "string") return itemRecord[key] as string;
+      if (typeof item[key] === "string") return item[key] as string;
     }
   }
   return "";
@@ -2248,16 +2244,16 @@ function touchAgentMessage(
 function extractAgentMessageItem(
   value: unknown,
 ): Record<string, unknown> | null {
-  const record = extractRecord(value);
-  const item = extractRecord(record?.item) || record;
+  const record = asRecord(value);
+  const item = asRecord(record?.item) || record;
   return item?.type === "agentMessage" ? item : null;
 }
 
 function extractAgentMessageId(value: unknown): string | null {
-  const record = extractRecord(value);
+  const record = asRecord(value);
   if (!record) return null;
   if (typeof record.itemId === "string" && record.itemId) return record.itemId;
-  const item = extractRecord(record.item);
+  const item = asRecord(record.item);
   if (typeof item?.id === "string" && item.id) return item.id;
   if (
     record.type === "agentMessage" &&
@@ -2269,19 +2265,19 @@ function extractAgentMessageId(value: unknown): string | null {
 }
 
 function extractAgentMessagePhase(value: unknown): string | null {
-  const record = extractRecord(value);
+  const record = asRecord(value);
   if (!record) return null;
   if (typeof record.phase === "string" && record.phase) return record.phase;
-  const item = extractRecord(record.item);
+  const item = asRecord(record.item);
   return typeof item?.phase === "string" && item.phase ? item.phase : null;
 }
 
 export function extractTurnError(value: unknown): string {
-  const record = extractRecord(value);
-  const nestedError = extractRecord(record?.error);
+  const record = asRecord(value);
+  const nestedError = asRecord(record?.error);
   if (typeof nestedError?.message === "string") return nestedError.message;
-  const turn = extractRecord(record?.turn);
-  const turnError = extractRecord(turn?.error);
+  const turn = asRecord(record?.turn);
+  const turnError = asRecord(turn?.error);
   if (typeof turnError?.message === "string") return turnError.message;
   return typeof record?.message === "string" ? record.message : "";
 }
@@ -2319,17 +2315,17 @@ export function extractCompanionPlanUpdatedEvent(
   expectedTurnId: string | null,
   timestamp = Date.now(),
 ): CompanionPlanUpdatedEvent | null {
-  const message = extractRecord(value);
+  const message = asRecord(value);
   if (message?.method !== "turn/plan/updated" || !threadId) return null;
 
-  const params = extractRecord(message.params);
+  const params = asRecord(message.params);
   const turnId = typeof params?.turnId === "string" ? params.turnId : "";
   if (!turnId || (expectedTurnId && expectedTurnId !== turnId)) return null;
   if (!Array.isArray(params?.plan)) return null;
 
   const steps: CompanionPlanUpdatedEvent["steps"] = [];
   for (const rawStep of params.plan) {
-    const step = extractRecord(rawStep);
+    const step = asRecord(rawStep);
     const text = typeof step?.step === "string" ? step.step : null;
     const rawStatus = step?.status;
     const status =
@@ -2388,12 +2384,6 @@ export function disabledConfiguredMcpOverrides(codexHome: string): string[] {
     if (match?.[1]) names.add(match[1]);
   }
   return [...names].sort().map((name) => `mcp_servers.${name}.enabled=false`);
-}
-
-function extractRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object"
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 export function parsePollInterval(value: string | undefined): number {
