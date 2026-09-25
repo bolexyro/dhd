@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -343,7 +344,7 @@ private fun AttachButton(
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 painter = painterResource(R.drawable.ic_plus),
-                contentDescription = "Attach",
+                contentDescription = stringResource(R.string.chat_attach),
                 tint = colors.textPrimary,
                 modifier = Modifier.size(24.dp),
             )
@@ -377,7 +378,7 @@ private fun ActionOrSendButton(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             painter = painterResource(R.drawable.ic_send_arrow),
-                            contentDescription = "Steer active task",
+                            contentDescription = stringResource(R.string.chat_steer_active_task),
                             tint = if (hasText) colors.sendButtonActiveIcon else colors.sendButtonInactiveIcon,
                             modifier = Modifier.size(18.dp),
                         )
@@ -397,7 +398,7 @@ private fun ActionOrSendButton(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         painter = painterResource(R.drawable.ic_stop),
-                        contentDescription = "Stop task",
+                        contentDescription = stringResource(R.string.chat_stop_task),
                         tint = Color.White,
                         modifier = Modifier.size(16.dp),
                     )
@@ -416,7 +417,7 @@ private fun ActionOrSendButton(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     painter = painterResource(R.drawable.ic_play),
-                    contentDescription = "Continue task",
+                    contentDescription = stringResource(R.string.chat_continue_task),
                     tint = if (enabled) Color.White else colors.sendButtonInactiveIcon,
                     modifier = Modifier.size(18.dp),
                 )
@@ -435,7 +436,7 @@ private fun ActionOrSendButton(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     painter = painterResource(R.drawable.ic_send_arrow),
-                    contentDescription = "Send",
+                    contentDescription = stringResource(R.string.chat_send),
                     tint = if (hasText && enabled) colors.sendButtonActiveIcon else colors.sendButtonInactiveIcon,
                     modifier = Modifier.size(18.dp),
                 )

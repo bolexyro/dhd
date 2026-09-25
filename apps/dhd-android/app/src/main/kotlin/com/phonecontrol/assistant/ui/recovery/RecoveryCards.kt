@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,10 +48,10 @@ internal fun CompanionRecoveryCard(
     if (compact) {
         CompactRecoveryStatusCard(
             icon = R.drawable.ic_laptop,
-            title = "Desktop companion not connected",
-            detail = "DHD is waiting for the desktop companion.",
+            title = stringResource(R.string.recovery_desktop_companion_not_connected),
+            detail = stringResource(R.string.recovery_dhd_is_waiting_for_the_desktop),
             accent = colors.warningAmber,
-            actionLabel = "Instructions",
+            actionLabel = stringResource(R.string.recovery_instructions),
             onAction = onOpenCompanion,
             modifier = modifier,
         )
@@ -58,10 +59,10 @@ internal fun CompanionRecoveryCard(
     }
     RecoveryCard(
         icon = R.drawable.ic_laptop,
-        title = "Desktop companion not connected",
-        detail = "DHD is waiting for the desktop companion. Connect this phone on your local network.",
+        title = stringResource(R.string.recovery_desktop_companion_not_connected),
+        detail = stringResource(R.string.recovery_dhd_is_waiting_for_the_desktop_2),
         accent = colors.warningAmber,
-        actionLabel = "View connection instructions",
+        actionLabel = stringResource(R.string.common_view_connection_instructions),
         onAction = onOpenCompanion,
         modifier = modifier,
         trailing = elapsedSeconds?.let { "Waiting ${it}s" },
@@ -82,7 +83,7 @@ internal fun DeveloperConnectionRecoveryCard(
             title = status.recoveryTitle,
             detail = status.recoveryDetail,
             accent = colors.warningAmber,
-            actionLabel = "Instructions",
+            actionLabel = stringResource(R.string.recovery_instructions),
             onAction = onOpenPhoneAccess,
             modifier = modifier,
         )
@@ -93,7 +94,7 @@ internal fun DeveloperConnectionRecoveryCard(
         title = status.recoveryTitle,
         detail = status.recoveryDetail,
         accent = colors.warningAmber,
-        actionLabel = "View instructions",
+        actionLabel = stringResource(R.string.recovery_view_instructions),
         onAction = onOpenPhoneAccess,
         modifier = modifier,
     )
@@ -191,21 +192,21 @@ internal fun CombinedRecoveryCard(
                 icon = R.drawable.ic_shield,
                 title = if (compact) "Phone access needed" else phoneStatus.recoveryTitle,
                 detail = phoneStatus.recoveryDetail,
-                actionLabel = "View instructions",
+                actionLabel = stringResource(R.string.recovery_view_instructions),
                 onAction = onOpenPhoneAccess,
                 compact = compact,
-                compactActionLabel = "Instructions",
+                compactActionLabel = stringResource(R.string.recovery_instructions),
             )
             HorizontalDivider(color = colors.borderColor.copy(alpha = 0.8f))
             CombinedRecoverySection(
                 icon = R.drawable.ic_laptop,
                 title = if (compact) "Companion not connected" else "Desktop companion not connected",
-                detail = "DHD is waiting for the desktop companion. Connect this phone on your local network.",
+                detail = stringResource(R.string.recovery_dhd_is_waiting_for_the_desktop_2),
                 trailing = companionWaitSeconds?.let { "Waiting ${it}s" },
-                actionLabel = "View instructions",
+                actionLabel = stringResource(R.string.recovery_view_instructions),
                 onAction = onOpenCompanion,
                 compact = compact,
-                compactActionLabel = "Instructions",
+                compactActionLabel = stringResource(R.string.recovery_instructions),
             )
         }
     }
@@ -294,7 +295,7 @@ internal fun AttentionRecoveryCard(
     }
     RecoveryCard(
         icon = R.drawable.ic_info,
-        title = "DHD needs your attention",
+        title = stringResource(R.string.recovery_dhd_needs_your_attention),
         detail = reason?.takeIf(String::isNotBlank)
             ?: "Review the phone and complete the requested step before continuing.",
         accent = colors.warningAmber,
@@ -302,7 +303,7 @@ internal fun AttentionRecoveryCard(
         onAction = {
             onAcknowledgeAttention()
         },
-        secondaryActionLabel = "Stop",
+        secondaryActionLabel = stringResource(R.string.common_stop),
         onSecondaryAction = onStopSession,
     )
 }
@@ -319,7 +320,7 @@ private fun PhoneAccessPausedCard(
         title = title,
         detail = detail,
         accent = colors.warningAmber,
-        actionLabel = "View instructions",
+        actionLabel = stringResource(R.string.recovery_view_instructions),
         onAction = onOpenPhoneAccess,
         containerColor = Color.Transparent,
         border = BorderStroke(1.dp, colors.warningAmber.copy(alpha = 0.55f)),

@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.overlay.bubble.DhdIdentity
 import com.phonecontrol.assistant.overlay.effects.ComposerPerimeterGlow
@@ -280,7 +282,7 @@ internal fun Composer(
             if (!keyboardVisible) {
                 Spacer(Modifier.width(8.dp))
                 GlyphButton(
-                    label = "Send request",
+                    label = stringResource(R.string.overlay_send_request),
                     glyph = Glyph.SEND,
                     onClick = ::submit,
                     enabled = draft.isNotBlank(),
@@ -314,7 +316,7 @@ internal fun Composer(
                 )
                 Spacer(Modifier.width(10.dp))
                 GlyphButton(
-                    label = "Send request",
+                    label = stringResource(R.string.overlay_send_request),
                     glyph = Glyph.SEND,
                     onClick = ::submit,
                     enabled = draft.isNotBlank(),
@@ -385,7 +387,7 @@ internal fun Composer(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
-                                        text = "×",
+                                        text = stringResource(R.string.overlay_close_glyph),
                                         color = colors.textSecondary,
                                         fontSize = 18.sp,
                                         lineHeight = 18.sp,

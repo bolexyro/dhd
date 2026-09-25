@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -97,7 +98,7 @@ fun PairingScreen(
                 navigationIcon = {
                     CircleIconButton(
                         icon = R.drawable.ic_arrow_back,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.common_back),
                         onClick = onBack,
                         modifier = Modifier.padding(start = 12.dp),
                     )
@@ -127,7 +128,7 @@ fun PairingScreen(
                     ) {
                         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                             Text(
-                                text = "DHD needs permission to show the pairing code from Android. Allow notifications, then try again.",
+                                text = stringResource(R.string.pairing_dhd_needs_permission_to_show_the),
                                 color = colors.textSecondary,
                                 fontSize = 13.sp,
                                 lineHeight = 19.sp,
@@ -148,7 +149,7 @@ fun PairingScreen(
                                     modifier = Modifier.size(17.dp),
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text("Retry pairing notification")
+                                Text(stringResource(R.string.pairing_retry_pairing_notification))
                             }
                         }
                     }

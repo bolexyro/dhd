@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -127,7 +128,7 @@ private fun ShimmerThinkingIndicator(
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_bot),
-            contentDescription = "Thinking",
+            contentDescription = stringResource(R.string.chat_thinking),
             tint = colors.accentBlue.copy(alpha = shimmer.pulseAlpha),
             modifier = Modifier.size(16.dp),
         )
@@ -140,7 +141,7 @@ private fun ShimmerThinkingIndicator(
         )
         Spacer(Modifier.width(6.dp))
         Text(
-            text = "·",
+            text = stringResource(R.string.chat_middle_dot),
             fontSize = 14.sp,
             color = colors.textSecondary.copy(alpha = 0.5f),
         )
@@ -163,14 +164,14 @@ internal fun PausedStatusIndicator(currentPurpose: String) {
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_stop),
-            contentDescription = "Paused",
+            contentDescription = stringResource(R.string.chat_paused),
             tint = colors.warningAmber,
             modifier = Modifier.size(16.dp),
         )
         Spacer(Modifier.width(7.dp))
         Column {
             Text(
-                text = "Paused",
+                text = stringResource(R.string.chat_paused),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = colors.warningAmber,
@@ -230,4 +231,3 @@ private fun thinkingDetail(currentPurpose: String): String = when {
 
     else -> currentPurpose.ifBlank { "Preparing the next step" }
 }
-

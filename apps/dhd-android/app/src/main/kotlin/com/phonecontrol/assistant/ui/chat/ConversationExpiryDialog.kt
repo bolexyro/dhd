@@ -16,9 +16,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.ui.components.DhdDialog
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlinx.coroutines.delay
@@ -45,7 +47,7 @@ internal fun ConversationExpiryDialog(
 
     DhdDialog(
         onDismissRequest = onKeep,
-        title = { Text("This conversation is stale", fontWeight = FontWeight.SemiBold) },
+        title = { Text(stringResource(R.string.chat_this_conversation_is_stale), fontWeight = FontWeight.SemiBold) },
         text = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -81,12 +83,12 @@ internal fun ConversationExpiryDialog(
         },
         confirmButton = {
             TextButton(onClick = onClear) {
-                Text("Clear now", color = colors.accentBlue, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.chat_clear_now), color = colors.accentBlue, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
             TextButton(onClick = onKeep) {
-                Text("Keep conversation", color = colors.textSecondary)
+                Text(stringResource(R.string.chat_keep_conversation), color = colors.textSecondary)
             }
         },
     )

@@ -7,9 +7,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplaySession
@@ -41,7 +43,7 @@ internal fun FloatingVirtualDisplayCard(
         ClosePillButton(
             onClick = onHide,
             modifier = Modifier.padding(bottom = 4.dp, end = 6.dp),
-            label = "Close",
+            label = stringResource(R.string.common_close),
         )
 
         GlassSurface(
@@ -124,7 +126,7 @@ private fun OverlayVirtualDisplayPreview(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Live view",
+                text = stringResource(R.string.common_live_view),
                 color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,

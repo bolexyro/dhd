@@ -22,12 +22,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlin.math.roundToInt
 
@@ -108,7 +110,7 @@ private fun EmptyChatContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "What can I do on your phone?",
+            text = stringResource(R.string.chat_what_can_i_do_on_your),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             color = colors.textPrimary,
@@ -116,7 +118,7 @@ private fun EmptyChatContent(
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
-            text = "Ask DHD to operate apps on your device.",
+            text = stringResource(R.string.chat_ask_dhd_to_operate_apps_on),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
             lineHeight = 20.sp,

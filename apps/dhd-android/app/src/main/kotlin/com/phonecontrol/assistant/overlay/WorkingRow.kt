@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.needsAttention
 import com.phonecontrol.assistant.core.sessionIdOrNull
@@ -156,7 +158,7 @@ internal fun WorkingRow(
             Spacer(Modifier.width(10.dp))
 
             GlyphButton(
-                label = "Stop assistant",
+                label = stringResource(R.string.overlay_stop_assistant),
                 glyph = Glyph.STOP,
                 onClick = onStop,
                 filled = true,

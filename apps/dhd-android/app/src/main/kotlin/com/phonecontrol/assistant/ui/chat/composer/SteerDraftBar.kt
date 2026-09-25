@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,7 +48,7 @@ internal fun SteerDraftBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "↪",
+                text = stringResource(R.string.chat_steer_arrow),
                 color = colors.textSecondary,
                 fontSize = 18.sp,
                 modifier = Modifier.padding(end = 8.dp),
@@ -61,7 +62,7 @@ internal fun SteerDraftBar(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = "↪ Steer",
+                text = stringResource(R.string.chat_steer_2),
                 color = colors.textSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier
@@ -73,7 +74,7 @@ internal fun SteerDraftBar(
             Spacer(Modifier.width(6.dp))
             Icon(
                 painter = painterResource(R.drawable.ic_close),
-                contentDescription = "Discard steer draft",
+                contentDescription = stringResource(R.string.chat_discard_steer_draft),
                 tint = colors.textSecondary,
                 modifier = Modifier
                     .size(32.dp)
@@ -84,7 +85,7 @@ internal fun SteerDraftBar(
             Spacer(Modifier.width(6.dp))
             Icon(
                 painter = painterResource(R.drawable.ic_compose_new),
-                contentDescription = "Edit steer draft",
+                contentDescription = stringResource(R.string.chat_edit_steer_draft),
                 tint = colors.textSecondary,
                 modifier = Modifier
                     .size(32.dp)

@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,11 +41,11 @@ fun CompanionInstructionsScreen(
                     titleContentColor = colors.textPrimary,
                     navigationIconContentColor = colors.textPrimary,
                 ),
-                title = { Text("Connect desktop companion", fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
+                title = { Text(stringResource(R.string.common_connect_desktop_companion), fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
                 navigationIcon = {
                     CircleIconButton(
                         icon = R.drawable.ic_arrow_back,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.common_back),
                         onClick = onBack,
                         modifier = Modifier.padding(start = 12.dp),
                     )
@@ -100,10 +101,10 @@ fun CompanionPairingApprovalDialog(
 ) {
     pending ?: return
     DhdConfirmDialog(
-        title = "Allow desktop companion?",
+        title = stringResource(R.string.pairing_allow_desktop_companion),
         message = "${pending.desktopName} wants to connect to DHD on this local network. Approve only if you recognize this computer.",
-        confirmLabel = "Approve",
-        dismissLabel = "Reject",
+        confirmLabel = stringResource(R.string.pairing_approve),
+        dismissLabel = stringResource(R.string.pairing_reject),
         onConfirm = { bridgeServer.approvePendingCompanionPairing() },
         onDismiss = { bridgeServer.rejectPendingCompanionPairing() },
     )

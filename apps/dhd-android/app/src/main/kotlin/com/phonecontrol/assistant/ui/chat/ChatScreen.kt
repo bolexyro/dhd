@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -190,7 +191,7 @@ fun ChatScreen(
                 ),
                 title = {
                     Text(
-                        text = "DHD",
+                        text = stringResource(R.string.chat_dhd),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = colors.textPrimary,
@@ -201,7 +202,7 @@ fun ChatScreen(
                     // Start fresh circular button (48dp)
                     CircleIconButton(
                         icon = R.drawable.ic_laptop,
-                        contentDescription = "Task displays",
+                        contentDescription = stringResource(R.string.common_task_displays),
                         onClick = onOpenTaskDisplays,
                         buttonSize = 48.dp,
                         iconSize = 22.dp,
@@ -209,7 +210,7 @@ fun ChatScreen(
                     Spacer(Modifier.width(8.dp))
                     CircleIconButton(
                         icon = R.drawable.ic_compose_new,
-                        contentDescription = "Start fresh",
+                        contentDescription = stringResource(R.string.chat_start_fresh),
                         onClick = { showStartFreshConfirmation = true },
                         buttonSize = 48.dp,
                         iconSize = 23.dp,
@@ -220,7 +221,7 @@ fun ChatScreen(
                     // Settings circular button (48dp)
                     CircleIconButton(
                         icon = R.drawable.ic_settings,
-                        contentDescription = "Settings",
+                        contentDescription = stringResource(R.string.common_settings),
                         onClick = onOpenSettings,
                         buttonSize = 48.dp,
                         iconSize = 23.dp,
@@ -466,10 +467,10 @@ fun ChatScreen(
 
     if (showStartFreshConfirmation) {
         DhdConfirmDialog(
-            title = "Start fresh?",
+            title = stringResource(R.string.chat_start_fresh_2),
             message = "This clears the DHD conversation timeline and rotates its stored Codex thread " +
                     "binding. App permissions and DHD's local phone connection remain unchanged.",
-            confirmLabel = "Start fresh",
+            confirmLabel = stringResource(R.string.chat_start_fresh),
             onConfirm = {
                 showStartFreshConfirmation = false
                 steerDrafts = emptyList()

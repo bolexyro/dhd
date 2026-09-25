@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -158,20 +159,20 @@ fun PermissionOnboardingScreen(
             ) {
                 if (isComplete) {
                     Text(
-                        text = "Done",
+                        text = stringResource(R.string.common_done),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                 } else if (isAppAccess) {
                     Text(
-                        text = "Finish setup",
+                        text = stringResource(R.string.onboarding_finish_setup),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                 } else {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "Allow notifications",
+                            text = stringResource(R.string.onboarding_allow_notifications),
                             modifier = Modifier.graphicsLayer {
                                 alpha = 1f - pageSwipeProgress
                                 translationX = -10.dp.toPx() * pageSwipeProgress
@@ -180,7 +181,7 @@ fun PermissionOnboardingScreen(
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            text = "Open settings",
+                            text = stringResource(R.string.onboarding_open_settings),
                             modifier = Modifier.graphicsLayer {
                                 alpha = pageSwipeProgress
                                 translationX = 10.dp.toPx() * (1f - pageSwipeProgress)
@@ -253,7 +254,7 @@ private fun AllowedAppsOnboardingPage(
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
     ) {
         Text(
-            text = "Choose allowed apps",
+            text = stringResource(R.string.onboarding_choose_allowed_apps),
             color = colors.textPrimary,
             fontSize = 28.sp,
             lineHeight = 34.sp,
@@ -261,7 +262,7 @@ private fun AllowedAppsOnboardingPage(
             letterSpacing = (-0.4).sp,
         )
         Text(
-            text = "Choose which apps DHD can open and use. You can change this later in Settings.",
+            text = stringResource(R.string.onboarding_choose_which_apps_dhd_can_open),
             color = colors.textSecondary,
             fontSize = 14.sp,
             lineHeight = 20.sp,
@@ -285,19 +286,19 @@ private fun AllowedAppsOnboardingPage(
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_apps),
-                            contentDescription = "Apps",
+                            contentDescription = stringResource(R.string.onboarding_apps),
                             tint = colors.textPrimary,
                             modifier = Modifier.size(22.dp),
                         )
                         Column(modifier = Modifier.weight(1f).padding(start = 14.dp, end = 8.dp)) {
                             Text(
-                                text = "Full access",
+                                text = stringResource(R.string.common_full_access),
                                 fontWeight = FontWeight.Medium,
                                 color = colors.textPrimary,
                                 fontSize = 15.sp,
                             )
                             Text(
-                                text = "Allow DHD to use every installed app",
+                                text = stringResource(R.string.onboarding_allow_dhd_to_use_every_installed),
                                 fontSize = 12.sp,
                                 color = colors.textSecondary,
                             )
@@ -339,7 +340,7 @@ private fun AllowedAppsOnboardingPage(
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_search),
-                                contentDescription = "Search apps",
+                                contentDescription = stringResource(R.string.onboarding_search_apps),
                                 tint = colors.textSecondary,
                                 modifier = Modifier.size(17.dp),
                             )
@@ -353,7 +354,7 @@ private fun AllowedAppsOnboardingPage(
                                 singleLine = true,
                                 decorationBox = { innerTextField ->
                                     if (searchQuery.isEmpty()) {
-                                        Text("Search apps", color = colors.textSecondary, fontSize = 14.sp)
+                                        Text(stringResource(R.string.onboarding_search_apps), color = colors.textSecondary, fontSize = 14.sp)
                                     }
                                     innerTextField()
                                 },
@@ -468,7 +469,7 @@ private fun OverlayPermissionPage() {
     val colors = LocalAssistantColors.current
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = "Enable the floating button",
+            text = stringResource(R.string.onboarding_enable_the_floating_button),
             modifier = Modifier.padding(horizontal = 24.dp),
             color = colors.textPrimary,
             fontSize = 30.sp,
@@ -477,7 +478,7 @@ private fun OverlayPermissionPage() {
             letterSpacing = (-0.5).sp,
         )
         Text(
-            text = "This lets the DHD bubble stay at the edge of your screen, so you can open it while using another app.",
+            text = stringResource(R.string.onboarding_this_lets_the_dhd_bubble_stay),
             modifier = Modifier.padding(horizontal = 24.dp).padding(top = 9.dp),
             color = colors.textSecondary,
             fontSize = 15.sp,
@@ -774,7 +775,7 @@ private fun DummyVirtualDisplayCard(
                         modifier = Modifier.size(13.dp),
                     )
                     Text(
-                        text = "Close",
+                        text = stringResource(R.string.common_close),
                         modifier = Modifier.padding(start = 5.dp),
                         color = colors.textPrimary,
                         fontSize = 11.sp,
@@ -799,7 +800,7 @@ private fun DummyVirtualDisplayCard(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                 ) {
                     Text(
-                        text = "Live view",
+                        text = stringResource(R.string.common_live_view),
                         color = colors.textPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
@@ -873,19 +874,19 @@ private fun DummyTaskApp(modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("9:41", color = colors.textSecondary, fontSize = 8.sp, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.onboarding_status_bar_time), color = colors.textSecondary, fontSize = 8.sp, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.weight(1f))
                     Text("●  ●  ●", color = colors.textSecondary, fontSize = 7.sp)
                 }
                 Text(
-                    text = "Today",
+                    text = stringResource(R.string.onboarding_today),
                     color = colors.textPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 12.dp),
                 )
                 Text(
-                    text = "A few things to do",
+                    text = stringResource(R.string.onboarding_a_few_things_to_do),
                     color = colors.textSecondary,
                     fontSize = 8.sp,
                     modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
@@ -916,7 +917,7 @@ private fun DummyTaskRow(text: String, checked: Boolean) {
             contentAlignment = Alignment.Center,
         ) {
             if (checked) {
-                Text("✓", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.onboarding_check_mark), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
         Text(

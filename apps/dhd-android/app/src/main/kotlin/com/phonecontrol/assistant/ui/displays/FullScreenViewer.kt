@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -208,7 +209,7 @@ fun FullScreenLiveDisplayViewer(
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.ic_connected_nodes),
-                                        contentDescription = "MCP activity",
+                                        contentDescription = stringResource(R.string.displays_mcp_activity),
                                         tint = purposeIconColor,
                                         modifier = Modifier.size(18.dp),
                                     )
@@ -241,14 +242,14 @@ fun FullScreenLiveDisplayViewer(
                                     ),
                                     shape = RoundedCornerShape(10.dp),
                                 ) {
-                                    Text("Done", fontSize = 13.sp)
+                                    Text(stringResource(R.string.common_done), fontSize = 13.sp)
                                 }
                                 OutlinedButton(
                                     onClick = onStopSession,
                                     border = BorderStroke(1.dp, colors.borderColor),
                                     shape = RoundedCornerShape(10.dp),
                                 ) {
-                                    Text("Stop", color = colors.textSecondary, fontSize = 13.sp)
+                                    Text(stringResource(R.string.common_stop), color = colors.textSecondary, fontSize = 13.sp)
                                 }
                             }
                         }
@@ -273,14 +274,14 @@ fun FullScreenLiveDisplayViewer(
                                             contentColor = Color.White,
                                         ),
                                     ) {
-                                        Text("Retry preview")
+                                        Text(stringResource(R.string.displays_retry_preview))
                                     }
                                 }
                                 OutlinedButton(
                                     onClick = { onEndTaskDisplay(record) },
                                     border = BorderStroke(1.dp, colors.errorRed),
                                 ) {
-                                    Text("End display", color = colors.errorRed)
+                                    Text(stringResource(R.string.displays_end_display), color = colors.errorRed)
                                 }
                             }
                         }

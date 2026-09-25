@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -107,7 +108,7 @@ fun TaskDisplaysSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Task displays",
+                    text = stringResource(R.string.common_task_displays),
                     color = colors.textPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 18.sp,
@@ -130,14 +131,14 @@ fun TaskDisplaysSheet(
                             modifier = Modifier.size(42.dp),
                         )
                         Text(
-                            text = "No task displays",
+                            text = stringResource(R.string.displays_no_task_displays),
                             color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(top = 12.dp),
                         )
                         Text(
-                            text = "Displays created by an agent will appear here.",
+                            text = stringResource(R.string.displays_displays_created_by_an_agent_will),
                             color = colors.textSecondary,
                             fontSize = 13.sp,
                             modifier = Modifier.padding(top = 5.dp),
@@ -152,7 +153,7 @@ fun TaskDisplaysSheet(
                         .padding(horizontal = 18.dp),
                 ) {
                     Text(
-                        text = "Tap an app to view it. Long-press an icon for actions.",
+                        text = stringResource(R.string.displays_tap_an_app_to_view_it),
                         color = colors.textSecondary,
                         fontSize = 13.sp,
                         lineHeight = 19.sp,
@@ -196,10 +197,10 @@ fun TaskDisplaysSheet(
 
     endCandidate?.let { record ->
         DhdConfirmDialog(
-            title = "End task display?",
+            title = stringResource(R.string.displays_end_task_display),
             message = "This closes the ${record.appLabel ?: record.packageName ?: "app"} display. " +
                     "An active task will be stopped before the display is released.",
-            confirmLabel = "End display",
+            confirmLabel = stringResource(R.string.displays_end_display),
             confirmColor = colors.errorRed,
             onConfirm = {
                 endCandidate = null
@@ -375,7 +376,7 @@ private fun TaskDisplayActionsDialog(
         confirmButton = {
             TextButton(onClick = onView, enabled = canView) {
                 Text(
-                    text = "View",
+                    text = stringResource(R.string.displays_view),
                     color = if (canView) colors.accentBlue else colors.textSecondary,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -384,7 +385,7 @@ private fun TaskDisplayActionsDialog(
         dismissButton = {
             TextButton(onClick = onEnd, enabled = canEnd) {
                 Text(
-                    text = "End",
+                    text = stringResource(R.string.displays_end),
                     color = colors.textSecondary,
                     fontWeight = FontWeight.SemiBold,
                 )

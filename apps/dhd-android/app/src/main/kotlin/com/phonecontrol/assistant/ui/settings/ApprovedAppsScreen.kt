@@ -52,6 +52,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -128,7 +129,7 @@ fun ApprovedAppsScreen(
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.ic_search),
-                                        contentDescription = "Search",
+                                        contentDescription = stringResource(R.string.settings_search),
                                         tint = colors.textSecondary,
                                         modifier = Modifier.size(17.dp),
                                     )
@@ -148,7 +149,7 @@ fun ApprovedAppsScreen(
                                         decorationBox = { innerTextField ->
                                             if (searchQuery.isEmpty()) {
                                                 Text(
-                                                    text = "Search apps…",
+                                                    text = stringResource(R.string.settings_search_apps),
                                                     color = colors.textSecondary,
                                                     fontSize = 15.sp,
                                                 )
@@ -168,7 +169,7 @@ fun ApprovedAppsScreen(
                                             Box(contentAlignment = Alignment.Center) {
                                                 Icon(
                                                     painter = painterResource(R.drawable.ic_close),
-                                                    contentDescription = "Clear search",
+                                                    contentDescription = stringResource(R.string.settings_clear_search),
                                                     tint = colors.textSecondary,
                                                     modifier = Modifier.size(15.dp),
                                                 )
@@ -187,7 +188,7 @@ fun ApprovedAppsScreen(
                                 modifier = Modifier.padding(end = 4.dp),
                             ) {
                                 Text(
-                                    text = "Cancel",
+                                    text = stringResource(R.string.settings_cancel),
                                     color = colors.accentBlue,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
@@ -203,11 +204,11 @@ fun ApprovedAppsScreen(
                             actionIconContentColor = colors.textPrimary,
                             navigationIconContentColor = colors.textPrimary,
                         ),
-                        title = { Text("Approved Apps", fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
+                        title = { Text(stringResource(R.string.settings_approved_apps), fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
                         navigationIcon = {
                             CircleIconButton(
                                 icon = R.drawable.ic_arrow_back,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.common_back),
                                 onClick = onBack,
                                 modifier = Modifier.padding(start = 12.dp),
                             )
@@ -215,7 +216,7 @@ fun ApprovedAppsScreen(
                         actions = {
                             CircleIconButton(
                                 icon = R.drawable.ic_search,
-                                contentDescription = "Search",
+                                contentDescription = stringResource(R.string.settings_search),
                                 onClick = { isSearchOpen = true },
                                 modifier = Modifier.padding(end = 12.dp),
                             )
@@ -235,11 +236,11 @@ fun ApprovedAppsScreen(
         ) {
             // Full Access Section
             item {
-                SettingsSectionHeader("Global access")
+                SettingsSectionHeader(stringResource(R.string.settings_global_access))
                 SettingsCard {
                     SettingsRow(
-                        title = "Full access",
-                        subtitle = "Allow access to all installed apps",
+                        title = stringResource(R.string.common_full_access),
+                        subtitle = stringResource(R.string.settings_allow_access_to_all_installed_apps),
                         leading = { SettingsRowIcon(R.drawable.ic_apps, "Apps") },
                     ) {
                         Switch(
@@ -260,7 +261,7 @@ fun ApprovedAppsScreen(
 
             // Per-App List Section
             item {
-                SettingsSectionHeader("Allowed apps")
+                SettingsSectionHeader(stringResource(R.string.settings_allowed_apps))
                 if (filteredApps.isEmpty()) {
                     Text(
                         text = if (searchQuery.isBlank()) "No launchable user apps found." else "No matching apps found.",

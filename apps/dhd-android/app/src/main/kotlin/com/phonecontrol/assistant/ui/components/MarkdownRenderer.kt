@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.ui.theme.AssistantColorScheme
 import com.phonecontrol.assistant.ui.theme.DhdPalette
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
@@ -350,7 +352,7 @@ fun MarkdownContent(
                         verticalAlignment = Alignment.Top,
                     ) {
                         Text(
-                            text = "•",
+                            text = stringResource(R.string.common_bullet),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = colors.accentBlue,

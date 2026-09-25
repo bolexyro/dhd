@@ -6,9 +6,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable
@@ -73,10 +75,10 @@ internal fun FullAccessConfirmDialog(
     onDismiss: () -> Unit,
 ) {
     DhdConfirmDialog(
-        title = "Enable Full Access?",
+        title = stringResource(R.string.common_enable_full_access),
         message = "Full Access allows DHD to open, inspect, and operate any application installed on this device.\n\n" +
             "This bypasses the per-app allowlist and lets DHD carry out tasks across all your apps.",
-        confirmLabel = "Enable",
+        confirmLabel = stringResource(R.string.common_enable),
         onConfirm = onConfirm,
         onDismiss = onDismiss,
     )
