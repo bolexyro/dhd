@@ -228,13 +228,13 @@ class MainActivity : ComponentActivity() {
             // A conversation that aged out while the app was not visible is
             // expired immediately. The foreground monitor below handles the
             // separate case where the app stays open across the boundary.
-            it.conversationStore.expireInactiveConversation()
+            it.conversationRepository.expireInactiveConversation()
             conversationExpiryMonitor?.cancel()
             conversationExpiryMonitor = lifecycleScope.launch {
                 while (isActive) {
                     delay(CONVERSATION_EXPIRY_CHECK_INTERVAL_MS)
-                    if (!it.conversationStore.conversationExpiryPrompt.value) {
-                        it.conversationStore.promptForInactiveConversation()
+                    if (!it.conversationRepository.conversationExpiryPrompt.value) {
+                        it.conversationRepository.promptForInactiveConversation()
                     }
                 }
             }
@@ -260,7 +260,7 @@ class MainActivity : ComponentActivity() {
         conversationExpiryMonitor?.cancel()
         conversationExpiryMonitor = null
         (application as? PhoneControlApplication)?.container?.notificationVisibility?.setActivityVisible(false)
-        (application as? PhoneControlApplication)?.container?.conversationStore?.dismissInactiveConversationPrompt()
+        (application as? PhoneControlApplication)?.container?.conversationRepository?.dismissInactiveConversationPrompt()
         overlayActivityToken?.close()
         overlayActivityToken = null
         super.onStop()

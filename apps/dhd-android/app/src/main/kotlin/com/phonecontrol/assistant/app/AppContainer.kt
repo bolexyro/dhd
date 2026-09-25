@@ -10,6 +10,7 @@ import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledAppsRepository
 import com.phonecontrol.assistant.bridge.AndroidBridgePlatform
 import com.phonecontrol.assistant.bridge.DevBridgeServer
+import com.phonecontrol.assistant.data.ConversationRepository
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.display.DhdTaskDisplayBackend
@@ -37,6 +38,7 @@ class AppContainer(context: Context) {
     val phoneAccessController = buildPhoneAccessController(context).also { it.start() }
     val processRunner = DhdAdbProcessRunner(phoneAccessController)
     val conversationStore = ConversationStore(context)
+    val conversationRepository = ConversationRepository(conversationStore)
     val taskDisplayLayoutPreferences = TaskDisplayLayoutPreferences(context)
     val taskDisplayBackend = DhdTaskDisplayBackend(
         context,
@@ -183,7 +185,7 @@ class AppContainer(context: Context) {
      */
     fun startFresh() {
         sessionCoordinator.reset()
-        conversationStore.deleteConversation(DHD_CONVERSATION_ID)
+        conversationRepository.deleteConversation(DHD_CONVERSATION_ID)
         previewScope.launch {
             taskDisplayBackend.closeAllTaskDisplays(clearRecords = true)
         }
