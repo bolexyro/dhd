@@ -5,13 +5,10 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  disabledConfiguredMcpOverrides,
   emptyToolAnswers,
   extractDynamicToolFailure,
   normalizeDynamicArguments,
   parsePollInterval,
-  quoteWindowsCommand,
-  resolveCodexBin,
 } from "../src/assistant-companion.js";
 import {
   extractCompanionPlanUpdatedEvent,
@@ -20,6 +17,11 @@ import {
   extractTurnError,
   extractTurnId,
 } from "../src/codex/extract.js";
+import {
+  disabledConfiguredMcpOverrides,
+  quoteWindowsCommand,
+  resolveCodexBin,
+} from "../src/codex/process.js";
 import { normalizeCodexEffort } from "../src/codex/settings.js";
 
 afterEach(() => {
