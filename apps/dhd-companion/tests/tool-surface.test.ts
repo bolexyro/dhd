@@ -3,7 +3,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 import { buildDhdDynamicTools } from "../src/codex/dynamic-tools.js";
-import { GUARD_REGIONS_FEATURE_FLAG, createDhdMcpServer } from "../src/dhd-tools.js";
+import { DHD_ACTION_TYPES, GUARD_REGIONS_FEATURE_FLAG, createDhdMcpServer } from "../src/dhd-tools.js";
+import { dhdToolDescription } from "../src/tools/registry.js";
 
 const originalGuardRegionsFlag = process.env[GUARD_REGIONS_FEATURE_FLAG];
 
@@ -66,4 +67,19 @@ describe("DHD tool surface", () => {
       "./__snapshots__/mcp-tools-list.guard-regions-on.json",
     );
   });
+
+  it.each(["dhd_execute", "dhd_execute_sequence"] as const)(
+    "%s advertises only the action types its schema accepts",
+    (name) => {
+      const description = dhdToolDescription(name);
+      const advertised = /Supported actions are ([^.]+)\./.exec(description)?.[1]
+        .replace(" and ", " ")
+        .split(/,\s*/)
+        .map((type) => type.trim())
+        .filter(Boolean);
+
+      expect(advertised?.sort()).toEqual(Object.values(DHD_ACTION_TYPES).sort());
+      expect(description).not.toMatch(/\bA scroll\b/);
+    },
+  );
 });

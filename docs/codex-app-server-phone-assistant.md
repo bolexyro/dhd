@@ -143,9 +143,9 @@ MCP server:
 - `dhd_open_app` — open one allowlisted app without a caller-supplied
   observation ID and return the actual post-action observation.
 - `dhd_execute` — execute one typed interaction and return the actual
-  post-action observation. It handles tap, type, swipe, scroll, back, keypress,
-  and wait. If the post-action capture fails, the result is unknown and the
-  model must observe before retrying.
+  post-action observation. It handles tap, type, swipe, back, keypress, and
+  wait; scrolling and paging use swipe. If the post-action capture fails, the
+  result is unknown and the model must observe before retrying.
 - `dhd_execute_sequence` — execute up to 16 typed non-`open_app` interactions
   serially from one initial observation ID. The phone captures and verifies a
   post-action observation after every step, uses that observation as the next
@@ -242,7 +242,7 @@ The bridge preserves the pre-pivot MCP primitives in phone-owned form:
 | Foreground context | `dhd_get_foreground_app` | Read-only package/activity/display context; it is not an action observation. |
 | Coordinate tap | `tap` | Coordinates use the agent's observation ID; structural state is checked before input. |
 | Fixed typed sequence | `dhd_execute_sequence` | Up to 16 typed actions run serially; each step uses the prior verified post-action observation. |
-| Directional scroll | `scroll` | Android derives a bounded swipe from direction + amount. |
+| Scroll or page | `swipe` | Choose start and end coordinates inside the scrollable region; there is no separate scroll action. |
 | Explicit gesture | `swipe` | Start/end coordinates and duration are bounds checked. |
 | Type text | `type` | Uses Android `input text`; text is never copied into the activity log. |
 | Keypress | `keypress` | Supports `BACK`, `HOME`, `ENTER`, and `DELETE`. |
