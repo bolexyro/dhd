@@ -39,21 +39,21 @@ internal fun ActionExecutionResult.resultMessage(): String = when (this) {
 internal fun ActionExecutionResult.failureCode(): String? = when (this) {
     is ActionExecutionResult.TransportFinished -> when (val result = result) {
         is TransportResult.Rejected -> result.code.name
-        is TransportResult.Unsupported -> "UNSUPPORTED_ACTION"
+        is TransportResult.Unsupported -> BridgeErrorCodes.UNSUPPORTED_ACTION
         is TransportResult.Succeeded -> null
     }
     is ActionExecutionResult.PolicyRejected -> code
-    ActionExecutionResult.SessionNotRunning -> "SESSION_NOT_RUNNING"
+    ActionExecutionResult.SessionNotRunning -> BridgeErrorCodes.SESSION_NOT_RUNNING
 }
 
 internal fun ActionExecutionResult.sequenceStepFailureCode(): String = when (this) {
     is ActionExecutionResult.TransportFinished -> when (val result = result) {
         is TransportResult.Rejected -> result.code.name
-        is TransportResult.Unsupported -> "UNSUPPORTED_ACTION"
-        is TransportResult.Succeeded -> "ACTION_FAILED"
+        is TransportResult.Unsupported -> BridgeErrorCodes.UNSUPPORTED_ACTION
+        is TransportResult.Succeeded -> BridgeErrorCodes.ACTION_FAILED
     }
-    is ActionExecutionResult.PolicyRejected -> "POLICY_REJECTED"
-    ActionExecutionResult.SessionNotRunning -> "SESSION_NOT_RUNNING"
+    is ActionExecutionResult.PolicyRejected -> BridgeErrorCodes.POLICY_REJECTED
+    ActionExecutionResult.SessionNotRunning -> BridgeErrorCodes.SESSION_NOT_RUNNING
 }
 
 internal const val SESSION_NOT_RUNNING_MESSAGE = "The phone session is no longer running."

@@ -11,6 +11,7 @@ import com.phonecontrol.assistant.domain.StaleObservationDiagnostics
 import com.phonecontrol.assistant.domain.TapAction
 import com.phonecontrol.assistant.domain.TypeAction
 import com.phonecontrol.assistant.domain.WaitAction
+import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.protocol.beforeScreenshotOrNull
 import com.phonecontrol.assistant.bridge.protocol.isSuccessful
 import com.phonecontrol.assistant.bridge.protocol.resultMessage
@@ -101,7 +102,7 @@ internal class SequenceExecutor(
                         action = action.type.name.lowercase(),
                         status = SequenceStepResult.Status.FAILED,
                         message = "The action may have run, but the phone could not produce a post-action observation: ${captured.message}",
-                        code = "POST_OBSERVATION_FAILED",
+                        code = BridgeErrorCodes.POST_OBSERVATION_FAILED,
                         outcome = "unknown",
                         executed = null,
                     )

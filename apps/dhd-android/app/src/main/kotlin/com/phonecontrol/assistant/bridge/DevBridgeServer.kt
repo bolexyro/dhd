@@ -1,6 +1,7 @@
 package com.phonecontrol.assistant.bridge
 
 import com.phonecontrol.assistant.apps.InstalledUserApp
+import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.optionalDisplayRef
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseGuardRegions
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parsePhoneAction
@@ -598,7 +599,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The phone bridge rejected this network connection. Pair the desktop companion in DHD settings.")
-                    .put("code", "AUTH_REQUIRED"),
+                    .put("code", BridgeErrorCodes.AUTH_REQUIRED),
             )
             return
         }
@@ -933,7 +934,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "No unclaimed running phone request matched the supplied sessionId.")
-                    .put("code", "REQUEST_NOT_AVAILABLE"),
+                    .put("code", BridgeErrorCodes.REQUEST_NOT_AVAILABLE),
             )
             return
         }
@@ -992,7 +993,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "No unclaimed steer matched the supplied session and steer id.")
-                    .put("code", "STEER_NOT_AVAILABLE"),
+                    .put("code", BridgeErrorCodes.STEER_NOT_AVAILABLE),
             )
             return
         }
@@ -1103,7 +1104,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The phone session is no longer active.")
-                    .put("code", "SESSION_NOT_RUNNING"),
+                    .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
             )
             return
         }
@@ -1149,7 +1150,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The phone session is no longer active.")
-                    .put("code", "SESSION_NOT_RUNNING"),
+                    .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
             )
             return
         }
@@ -1189,7 +1190,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The phone session is no longer active.")
-                    .put("code", "SESSION_NOT_RUNNING"),
+                    .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
             )
             return
         }
@@ -1231,7 +1232,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The phone assistant has no active session to interrupt.")
-                    .put("code", "SESSION_NOT_RUNNING"),
+                    .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
             )
             return
         }
@@ -1255,7 +1256,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The phone assistant is already waiting for the user's attention.")
-                    .put("code", "ATTENTION_ALREADY_PENDING"),
+                    .put("code", BridgeErrorCodes.ATTENTION_ALREADY_PENDING),
             )
             return
         }
@@ -1268,7 +1269,7 @@ class DevBridgeServer internal constructor(
                     .put("requestId", requestId)
                     .put("ok", false)
                     .put("sessionId", sessionId)
-                    .put("code", "SESSION_STOPPED")
+                    .put("code", BridgeErrorCodes.SESSION_STOPPED)
                     .put("message", "The attention step was cancelled because the phone session stopped."),
             )
 
@@ -1347,7 +1348,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "App search requires a query between 1 and $MAX_APP_QUERY_CHARS characters.")
-                    .put("code", "INVALID_APP_QUERY"),
+                    .put("code", BridgeErrorCodes.INVALID_APP_QUERY),
             )
             return
         }
@@ -1391,7 +1392,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "packageName is not a valid Android package name.")
-                    .put("code", "INVALID_PACKAGE"),
+                    .put("code", BridgeErrorCodes.INVALID_PACKAGE),
             )
             return
         }
@@ -1404,7 +1405,7 @@ class DevBridgeServer internal constructor(
                 write(
                     writer,
                     errorResponse(requestId, "layout must be either full_size or standard.")
-                        .put("code", "INVALID_APP_DISPLAY_LAYOUT"),
+                        .put("code", BridgeErrorCodes.INVALID_APP_DISPLAY_LAYOUT),
                 )
                 return
             }
@@ -1416,7 +1417,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "No launchable app matches packageName=$packageName.")
-                    .put("code", "APP_NOT_FOUND"),
+                    .put("code", BridgeErrorCodes.APP_NOT_FOUND),
             )
             return
         }
@@ -1427,7 +1428,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The app is not allowed for the current DHD access mode.")
-                    .put("code", "APP_NOT_ALLOWED"),
+                    .put("code", BridgeErrorCodes.APP_NOT_ALLOWED),
             )
             return
         }
@@ -1460,7 +1461,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The task display registry is unavailable.")
-                    .put("code", "TASK_DISPLAY_UNAVAILABLE"),
+                    .put("code", BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE),
             )
             return
         }
@@ -1487,21 +1488,21 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The task display registry is unavailable.")
-                    .put("code", "TASK_DISPLAY_UNAVAILABLE"),
+                    .put("code", BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE),
             )
             return
         }
         val displayRef = try {
             optionalDisplayRef(json)
         } catch (error: IllegalArgumentException) {
-            write(writer, errorResponse(requestId, error.message ?: "displayRef is invalid.").put("code", "INVALID_DISPLAY_REF"))
+            write(writer, errorResponse(requestId, error.message ?: "displayRef is invalid.").put("code", BridgeErrorCodes.INVALID_DISPLAY_REF))
             return
         }
         if (displayRef == null) {
             write(
                 writer,
                 errorResponse(requestId, "displayRef is required to close a display safely. Call dhd_list_displays first and use the matching displayRef.")
-                    .put("code", "DISPLAY_REFERENCE_REQUIRED"),
+                    .put("code", BridgeErrorCodes.DISPLAY_REFERENCE_REQUIRED),
             )
             return
         }
@@ -1511,7 +1512,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "No task display matches the supplied displayRef. Call dhd_list_displays to see the available displays.")
-                    .put("code", "DISPLAY_NOT_FOUND"),
+                    .put("code", BridgeErrorCodes.DISPLAY_NOT_FOUND),
             )
             return
         }
@@ -1520,7 +1521,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "The selected task display is being used by an active DHD run. Stop the active run first, then close the display.")
-                    .put("code", "DISPLAY_IN_USE"),
+                    .put("code", BridgeErrorCodes.DISPLAY_IN_USE),
             )
             return
         }
@@ -1615,13 +1616,13 @@ class DevBridgeServer internal constructor(
     ): TaskDisplayResolution {
         val backend = taskDisplayBackend
             ?: return TaskDisplayResolution.Unavailable(
-                code = "TASK_DISPLAY_UNAVAILABLE",
+                code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
                 message = "The task display registry is unavailable; call dhd_open_app to create a task display.",
             )
         val runSessionKey = coordinator.activeSessionId()
         if (claimForRun && taskDisplayRequiredProvider() && runSessionKey == null) {
             return TaskDisplayResolution.Unavailable(
-                code = "TASK_DISPLAY_UNAVAILABLE",
+                code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
                 message = "No active task display run is available. Call dhd_open_app from an active DHD task first.",
             )
         }
@@ -1630,7 +1631,7 @@ class DevBridgeServer internal constructor(
             backend.activeDisplaySessions()
             val record = backend.displayRecords.value.firstOrNull { it.displayRef == selectedDisplayRef }
                 ?: return TaskDisplayResolution.Unavailable(
-                    code = "DISPLAY_NOT_FOUND",
+                    code = BridgeErrorCodes.DISPLAY_NOT_FOUND,
                     message = "No task display matches the supplied displayRef. Call dhd_list_displays to see the available displays.",
                 )
             backend.resolveDisplay(
@@ -1666,7 +1667,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "Phone access is no longer available; DHD could not observe the phone.")
-                    .put("code", "DEVELOPER_MODE_UNAVAILABLE"),
+                    .put("code", BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE),
             )
             return
         }
@@ -1715,7 +1716,7 @@ class DevBridgeServer internal constructor(
             write(
                 writer,
                 errorResponse(requestId, "Phone access is no longer available; DHD could not check the phone.")
-                    .put("code", "DEVELOPER_MODE_UNAVAILABLE"),
+                    .put("code", BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE),
             )
             return
         }
@@ -1787,7 +1788,7 @@ class DevBridgeServer internal constructor(
                 failedActionCompletion(
                     requestId = requestId,
                     action = wireActionName(parsedAction),
-                    code = "TASK_DISPLAY_UNAVAILABLE",
+                    code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
                     message = "No active task display is available; the physical display was not touched.",
                 ),
             )
@@ -1817,7 +1818,7 @@ class DevBridgeServer internal constructor(
                 // resolution failure is actionable and must reach the model.
                 if (parsedAction is OpenAppAction &&
                     requestedDisplayRef == null &&
-                    targetResolution.code == "TASK_DISPLAY_UNAVAILABLE"
+                    targetResolution.code == BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE
                 ) {
                     null
                 } else {
@@ -1843,7 +1844,7 @@ class DevBridgeServer internal constructor(
                 failedActionCompletion(
                     requestId = requestId,
                     action = wireActionName(parsedAction),
-                    code = "DISPLAY_CHANGED",
+                    code = BridgeErrorCodes.DISPLAY_CHANGED,
                     message = "The supplied observation belongs to a different task display; call dhd_observe with the selected display before retrying.",
                 ),
             )
@@ -1867,7 +1868,7 @@ class DevBridgeServer internal constructor(
                         failedActionCompletion(
                             requestId = requestId,
                             action = "open_app",
-                            code = "OBSERVATION_FAILED",
+                            code = BridgeErrorCodes.OBSERVATION_FAILED,
                             message = "Could not establish a launch baseline; the app was not opened: ${captured.message}",
                         ),
                     )
@@ -1888,7 +1889,7 @@ class DevBridgeServer internal constructor(
                 failedActionCompletion(
                     requestId = requestId,
                     action = wireActionName(parsedAction),
-                    code = "OBSERVATION_MISSING",
+                    code = BridgeErrorCodes.OBSERVATION_MISSING,
                     message = "The supplied observationId is missing or expired; observe the phone before retrying.",
                 ),
             )
@@ -1933,7 +1934,7 @@ class DevBridgeServer internal constructor(
                 result.beforeScreenshotOrNull(),
             )
             result.staleDetailsOrNull()?.let { details -> addStaleDiagnostics(response, details) }
-            if (failureCode == "DISPLAY_LIMIT_REACHED") {
+            if (failureCode == BridgeErrorCodes.DISPLAY_LIMIT_REACHED) {
                 val backend = taskDisplayBackend
                 val displays = if (backend == null) {
                     emptyList()
@@ -1974,7 +1975,7 @@ class DevBridgeServer internal constructor(
                     failedActionCompletion(
                         requestId = requestId,
                         action = wireActionName(action),
-                        code = if (captured.code == "OBSERVATION_FAILED") "POST_OBSERVATION_FAILED" else captured.code,
+                        code = if (captured.code == BridgeErrorCodes.OBSERVATION_FAILED) BridgeErrorCodes.POST_OBSERVATION_FAILED else captured.code,
                         message = "The action may have run, but the phone could not produce a post-action observation: ${captured.message}",
                         outcome = "unknown",
                         executed = "unknown",
@@ -2036,7 +2037,7 @@ class DevBridgeServer internal constructor(
                 requestId,
                 unstartedSequenceFailure(
                     actions = request.actions,
-                    code = "OBSERVATION_MISSING",
+                    code = BridgeErrorCodes.OBSERVATION_MISSING,
                     message = "The supplied observationId is missing or expired; observe the phone before retrying.",
                 ),
             )
@@ -2049,7 +2050,7 @@ class DevBridgeServer internal constructor(
                 requestId,
                 unstartedSequenceFailure(
                     actions = request.actions,
-                    code = "TASK_DISPLAY_UNAVAILABLE",
+                    code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
                     message = "No active task display is available; the physical display was not touched.",
                 ),
             )
@@ -2061,7 +2062,7 @@ class DevBridgeServer internal constructor(
                 requestId,
                 unstartedSequenceFailure(
                     actions = request.actions,
-                    code = "DEVELOPER_MODE_UNAVAILABLE",
+                    code = BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE,
                     message = "Phone access is no longer available; the sequence was not executed.",
                 ),
             )
@@ -2101,7 +2102,7 @@ class DevBridgeServer internal constructor(
                 requestId,
                 unstartedSequenceFailure(
                     actions = request.actions,
-                    code = "DISPLAY_CHANGED",
+                    code = BridgeErrorCodes.DISPLAY_CHANGED,
                     message = "The observation belongs to a different task display; no input was sent.",
                 ),
             )
@@ -2178,7 +2179,7 @@ class DevBridgeServer internal constructor(
             .put("requestedSteps", actions?.length() ?: 0)
             .put("completedSteps", 0)
             .put("message", error.message ?: "The sequence payload is invalid.")
-            .put("code", "INVALID_PAYLOAD")
+            .put("code", BridgeErrorCodes.INVALID_PAYLOAD)
             .put("outcome", "failed")
             .put("executed", false)
         val steps = JSONArray()
@@ -2195,7 +2196,7 @@ class DevBridgeServer internal constructor(
                     .put("action", action)
                     .put("status", "failed")
                     .put("message", error.message ?: "The sequence action is invalid.")
-                    .put("code", "INVALID_PAYLOAD")
+                    .put("code", BridgeErrorCodes.INVALID_PAYLOAD)
                     .put("outcome", "failed")
                     .put("executed", false),
             )
@@ -2321,7 +2322,7 @@ class DevBridgeServer internal constructor(
         result.failure?.let { failure ->
             response
                 .put("failedStep", failure.index)
-                .put("code", failure.code ?: "SEQUENCE_FAILED")
+                .put("code", failure.code ?: BridgeErrorCodes.SEQUENCE_FAILED)
                 .put("outcome", failure.outcome ?: "failed")
                 .put("executed", failure.executed ?: "unknown")
             failure.details?.let { addStaleDiagnostics(response, it) }
@@ -2455,13 +2456,13 @@ class DevBridgeServer internal constructor(
         if (taskDisplayRequiredProvider() && taskSessionKey == null) {
             return ObservationCaptureResult.Failed(
                 message = "No active task display is available; refusing to use the physical display.",
-                code = "TASK_DISPLAY_UNAVAILABLE",
+                code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
             )
         }
         if (!coordinator.awaitPhoneAccessForTool()) {
             return ObservationCaptureResult.Failed(
                 message = "Phone access is no longer available; the observation was not captured.",
-                code = "DEVELOPER_MODE_UNAVAILABLE",
+                code = BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE,
             )
         }
         var last: ObservationCaptureResult = ObservationCaptureResult.Failed("No capture attempted.")
@@ -2509,11 +2510,11 @@ class DevBridgeServer internal constructor(
             }
 
             is ActionExecutionResult.PolicyRejected -> response
-                .put("code", "POLICY_REJECTED")
+                .put("code", BridgeErrorCodes.POLICY_REJECTED)
                 .put("message", result.message)
                 .also { result.details?.let { details -> addStaleDiagnostics(it, details) } }
             ActionExecutionResult.SessionNotRunning -> response
-                .put("code", "SESSION_NOT_RUNNING")
+                .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING)
                 .put("message", "The phone session is no longer running.")
         }
         write(writer, response)
@@ -2556,9 +2557,9 @@ class DevBridgeServer internal constructor(
         if (message.contains("Wireless Debugging", ignoreCase = true) ||
             message.contains("DHD could not execute", ignoreCase = true)
         ) {
-            "DEVELOPER_MODE_UNAVAILABLE"
+            BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE
         } else {
-            "OBSERVATION_FAILED"
+            BridgeErrorCodes.OBSERVATION_FAILED
         }
 
     private fun write(writer: BufferedWriter, json: JSONObject) {
