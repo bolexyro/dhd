@@ -42,6 +42,11 @@ import com.phonecontrol.assistant.PermissionSetupStep
 import com.phonecontrol.assistant.PhoneControlApplication
 import com.phonecontrol.assistant.apps.InstalledAppsRepository
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
+import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_FAST_MODE
+import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_REASONING_EFFORT
+import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_THEME_MODE
+import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_VISIBLE_REASONING_EFFORTS
+import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.PREFS_NAME
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
 
@@ -132,12 +137,6 @@ val LightAssistantColors = AssistantColorScheme(
 )
 
 val LocalAssistantColors = staticCompositionLocalOf { DarkAssistantColors }
-
-internal const val PREFS_NAME = "dhd_ui_preferences"
-internal const val KEY_THEME_MODE = "pref_theme_mode"
-internal const val KEY_REASONING_EFFORT = "pref_reasoning_effort"
-internal const val KEY_VISIBLE_REASONING_EFFORTS = "pref_visible_reasoning_efforts"
-internal const val KEY_FAST_MODE = "pref_fast_mode"
 
 enum class ThemeMode(val storageValue: String, val label: String) {
     SYSTEM("system", "System (Default)"),

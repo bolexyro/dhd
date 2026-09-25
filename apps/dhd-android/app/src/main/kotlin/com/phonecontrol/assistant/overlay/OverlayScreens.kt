@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.phonecontrol.assistant.data.UiPreferencesRepository
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.core.ToolNames
@@ -882,27 +883,27 @@ fun OverlayPanel(
     val active = state is SessionState.Running || state is SessionState.Paused
     val context = LocalContext.current
     val preferences = remember(context) {
-        context.getSharedPreferences(OverlayPreferences.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        context.getSharedPreferences(UiPreferencesRepository.PREFS_NAME, android.content.Context.MODE_PRIVATE)
     }
     var previewVisible by rememberSaveable { mutableStateOf(false) }
     var fastMode by rememberSaveable {
-        mutableStateOf(preferences.getBoolean(OverlayPreferences.KEY_FAST_MODE, false))
+        mutableStateOf(preferences.getBoolean(UiPreferencesRepository.KEY_FAST_MODE, false))
     }
     var reasoningEffortValue by rememberSaveable {
         mutableStateOf(
             ReasoningEffort.fromStorage(
                 preferences.getString(
-                    OverlayPreferences.KEY_REASONING_EFFORT,
+                    UiPreferencesRepository.KEY_REASONING_EFFORT,
                     ReasoningEffort.default.storageValue,
                 ),
             ).storageValue,
         )
     }
     val visibleReasoningEfforts = remember(
-        preferences.getString(OverlayPreferences.KEY_VISIBLE_REASONING_EFFORTS, null),
+        preferences.getString(UiPreferencesRepository.KEY_VISIBLE_REASONING_EFFORTS, null),
     ) {
         reasoningEffortsFromStorage(
-            preferences.getString(OverlayPreferences.KEY_VISIBLE_REASONING_EFFORTS, null),
+            preferences.getString(UiPreferencesRepository.KEY_VISIBLE_REASONING_EFFORTS, null),
         )
     }
     val reasoningEffort = ReasoningEffort.fromStorage(reasoningEffortValue)
@@ -912,18 +913,18 @@ fun OverlayPanel(
         if (reasoningEffortValue != reasoningEffort.storageValue) {
             reasoningEffortValue = reasoningEffort.storageValue
             preferences.edit()
-                .putString(OverlayPreferences.KEY_REASONING_EFFORT, reasoningEffort.storageValue)
+                .putString(UiPreferencesRepository.KEY_REASONING_EFFORT, reasoningEffort.storageValue)
                 .apply()
         }
     }
     val setFastMode: (Boolean) -> Unit = { enabled ->
         fastMode = enabled
-        preferences.edit().putBoolean(OverlayPreferences.KEY_FAST_MODE, enabled).apply()
+        preferences.edit().putBoolean(UiPreferencesRepository.KEY_FAST_MODE, enabled).apply()
     }
     val setReasoningEffort: (ReasoningEffort) -> Unit = { effort ->
         if (effort in visibleReasoningEfforts) {
             reasoningEffortValue = effort.storageValue
-            preferences.edit().putString(OverlayPreferences.KEY_REASONING_EFFORT, effort.storageValue).apply()
+            preferences.edit().putString(UiPreferencesRepository.KEY_REASONING_EFFORT, effort.storageValue).apply()
         }
     }
 

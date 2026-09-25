@@ -33,6 +33,7 @@ import com.phonecontrol.assistant.core.needsAttention
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
+import com.phonecontrol.assistant.data.UiPreferencesRepository
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.execution.TaskDisplaySession
@@ -653,11 +654,11 @@ class OverlayWindowController(
 
     private fun submitRequest(request: String) {
         _resultMessage.value = null
-        val prefs = appContext.getSharedPreferences(OverlayPreferences.PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = appContext.getSharedPreferences(UiPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)
         val reasoningEffort = ReasoningEffort.fromStorage(
-            prefs.getString(OverlayPreferences.KEY_REASONING_EFFORT, ReasoningEffort.default.storageValue),
+            prefs.getString(UiPreferencesRepository.KEY_REASONING_EFFORT, ReasoningEffort.default.storageValue),
         )?.codexValue ?: ReasoningEffort.default.codexValue
-        val fastMode = prefs.getBoolean(OverlayPreferences.KEY_FAST_MODE, false)
+        val fastMode = prefs.getBoolean(UiPreferencesRepository.KEY_FAST_MODE, false)
         val intent = android.content.Intent(appContext, AssistantForegroundService::class.java)
             .setAction(AssistantForegroundService.ACTION_START)
             .putExtra(AssistantForegroundService.EXTRA_REQUEST, request)
@@ -732,8 +733,8 @@ class OverlayWindowController(
     }
 
     private fun assistantColors(): com.phonecontrol.assistant.ui.AssistantColorScheme {
-        val prefs = appContext.getSharedPreferences(OverlayPreferences.PREFS_NAME, Context.MODE_PRIVATE)
-        val mode = ThemeMode.fromStorage(prefs.getString(OverlayPreferences.KEY_THEME_MODE, "dark"))
+        val prefs = appContext.getSharedPreferences(UiPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)
+        val mode = ThemeMode.fromStorage(prefs.getString(UiPreferencesRepository.KEY_THEME_MODE, "dark"))
         val isSystemDark = (appContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
             Configuration.UI_MODE_NIGHT_NO
         val isDark = when (mode) {
