@@ -127,6 +127,27 @@ private val DISPLAY_ID_REGEX = Regex(
     RegexOption.IGNORE_CASE,
 )
 
+internal interface TaskDisplayPlatform {
+    fun isFullSizeLayoutEnabled(packageName: String): Boolean
+    fun displayRotation(displayId: Int): Int?
+    fun hasLaunchIntent(packageName: String): Boolean
+}
+
+internal class AndroidTaskDisplayPlatform(private val appContext: Context) : TaskDisplayPlatform {
+    private val layoutPreferences = TaskDisplayLayoutPreferences(appContext)
+
+    override fun isFullSizeLayoutEnabled(packageName: String): Boolean =
+        layoutPreferences.isFullSizeLayoutEnabled(packageName)
+
+    override fun displayRotation(displayId: Int): Int? =
+        appContext.getSystemService(DisplayManager::class.java)
+            ?.getDisplay(displayId)
+            ?.rotation
+
+    override fun hasLaunchIntent(packageName: String): Boolean =
+        appContext.packageManager.getLaunchIntentForPackage(packageName) != null
+}
+
 /**
  * Adapts the shell-UID native display service to the execution-layer contract.
  *
@@ -136,18 +157,35 @@ private val DISPLAY_ID_REGEX = Regex(
  * lookup. Keeping the identity map here gives observations/actions one shared
  * lease and lets Stop invalidate it before asynchronous native cleanup runs.
  */
-class DhdTaskDisplayBackend(
-    context: Context,
-    private val nativeManager: DhdVirtualDisplayManager,
+class DhdTaskDisplayBackend internal constructor(
+    private val nativeManager: NativeDisplayManager,
     private val processRunner: PhoneProcessRunner,
-    private val conversationStore: ConversationStore? = null,
-    private val nowEpochMs: () -> Long = { System.currentTimeMillis() },
-    private val terminalRetentionMs: Long = TERMINAL_RETENTION_MS,
+    private val conversationStore: ConversationStore?,
+    private val nowEpochMs: () -> Long,
+    private val terminalRetentionMs: Long,
+    private val platform: TaskDisplayPlatform,
+    private val scope: CoroutineScope,
+    private val newOwnerKey: () -> String,
 ) : TaskDisplayBackend {
-    private val appContext = context.applicationContext
-    private val layoutPreferences = TaskDisplayLayoutPreferences(appContext)
+    constructor(
+        context: Context,
+        nativeManager: DhdVirtualDisplayManager,
+        processRunner: PhoneProcessRunner,
+        conversationStore: ConversationStore? = null,
+        nowEpochMs: () -> Long = { System.currentTimeMillis() },
+        terminalRetentionMs: Long = TERMINAL_RETENTION_MS,
+    ) : this(
+        nativeManager = nativeManager,
+        processRunner = processRunner,
+        conversationStore = conversationStore,
+        nowEpochMs = nowEpochMs,
+        terminalRetentionMs = terminalRetentionMs,
+        platform = AndroidTaskDisplayPlatform(context.applicationContext),
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+        newOwnerKey = { "dhd-${UUID.randomUUID()}" },
+    )
+
     private val stateLock = Mutex()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val sessions = LinkedHashMap<String, BoundSession>()
     /** Coordinator run key -> native display owner keys claimed by that run. */
     private val runBindings = mutableMapOf<String, MutableSet<String>>()
@@ -210,7 +248,7 @@ class DhdTaskDisplayBackend(
                 }
             }
             val effectiveSpec = spec.withFullSizeAppLayout(
-                layoutPreferences.isFullSizeLayoutEnabled(packageName),
+                platform.isFullSizeLayoutEnabled(packageName),
             )
             val nativeSpec = DhdVirtualDisplaySpec(
                 width = effectiveSpec.width,
@@ -227,7 +265,7 @@ class DhdTaskDisplayBackend(
                     throw TaskDisplayException(result.message)
                 }
             }
-            val taskSession = nativeSession.toTaskSession(appContext)
+            val taskSession = nativeSession.toTaskSession()
             val bound = BoundSession(nativeSession, taskSession)
             val record = taskSession.toRecord(
                 status = TaskDisplayStatus.RUNNING,
@@ -276,7 +314,7 @@ class DhdTaskDisplayBackend(
     ): TaskDisplayOpenResult = appOpenMutex.withLock {
         reconciliationJob.join()
         val expectedSpec = spec.withFullSizeAppLayout(
-            layoutPreferences.isFullSizeLayoutEnabled(packageName),
+            platform.isFullSizeLayoutEnabled(packageName),
         )
         val current = current(sessionKey)
         if (current != null) {
@@ -337,7 +375,7 @@ class DhdTaskDisplayBackend(
         packageName: String,
         spec: TaskDisplaySpec,
     ): TaskDisplaySession {
-        val ownerKey = "dhd-${UUID.randomUUID()}"
+        val ownerKey = newOwnerKey()
         synchronized(bindingsLock) {
             if (cancelledKeys.contains(runSessionKey)) {
                 throw TaskDisplayException("The task display run was stopped before creation.")
@@ -1273,7 +1311,7 @@ class DhdTaskDisplayBackend(
                     return@withLock
                 }
 
-                val taskSession = nativeSession.toTaskSession(appContext)
+                val taskSession = nativeSession.toTaskSession()
                 val sameIdentity = taskSession.displayId == record.displayId &&
                     taskSession.taskId == record.taskId &&
                     taskSession.packageName == record.nativePackageName &&
@@ -1334,8 +1372,8 @@ class DhdTaskDisplayBackend(
                     }
                     val launchable = foregroundPackage?.let { packageName ->
                         runCatching {
-                            appContext.packageManager.getLaunchIntentForPackage(packageName)
-                        }.getOrNull() != null
+                            platform.hasLaunchIntent(packageName)
+                        }.getOrDefault(false)
                     } == true
                     if (foregroundPackage != null && launchable) {
                         publishOpenedApp(taskSession, foregroundPackage)
@@ -1370,7 +1408,7 @@ class DhdTaskDisplayBackend(
      */
     private fun matchesCurrentAppLayout(session: DhdVirtualDisplaySession): Boolean {
         val expected = TaskDisplaySpec().withFullSizeAppLayout(
-            layoutPreferences.isFullSizeLayoutEnabled(session.packageName),
+            platform.isFullSizeLayoutEnabled(session.packageName),
         )
         return session.appDensityDpi == expected.appDensityDpi &&
             session.appDisplayWidth == (expected.appDisplayWidth ?: expected.width) &&
@@ -1661,9 +1699,7 @@ class DhdTaskDisplayBackend(
         if (result.timedOut || result.exitCode != 0) return null
         val text = result.stdout.toString(Charsets.UTF_8)
         val focused = parseDisplayFocusedWindow(text, session.displayId) ?: return null
-        val display = appContext.getSystemService(DisplayManager::class.java)
-            ?.getDisplay(session.displayId)
-        val rotation = display?.rotation ?: return null
+        val rotation = platform.displayRotation(session.displayId) ?: return null
         return ForegroundAppInfo(
             packageName = focused.packageName,
             activityName = focused.activityName,
@@ -1702,9 +1738,9 @@ class DhdTaskDisplayBackend(
         }
     }
 
-    private data class FocusedComponent(val packageName: String, val activityName: String)
+    internal data class FocusedComponent(val packageName: String, val activityName: String)
 
-    private fun parseDisplayFocusedWindow(text: String, displayId: Int): FocusedComponent? {
+    internal fun parseDisplayFocusedWindow(text: String, displayId: Int): FocusedComponent? {
         var currentDisplay: Int? = null
         var candidate: FocusedComponent? = null
         for (line in text.lineSequence()) {
@@ -1729,10 +1765,8 @@ class DhdTaskDisplayBackend(
         return candidate
     }
 
-    private fun DhdVirtualDisplaySession.toTaskSession(context: Context): TaskDisplaySession {
-        val rotation = context.getSystemService(DisplayManager::class.java)
-            ?.getDisplay(displayId)
-            ?.rotation
+    private fun DhdVirtualDisplaySession.toTaskSession(): TaskDisplaySession {
+        val rotation = platform.displayRotation(displayId)
             ?: Surface.ROTATION_0
         return TaskDisplaySession(
             sessionKey = sessionKey,

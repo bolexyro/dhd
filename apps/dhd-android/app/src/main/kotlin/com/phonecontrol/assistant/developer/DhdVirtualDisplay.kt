@@ -109,6 +109,29 @@ sealed interface DhdVirtualDisplayResult {
     }
 }
 
+interface NativeDisplayManager {
+    suspend fun create(
+        sessionKey: String,
+        packageName: String,
+        spec: DhdVirtualDisplaySpec = DhdVirtualDisplaySpec(),
+    ): DhdVirtualDisplayResult
+
+    suspend fun attachLiveSurface(session: DhdVirtualDisplaySession): DhdLivePreviewHandle
+
+    suspend fun capture(session: DhdVirtualDisplaySession): DhdVirtualDisplayCapture
+
+    suspend fun close(sessionKey: String)
+
+    fun cancel(sessionKey: String)
+
+    suspend fun closeAll()
+
+    suspend fun reconcile(
+        expectedSessionKeys: Set<String>,
+        force: Boolean = false,
+    ): Map<String, DhdVirtualDisplaySession>
+}
+
 /**
  * App-process facade over DHD's shell-UID display daemon.
  *
@@ -118,7 +141,7 @@ sealed interface DhdVirtualDisplayResult {
 class DhdVirtualDisplayManager(
     context: Context,
     private val controller: DhdAdbController,
-) {
+) : NativeDisplayManager {
     private val appContext = context.applicationContext
     private val stateMutex = Mutex()
     private val sessions = LinkedHashMap<String, DhdVirtualDisplaySession>()
@@ -128,10 +151,10 @@ class DhdVirtualDisplayManager(
     private val daemonResetMutex = Mutex()
     private var daemonResetComplete = false
 
-    suspend fun create(
+    override suspend fun create(
         sessionKey: String,
         packageName: String,
-        spec: DhdVirtualDisplaySpec = DhdVirtualDisplaySpec(),
+        spec: DhdVirtualDisplaySpec,
     ): DhdVirtualDisplayResult {
         if (!DHD_SESSION_KEY_PATTERN.matches(sessionKey)) {
             return DhdVirtualDisplayResult.Failed(
@@ -248,7 +271,7 @@ class DhdVirtualDisplayManager(
         }
     }
 
-    suspend fun attachLiveSurface(
+    override suspend fun attachLiveSurface(
         session: DhdVirtualDisplaySession,
     ): DhdLivePreviewHandle {
         require(isCurrentSession(session)) { "The virtual display session is not active." }
@@ -276,7 +299,7 @@ class DhdVirtualDisplayManager(
         )
     }
 
-    suspend fun capture(session: DhdVirtualDisplaySession): DhdVirtualDisplayCapture {
+    override suspend fun capture(session: DhdVirtualDisplaySession): DhdVirtualDisplayCapture {
         require(isCurrentSession(session)) { "The virtual display session is not active." }
         val result = controller.execute(
             command = listOf(
@@ -292,7 +315,7 @@ class DhdVirtualDisplayManager(
         return DhdVirtualDisplayCapture(session, result.stdout.copyOf())
     }
 
-    suspend fun close(sessionKey: String) {
+    override suspend fun close(sessionKey: String) {
         if (!DHD_SESSION_KEY_PATTERN.matches(sessionKey)) return
         // Set the tombstone before waiting for an in-flight create. The late
         // create response is then closed by key and can never be published.
@@ -311,11 +334,11 @@ class DhdVirtualDisplayManager(
     }
 
     /** Synchronous cancellation hook for a stop button before coroutine cleanup. */
-    fun cancel(sessionKey: String) {
+    override fun cancel(sessionKey: String) {
         if (DHD_SESSION_KEY_PATTERN.matches(sessionKey)) cancelled += sessionKey
     }
 
-    suspend fun closeAll() {
+    override suspend fun closeAll() {
         val keys = stateMutex.withLock {
             val current = sessions.keys.toList()
             sessions.clear()
@@ -334,9 +357,9 @@ class DhdVirtualDisplayManager(
      * unknown session. The stream token is returned only over the authenticated
      * maintenance channel and is held in memory; it is never persisted.
      */
-    suspend fun reconcile(
+    override suspend fun reconcile(
         expectedSessionKeys: Set<String>,
-        force: Boolean = false,
+        force: Boolean,
     ): Map<String, DhdVirtualDisplaySession> {
         val validKeys = expectedSessionKeys.filter { DHD_SESSION_KEY_PATTERN.matches(it) }.toSet()
         return daemonResetMutex.withLock {

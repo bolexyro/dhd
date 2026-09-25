@@ -692,12 +692,12 @@ class DevBridgeServer internal constructor(
         }
     }
 
-    private fun fallbackActionToolName(json: JSONObject): String {
+    internal fun fallbackActionToolName(json: JSONObject): String {
         val actionType = json.optJSONObject("action")?.optString("type")?.lowercase()
         return if (actionType == "open_app") DHD_OPEN_APP_TOOL else DHD_EXECUTE_TOOL
     }
 
-    private fun toolPurpose(toolName: String, json: JSONObject): String =
+    internal fun toolPurpose(toolName: String, json: JSONObject): String =
         metadataPurpose(json) ?: when (toolName) {
             DHD_OBSERVE_TOOL -> json.optString("purpose").trim().takeIf(String::isNotBlank)
                 ?: defaultDhdToolPurpose(toolName)
@@ -716,7 +716,7 @@ class DevBridgeServer internal constructor(
         }
 
     /** Read the user-visible purpose from each tool's metadata shape. */
-    private fun metadataPurpose(json: JSONObject): String? {
+    internal fun metadataPurpose(json: JSONObject): String? {
         val directPurpose = json.optJSONObject("metadata")
             ?.optString("purpose")
             ?.trim()
@@ -2222,7 +2222,7 @@ class DevBridgeServer internal constructor(
         )
     }
 
-    private fun parseSequenceRequest(json: JSONObject): SequenceRequest {
+    internal fun parseSequenceRequest(json: JSONObject): SequenceRequest {
         val observationId = json.optString("observationId").trim()
         if (observationId.isEmpty() || observationId.length > MAX_TEXT_CHARS) {
             throw InvalidSequencePayloadException(
@@ -2318,7 +2318,7 @@ class DevBridgeServer internal constructor(
         write(writer, response)
     }
 
-    private fun parsePhoneAction(json: JSONObject): PhoneAction {
+    internal fun parsePhoneAction(json: JSONObject): PhoneAction {
         val metadata = parseMetadata(json.optJSONObject("metadata"))
         return when (json.optString("type")) {
             "open_app" -> {
@@ -2359,7 +2359,7 @@ class DevBridgeServer internal constructor(
         }
     }
 
-    private fun parseMetadata(json: JSONObject?): ActionMetadata {
+    internal fun parseMetadata(json: JSONObject?): ActionMetadata {
         require(json != null) { "action.metadata is required." }
         val purpose = json.optString("purpose").trim()
         // The companion supplies observationId for the pre-action structural
@@ -2387,7 +2387,7 @@ class DevBridgeServer internal constructor(
         enumValues<T>().firstOrNull { it.name.equals(value, ignoreCase = true) }
             ?: throw IllegalArgumentException("Unsupported enum value: $value")
 
-    private fun wireActionName(action: PhoneAction): String = when (action) {
+    internal fun wireActionName(action: PhoneAction): String = when (action) {
         is OpenAppAction -> "open_app"
         is TapAction -> "tap"
         is TypeAction -> "type"
@@ -2738,7 +2738,7 @@ class DevBridgeServer internal constructor(
         )
     }
 
-    private fun parseGuardRegions(array: JSONArray?): List<GuardRegion> {
+    internal fun parseGuardRegions(array: JSONArray?): List<GuardRegion> {
         if (array == null) return emptyList()
         require(array.length() <= MAX_GUARD_REGIONS) { "At most $MAX_GUARD_REGIONS guard regions are supported." }
         return buildList(array.length()) {
@@ -2800,13 +2800,13 @@ class DevBridgeServer internal constructor(
         val guardRegions: List<GuardRegion>,
     )
 
-    private data class SequenceRequest(
+    internal data class SequenceRequest(
         val observationId: String,
         val actions: List<PhoneAction>,
         val displayRef: String? = null,
     )
 
-    private class InvalidSequencePayloadException(
+    internal class InvalidSequencePayloadException(
         val index: Int?,
         message: String,
     ) : IllegalArgumentException(message)

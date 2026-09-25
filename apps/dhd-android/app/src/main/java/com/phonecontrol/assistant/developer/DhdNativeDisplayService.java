@@ -354,7 +354,7 @@ final class DhdNativeDisplayService implements Closeable {
         }
     }
 
-    private static String findLogicalUniqueId(String output, int logicalDisplayId) {
+    static String findLogicalUniqueId(String output, int logicalDisplayId) {
         if (output == null) return null;
         boolean inRequestedDisplay = false;
         for (String line : output.split("\\r?\\n")) {
@@ -381,7 +381,7 @@ final class DhdNativeDisplayService implements Closeable {
         return unquoted.find() ? unquoted.group(1) : null;
     }
 
-    private static String findUniqueSurfaceFlingerVirtualDisplayId(
+    static String findUniqueSurfaceFlingerVirtualDisplayId(
             String output,
             String expectedDisplayName
     ) {
@@ -433,7 +433,7 @@ final class DhdNativeDisplayService implements Closeable {
         return candidates.size() == 1 ? candidates.iterator().next() : null;
     }
 
-    private static String findSurfaceFlingerId(String output, int logicalDisplayId, String uniqueId) {
+    static String findSurfaceFlingerId(String output, int logicalDisplayId, String uniqueId) {
         if (output == null || uniqueId == null || uniqueId.isEmpty()) return null;
         String currentDisplay = null;
         String uniqueMatch = null;

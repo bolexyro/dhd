@@ -572,41 +572,6 @@ class TypedPhoneActionTransport(
         stderr = message,
     )
 
-    /** Map the fixed observation space into an app logical canvas when needed. */
-    private fun scaleTaskInputCommand(
-        session: TaskDisplaySession,
-        command: List<String>,
-    ): List<String> {
-        if (command.firstOrNull() != "input" ||
-            (session.appDisplayWidth == session.geometry.width &&
-                session.appDisplayHeight == session.geometry.height)
-        ) {
-            return command
-        }
-        val logicalWidth = session.appDisplayWidth
-        val logicalHeight = session.appDisplayHeight
-        fun scale(value: String, sourceSize: Int, targetSize: Int): String =
-            ((value.toLong() * targetSize + sourceSize / 2) / sourceSize)
-                .toInt()
-                .coerceIn(0, targetSize - 1)
-                .toString()
-
-        return command.toMutableList().apply {
-            when (getOrNull(1)) {
-                "tap" -> if (size >= 4) {
-                    this[2] = scale(this[2], session.geometry.width, logicalWidth)
-                    this[3] = scale(this[3], session.geometry.height, logicalHeight)
-                }
-                "swipe" -> if (size >= 6) {
-                    this[2] = scale(this[2], session.geometry.width, logicalWidth)
-                    this[3] = scale(this[3], session.geometry.height, logicalHeight)
-                    this[4] = scale(this[4], session.geometry.width, logicalWidth)
-                    this[5] = scale(this[5], session.geometry.height, logicalHeight)
-                }
-            }
-        }
-    }
-
     private suspend fun freshCheck(
         action: PhoneAction,
         observation: ObservationSnapshot,
@@ -711,18 +676,6 @@ class TypedPhoneActionTransport(
 
     private fun ObservationSnapshot.contains(x: Int, y: Int): Boolean =
         x in 0 until width && y in 0 until height
-
-    private fun encodeInputText(text: String): String {
-        require(text.none { it == '%' }) {
-            "Android input text cannot safely encode '%' in this v0 transport."
-        }
-        require(text.none { it.code < 0x20 || it.code == 0x7f }) {
-            "Android input text does not accept control characters."
-        }
-        // `input text` uses `%s` as its documented space escape. The typed
-        // argv is quoted by the local ADB runner after this validation.
-        return text.replace(" ", "%s")
-    }
 
 }
 
@@ -829,3 +782,50 @@ private fun staleObservationDiagnostics(
         )
     },
 )
+
+/** Map the fixed observation space into an app logical canvas when needed. */
+internal fun scaleTaskInputCommand(
+    session: TaskDisplaySession,
+    command: List<String>,
+): List<String> {
+    if (command.firstOrNull() != "input" ||
+        (session.appDisplayWidth == session.geometry.width &&
+            session.appDisplayHeight == session.geometry.height)
+    ) {
+        return command
+    }
+    val logicalWidth = session.appDisplayWidth
+    val logicalHeight = session.appDisplayHeight
+    fun scale(value: String, sourceSize: Int, targetSize: Int): String =
+        ((value.toLong() * targetSize + sourceSize / 2) / sourceSize)
+            .toInt()
+            .coerceIn(0, targetSize - 1)
+            .toString()
+
+    return command.toMutableList().apply {
+        when (getOrNull(1)) {
+            "tap" -> if (size >= 4) {
+                this[2] = scale(this[2], session.geometry.width, logicalWidth)
+                this[3] = scale(this[3], session.geometry.height, logicalHeight)
+            }
+            "swipe" -> if (size >= 6) {
+                this[2] = scale(this[2], session.geometry.width, logicalWidth)
+                this[3] = scale(this[3], session.geometry.height, logicalHeight)
+                this[4] = scale(this[4], session.geometry.width, logicalWidth)
+                this[5] = scale(this[5], session.geometry.height, logicalHeight)
+            }
+        }
+    }
+}
+
+internal fun encodeInputText(text: String): String {
+    require(text.none { it == '%' }) {
+        "Android input text cannot safely encode '%' in this v0 transport."
+    }
+    require(text.none { it.code < 0x20 || it.code == 0x7f }) {
+        "Android input text does not accept control characters."
+    }
+    // `input text` uses `%s` as its documented space escape. The typed
+    // argv is quoted by the local ADB runner after this validation.
+    return text.replace(" ", "%s")
+}
