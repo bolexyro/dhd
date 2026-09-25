@@ -7,6 +7,9 @@ import { currentCodexTurn } from "./active-turn.js";
 import { maintainCompanionHeartbeat } from "./heartbeat.js";
 import { PhonePoller, parsePollInterval } from "./poll-loop.js";
 import { CodexWarmup } from "./prewarm.js";
+import { forceExitAfterShutdownTimeout } from "./shutdown.js";
+
+const SHUTDOWN_EVENTS = ["SIGINT", "SIGTERM", "disconnect"] as const;
 
 function logStartupBanner(): void {
   const target = environmentBridgeTarget();
@@ -35,8 +38,11 @@ export async function runAssistantCompanion(
 ): Promise<void> {
   const pollIntervalMs = parsePollInterval(pollIntervalSetting());
   let stopping = false;
+  let cancelForcedExit: (() => void) | undefined;
   const stop = () => {
+    if (stopping) return;
     stopping = true;
+    cancelForcedExit = forceExitAfterShutdownTimeout(() => codexClient.close());
     const active = currentCodexTurn();
     if (active) {
       void active.client.interrupt().catch((error) => {
@@ -46,8 +52,7 @@ export async function runAssistantCompanion(
       });
     }
   };
-  process.once("SIGINT", stop);
-  process.once("SIGTERM", stop);
+  for (const event of SHUTDOWN_EVENTS) process.once(event, stop);
 
   const warmup = new CodexWarmup(codexClient);
   const poller = new PhonePoller(codexClient, warmup);
@@ -65,5 +70,7 @@ export async function runAssistantCompanion(
     await poller.waitForPendingRun();
     await heartbeatPromise;
     await codexClient.close();
+    cancelForcedExit?.();
+    for (const event of SHUTDOWN_EVENTS) process.off(event, stop);
   }
 }

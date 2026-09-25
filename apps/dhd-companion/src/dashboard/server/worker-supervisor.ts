@@ -3,6 +3,8 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { killProcessTree } from "../../shared/process-tree.js";
+import { WORKER_SHUTDOWN_TIMEOUT_MS } from "../../worker/shutdown.js";
 import type { BridgeCheckResult, CompanionState } from "../client/api.js";
 import type { CompanionDashboard } from "./dashboard.js";
 import { sameConnection, type ConnectionConfig } from "./settings-store.js";
@@ -13,6 +15,7 @@ const PROJECT_ROOT = resolve(MODULE_DIRECTORY, "../../../");
 const COMPANION_SCRIPT_JS = resolve(MODULE_DIRECTORY, "../../assistant-companion.js");
 const COMPANION_SCRIPT_TS = resolve(PROJECT_ROOT, "src/assistant-companion.ts");
 const WORKER_RESTART_DELAY_MS = 1_000;
+const WORKER_STOP_GRACE_MS = WORKER_SHUTDOWN_TIMEOUT_MS + 5_000;
 
 function childOutput(child: ChildProcess, source: "companion" | "bridge", state: DashboardState): void {
   for (const stream of [child.stdout, child.stderr]) {
@@ -35,6 +38,16 @@ function childOutput(child: ChildProcess, source: "companion" | "bridge", state:
     stream.on("end", () => {
       if (buffered.trim()) state.appendLog(buffered, { source, level: "info" });
     });
+  }
+}
+
+function requestGracefulStop(child: ChildProcess): void {
+  if (process.platform !== "win32") {
+    child.kill();
+  } else if (child.connected) {
+    child.disconnect();
+  } else {
+    killProcessTree(child);
   }
 }
 
@@ -206,13 +219,13 @@ export class WorkerSupervisor {
         resolveStop();
       };
       child.once("exit", finish);
-      child.kill();
+      requestGracefulStop(child);
       setTimeout(() => {
         if (!settled) {
-          child.kill("SIGKILL");
+          killProcessTree(child, "SIGKILL");
           finish();
         }
-      }, 3_000);
+      }, WORKER_STOP_GRACE_MS);
     });
     await monitor.releaseCompanionPresence(target, checkToIgnore);
     if (state.connection === target) {

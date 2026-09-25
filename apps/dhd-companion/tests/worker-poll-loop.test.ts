@@ -121,6 +121,23 @@ describe("companion worker poll loop", () => {
     );
   });
 
+  it("shuts down when the dashboard IPC channel disconnects", async () => {
+    const server = startFakeAppServer();
+    const client = new CodexAppServerClient({ spawnAppServer: server.spawn });
+    let pendingPolls = 0;
+    bridge.responders.set("pending_request", () => {
+      pendingPolls += 1;
+      return { ok: true, available: false };
+    });
+
+    const worker = runAssistantCompanion(client);
+    await vi.waitFor(() => expect(pendingPolls).toBeGreaterThanOrEqual(1), { timeout: 5_000 });
+    process.emit("disconnect");
+
+    await expect(worker).resolves.toBeUndefined();
+    expect(server.running).toBe(false);
+  });
+
   it("rejects an invalid poll interval before contacting the phone", async () => {
     vi.stubEnv("PHONE_ASSISTANT_POLL_MS", "10");
 

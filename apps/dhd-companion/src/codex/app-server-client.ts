@@ -5,6 +5,7 @@ import { emitCompanionPlanEvent, emitCompanionTokenUsageEvent } from "../shared/
 import { codexHomeDirectory, codexRuntimeDirectory } from "../config/env.js";
 import { errorMessage, toError } from "../shared/errors.js";
 import { asRecord } from "../shared/guards.js";
+import { killProcessTree } from "../shared/process-tree.js";
 import { PhaseTimer } from "../shared/timing.js";
 import {
   recordAgentMessageCompleted,
@@ -612,7 +613,7 @@ export class CodexAppServerClient {
     child.stdin.end();
     await new Promise<void>((resolve) => {
       const timer = setTimeout(() => {
-        child.kill();
+        killProcessTree(child);
         resolve();
       }, 1_500);
       child.once("close", () => {
