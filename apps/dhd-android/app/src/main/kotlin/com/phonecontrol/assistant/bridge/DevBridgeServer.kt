@@ -201,6 +201,7 @@ class DevBridgeServer internal constructor(
         get() = platform.overlayVisibilityGate()
     private val bridgeJson = BridgeJson(base64)
     private val captures = CaptureService(coordinator, observationProvider, taskDisplayRequiredProvider)
+    private val displayTargets = DisplayTargetResolver(taskDisplayBackend, coordinator, taskDisplayRequiredProvider, clock, platform)
 
     val companionConnected: StateFlow<Boolean>
         get() = presence.companionConnected
@@ -468,7 +469,7 @@ class DevBridgeServer internal constructor(
             ?.trim()
             ?.takeIf(String::isNotBlank)
         val label = packageName
-            ?.let(::appLabel)
+            ?.let(platform::appLabel)
             ?.takeIf { it.isNotBlank() && !it.equals(packageName, ignoreCase = true) }
         return label?.let { "Opening $it" } ?: defaultDhdToolPurpose(ToolNames.OPEN_APP)
     }
@@ -478,7 +479,7 @@ class DevBridgeServer internal constructor(
             .trim()
             .takeIf(String::isNotBlank)
         val label = packageName
-            ?.let(::appLabel)
+            ?.let(platform::appLabel)
             ?.takeIf { it.isNotBlank() && !it.equals(packageName, ignoreCase = true) }
         return when (json.optString("layout").trim().lowercase(Locale.ROOT)) {
             "full_size" -> label?.let { "Fitting $it to the task display" }
@@ -919,7 +920,7 @@ class DevBridgeServer internal constructor(
         }
         val requestedDisplayRef = optionalDisplayRef(json)
         val target = if (taskDisplayRequiredProvider() || requestedDisplayRef != null) {
-            when (val resolution = resolveDisplayTarget(displayRef = requestedDisplayRef)) {
+            when (val resolution = displayTargets.resolve(displayRef = requestedDisplayRef)) {
                 is TaskDisplayResolution.Ready -> resolution.target
                 is TaskDisplayResolution.Unavailable -> {
                     reply.write(
@@ -1134,7 +1135,7 @@ class DevBridgeServer internal constructor(
             )
             return
         }
-        val displays = currentDisplayJson(backend)
+        val displays = displayTargets.currentDisplayJson(backend)
         reply.write(
             JSONObject()
                 .put("type", "displays")
@@ -1200,115 +1201,9 @@ class DevBridgeServer internal constructor(
                     .put("requestId", requestId)
                     .put("ok", true)
                     .put("displayRef", result.record.displayRef)
-                    .put("appLabel", appLabel(result.record.packageName))
+                    .put("appLabel", platform.appLabel(result.record.packageName))
                     .put("status", result.record.status.name.lowercase())
                     .put("message", "The selected task display was ended."),
-            )
-        }
-    }
-
-    /**
-     * Return the same actionable inventory as dhd_list_displays. Keeping this
-     * in one path means a model can use a displayRef from a recovery response
-     * without first making another list call.
-     */
-    private suspend fun currentDisplayJson(
-        backend: TaskDisplayBackend,
-    ): List<JSONObject> {
-        // Joining the registry's reconciliation job here ensures a freshly
-        // started app does not report stale persisted records before native
-        // sessions have been adopted or marked unavailable.
-        backend.activeDisplaySessions()
-        val now = clock.wallMillis()
-        return backend.displayRecords.value
-            .asSequence()
-            .filter { record ->
-                record.status != TaskDisplayStatus.ENDED &&
-                    record.status != TaskDisplayStatus.EXPIRED &&
-                    (record.expiresAtEpochMs == null || record.expiresAtEpochMs > now)
-            }
-            .map { record -> displayJson(record, now) }
-            .toList()
-    }
-
-    private suspend fun displayInventoryForRecovery(
-        backend: TaskDisplayBackend,
-    ): List<JSONObject> = try {
-        currentDisplayJson(backend)
-    } catch (error: CancellationException) {
-        throw error
-    } catch (_: Throwable) {
-        // The limit response is still useful when reconciliation is briefly
-        // unavailable; return an empty, well-formed inventory instead of
-        // replacing the actionable allocator error with a registry error.
-        emptyList()
-    }
-
-    private fun displayJson(
-        record: com.phonecontrol.assistant.execution.TaskDisplayRecord,
-        now: Long = clock.wallMillis(),
-    ): JSONObject = JSONObject()
-        .put("displayRef", record.displayRef)
-        .put("appLabel", appLabel(record.packageName))
-        .put("packageName", record.packageName)
-        .put("status", record.status.name.lowercase())
-        .put("width", record.width)
-        .put("height", record.height)
-        .put("densityDpi", record.densityDpi)
-        .put("createdAtEpochMs", record.createdAtEpochMs)
-        .put("terminalAtEpochMs", record.terminalAtEpochMs ?: JSONObject.NULL)
-        .put("expiresAtEpochMs", record.expiresAtEpochMs ?: JSONObject.NULL)
-        .put(
-            "remainingRetentionMs",
-            record.expiresAtEpochMs?.let { expiresAt -> (expiresAt - now).coerceAtLeast(0L) }
-                ?: JSONObject.NULL,
-        )
-        .put("lastPurpose", record.lastPurpose)
-        .put("error", record.error ?: JSONObject.NULL)
-
-    private fun appLabel(packageName: String): String = runCatching {
-        platform.applicationLabel(packageName)
-    }.getOrDefault(packageName)
-
-    private suspend fun resolveDisplayTarget(
-        displayRef: String?,
-        fallbackDisplayId: Int? = null,
-        fallbackDisplayRef: String? = null,
-        claimForRun: Boolean = true,
-    ): TaskDisplayResolution {
-        val backend = taskDisplayBackend
-            ?: return TaskDisplayResolution.Unavailable(
-                code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
-                message = "The task display registry is unavailable; call dhd_open_app to create a task display.",
-            )
-        val runSessionKey = coordinator.activeSessionId()
-        if (claimForRun && taskDisplayRequiredProvider() && runSessionKey == null) {
-            return TaskDisplayResolution.Unavailable(
-                code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
-                message = "No active task display run is available. Call dhd_open_app from an active DHD task first.",
-            )
-        }
-        val selectedDisplayRef = displayRef ?: fallbackDisplayRef
-        return if (selectedDisplayRef != null) {
-            backend.activeDisplaySessions()
-            val record = backend.displayRecords.value.firstOrNull { it.displayRef == selectedDisplayRef }
-                ?: return TaskDisplayResolution.Unavailable(
-                    code = BridgeErrorCodes.DISPLAY_NOT_FOUND,
-                    message = "No task display matches the supplied displayRef. Call dhd_list_displays to see the available displays.",
-                )
-            backend.resolveDisplay(
-                displayId = record.displayId,
-                claimForSessionKey = if (claimForRun) runSessionKey else null,
-                expectedDisplayRef = selectedDisplayRef,
-            )
-        } else if (fallbackDisplayId != null) {
-            backend.resolveDisplay(
-                displayId = fallbackDisplayId,
-                claimForSessionKey = if (claimForRun) runSessionKey else null,
-            )
-        } else {
-            backend.resolveDefaultDisplay(
-                claimForSessionKey = if (claimForRun) runSessionKey else null,
             )
         }
     }
@@ -1334,7 +1229,7 @@ class DevBridgeServer internal constructor(
         }
         val requestedDisplayRef = optionalDisplayRef(json)
         val target = if (taskDisplayRequiredProvider() || requestedDisplayRef != null) {
-            when (val resolution = resolveDisplayTarget(
+            when (val resolution = displayTargets.resolve(
                 displayRef = requestedDisplayRef,
             )) {
                 is TaskDisplayResolution.Ready -> resolution.target
@@ -1381,7 +1276,7 @@ class DevBridgeServer internal constructor(
         }
         val requestedDisplayRef = optionalDisplayRef(json)
         val target = if (taskDisplayRequiredProvider() || requestedDisplayRef != null) {
-            when (val resolution = resolveDisplayTarget(
+            when (val resolution = displayTargets.resolve(
                 displayRef = requestedDisplayRef,
             )) {
                 is TaskDisplayResolution.Ready -> resolution.target
@@ -1453,7 +1348,7 @@ class DevBridgeServer internal constructor(
             suppliedObservation != null ||
             parsedAction !is OpenAppAction
         ) {
-            resolveDisplayTarget(
+            displayTargets.resolve(
                 displayRef = requestedDisplayRef,
                 fallbackDisplayId = suppliedObservation?.displayId,
                 fallbackDisplayRef = suppliedObservation?.taskSessionKey?.let { taskSessionKey ->
@@ -1589,7 +1484,7 @@ class DevBridgeServer internal constructor(
                 val displays = if (backend == null) {
                     emptyList()
                 } else {
-                    displayInventoryForRecovery(backend)
+                    displayTargets.displayInventoryForRecovery(backend)
                 }
                 addDisplayLimitRecovery(
                     response = response,
@@ -1719,7 +1614,7 @@ class DevBridgeServer internal constructor(
             return
         }
         val target = if (taskDisplayRequiredProvider() || request.displayRef != null || observation.taskSessionKey != null) {
-            when (val resolution = resolveDisplayTarget(
+            when (val resolution = displayTargets.resolve(
                 displayRef = request.displayRef,
                 fallbackDisplayId = observation.displayId,
                 fallbackDisplayRef = observation.taskSessionKey?.let { taskSessionKey ->

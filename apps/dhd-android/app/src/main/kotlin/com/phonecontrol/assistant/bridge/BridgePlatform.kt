@@ -30,6 +30,10 @@ internal interface BridgePlatform {
     fun logError(tag: String, message: String, error: Throwable)
 }
 
+internal fun BridgePlatform.appLabel(packageName: String): String = runCatching {
+    applicationLabel(packageName)
+}.getOrDefault(packageName)
+
 internal class AndroidBridgePlatform(
     private val context: Context,
     preferencesName: String,
