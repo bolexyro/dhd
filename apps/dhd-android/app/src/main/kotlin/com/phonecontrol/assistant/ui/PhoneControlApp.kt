@@ -47,6 +47,8 @@ import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_VIS
 import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.PREFS_NAME
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.chat.AssistantScreen
+import com.phonecontrol.assistant.ui.chat.ConversationExpiryDialog
 import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
 import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
 import com.phonecontrol.assistant.ui.displays.FullScreenLiveDisplayViewer

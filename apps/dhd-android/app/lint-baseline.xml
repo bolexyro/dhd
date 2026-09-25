@@ -337,8 +337,8 @@
         errorLine1="    modifier: Modifier = Modifier,"
         errorLine2="    ~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="1604"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/timeline/ConversationTimeline.kt"
+            line="61"
             column="5"/>
     </issue>
 
@@ -450,8 +450,8 @@
         errorLine1="        mutableStateOf(STALE_CONVERSATION_COUNTDOWN_SECONDS)"
         errorLine2="        ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="192"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/ConversationExpiryDialog.kt"
+            line="36"
             column="9"/>
     </issue>
 
@@ -461,8 +461,8 @@
         errorLine1="    var topRecoverySlotHeightPx by remember { mutableStateOf(0) }"
         errorLine2="                                              ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="318"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/ChatScreen.kt"
+            line="157"
             column="47"/>
     </issue>
 
@@ -472,8 +472,8 @@
         errorLine1="        mutableStateOf(Random.nextInt(THINKING_WORDS.size))"
         errorLine2="        ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="1462"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/status/StatusIndicators.kt"
+            line="112"
             column="9"/>
     </issue>
 
@@ -483,8 +483,8 @@
         errorLine1="        mutableStateOf("
         errorLine2="        ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="1996"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/status/StatusIndicators.kt"
+            line="224"
             column="9"/>
     </issue>
 
@@ -494,8 +494,8 @@
         errorLine1="    var displayedEarlierCount by remember { mutableStateOf(earlierCount) }"
         errorLine2="                                            ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="2271"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/trace/TraceRows.kt"
+            line="81"
             column="45"/>
     </issue>
 

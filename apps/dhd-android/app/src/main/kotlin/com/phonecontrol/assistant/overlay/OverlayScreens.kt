@@ -91,7 +91,7 @@ import com.phonecontrol.assistant.session.DhdToolCall
 import com.phonecontrol.assistant.session.DhdToolCallStatus
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.MarkdownContent
-import com.phonecontrol.assistant.ui.THINKING_WORDS
+import com.phonecontrol.assistant.ui.components.THINKING_WORDS
 import com.phonecontrol.assistant.ui.components.reasoning.FastModeButton
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningEffortButton
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningEffortTrack
