@@ -1,5 +1,6 @@
 package com.phonecontrol.assistant.ui
 
+import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.ActivityEventKind
@@ -32,6 +33,8 @@ class AppViewModelTest {
     private val events = MutableStateFlow<List<ActivityEvent>>(emptyList())
     private val resolvedKeys = mutableListOf<String>()
     private val labelLookups = mutableListOf<String>()
+    private val appListings = mutableListOf<String>()
+    private var installedApps = listOf(InstalledUserApp("com.example.shop", "Shop"))
 
     @Before
     fun setUp() {
@@ -88,6 +91,11 @@ class AppViewModelTest {
             "label:$packageName"
         },
         mappingDispatcher = Dispatchers.Main,
+        listLaunchableApps = {
+            appListings += Thread.currentThread().name
+            installedApps
+        },
+        appListDispatcher = Dispatchers.Main,
     )
 
     @Test
@@ -185,5 +193,23 @@ class AppViewModelTest {
         events.value = listOf(ActivityEvent("e1", null, 1L, ActivityEventKind.SYSTEM, "m"))
 
         assertSame(before, viewModel.displayUi.value)
+    }
+
+    @Test
+    fun `launchable apps load outside composition and refresh on demand`() {
+        val viewModel = viewModel()
+        assertEquals(emptyList<InstalledUserApp>(), viewModel.launchableApps.value)
+
+        viewModel.refreshLaunchableApps()
+        assertEquals(listOf("com.example.shop"), viewModel.launchableApps.value.map(InstalledUserApp::packageName))
+
+        installedApps = installedApps + InstalledUserApp("com.example.mail", "Mail")
+        viewModel.refreshLaunchableApps()
+
+        assertEquals(
+            listOf("com.example.shop", "com.example.mail"),
+            viewModel.launchableApps.value.map(InstalledUserApp::packageName),
+        )
+        assertEquals(2, appListings.size)
     }
 }

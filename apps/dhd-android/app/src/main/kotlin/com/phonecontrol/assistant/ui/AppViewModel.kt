@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.phonecontrol.assistant.app.AppContainer
+import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
@@ -29,6 +30,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal data class AppUiState(
     val displaySources: DisplayUiSources,
@@ -51,6 +54,8 @@ class AppViewModel internal constructor(
     resolveDisplay: suspend (String) -> TaskDisplaySession?,
     appLabelFor: (String) -> String?,
     mappingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val listLaunchableApps: () -> List<InstalledUserApp> = { emptyList() },
+    private val appListDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val appLabels = ConcurrentHashMap<String, CachedAppLabel>()
     private val cachedAppLabelFor: (String) -> String? = { packageName ->
@@ -102,6 +107,15 @@ class AppViewModel internal constructor(
             mapDisplayUi(uiState.value.displaySources, cachedAppLabelFor),
         )
 
+    private val _launchableApps = MutableStateFlow<List<InstalledUserApp>>(emptyList())
+    val launchableApps: StateFlow<List<InstalledUserApp>> = _launchableApps.asStateFlow()
+
+    fun refreshLaunchableApps() {
+        viewModelScope.launch {
+            _launchableApps.value = withContext(appListDispatcher) { listLaunchableApps() }
+        }
+    }
+
     private var requestAwaitingNotificationPermission: PendingRunRequest? = null
     private val _restoredRequest = MutableStateFlow<String?>(null)
     val restoredRequest: StateFlow<String?> = _restoredRequest.asStateFlow()
@@ -135,6 +149,7 @@ class AppViewModel internal constructor(
                         events = container.sessionCoordinator.events,
                         resolveDisplay = { sessionKey -> container.taskDisplayBackend.current(sessionKey) },
                         appLabelFor = appLabelFor,
+                        listLaunchableApps = container.installedAppsRepository::listLaunchableUserApps,
                     )
                 }
             }

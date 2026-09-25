@@ -110,6 +110,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val displayUi by appViewModel.displayUi.collectAsState()
             val restoredRequest by appViewModel.restoredRequest.collectAsState()
+            val launchableApps by appViewModel.launchableApps.collectAsState()
             val displayForRun = displayUi.displayForRun
             CompositionLocalProvider(LocalRunPointerEvents provides app.sessionCoordinator.pointerEvent) {
                 PhoneControlApp(
@@ -117,6 +118,7 @@ class MainActivity : ComponentActivity() {
                     onRunRequest = ::startSession,
                     restoredRequest = restoredRequest,
                     onRestoredRequestConsumed = appViewModel::consumeRestoredRequest,
+                    apps = launchableApps,
                     onStopSession = ::stopSession,
                     onContinueSession = ::continueSession,
                     onStartFresh = ::startFresh,
@@ -189,6 +191,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        appViewModel.refreshLaunchableApps()
         refreshOverlayState()
         maybeStartFirstRunPermissionSetup()
     }

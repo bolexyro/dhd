@@ -32,7 +32,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.phonecontrol.assistant.PermissionSetupStep
 import com.phonecontrol.assistant.PhoneControlApplication
-import com.phonecontrol.assistant.apps.InstalledAppsRepository
+import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.chat.ChatScreen
@@ -69,6 +69,7 @@ fun PhoneControlApp(
     onRunRequest: (String, String?, String?, Boolean) -> Unit,
     restoredRequest: String? = null,
     onRestoredRequestConsumed: () -> Unit = {},
+    apps: List<InstalledUserApp> = emptyList(),
     onStopSession: () -> Unit,
     onContinueSession: () -> Unit = {},
     onStartFresh: (() -> Unit)? = null,
@@ -125,7 +126,6 @@ fun PhoneControlApp(
     val developerStatus by developerModeController.status.collectAsState()
     val companionConnected by container.companionBridgeServer.companionConnected.collectAsState()
     val pendingCompanionPairing by container.companionBridgeServer.pendingCompanionPairing.collectAsState()
-    val apps = remember { InstalledAppsRepository(context).listLaunchableUserApps() }
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
