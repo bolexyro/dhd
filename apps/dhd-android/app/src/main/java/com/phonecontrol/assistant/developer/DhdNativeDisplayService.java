@@ -19,16 +19,13 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -280,12 +277,12 @@ final class DhdNativeDisplayService implements Closeable {
             int targetHeight
     ) throws Exception {
         if (logicalDisplayId <= 0) throw new IOException("The default display is not a task display.");
-        String displayInfo = runText(new String[]{"/system/bin/cmd", "display", "get-displays"});
+        String displayInfo = DisplayShell.runText(new String[]{"/system/bin/cmd", "display", "get-displays"});
         String uniqueId = SurfaceFlingerIds.findLogicalUniqueId(displayInfo, logicalDisplayId);
-        String sf = runText(new String[]{"/system/bin/dumpsys", "SurfaceFlinger", "--display-id"});
+        String sf = DisplayShell.runText(new String[]{"/system/bin/dumpsys", "SurfaceFlinger", "--display-id"});
         String sfId = SurfaceFlingerIds.findSurfaceFlingerId(sf, logicalDisplayId, uniqueId);
         if (sfId == null) {
-            String displays = runText(new String[]{"/system/bin/dumpsys", "SurfaceFlinger", "--displays"});
+            String displays = DisplayShell.runText(new String[]{"/system/bin/dumpsys", "SurfaceFlinger", "--displays"});
             sfId = SurfaceFlingerIds.findSurfaceFlingerId(displays, logicalDisplayId, uniqueId);
             if (sfId == null) {
                 sfId = SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(displays, displayName);
@@ -294,7 +291,7 @@ final class DhdNativeDisplayService implements Closeable {
         if (sfId == null) {
             throw new IOException("SurfaceFlinger did not expose a capture id bound to logical display " + logicalDisplayId + ".");
         }
-        ShellProcess.Result result = run(new String[]{"/system/bin/screencap", "-d", sfId, "-p"}, COMMAND_TIMEOUT_MS);
+        ShellProcess.Result result = DisplayShell.run(new String[]{"/system/bin/screencap", "-d", sfId, "-p"}, COMMAND_TIMEOUT_MS);
         if (result.exitCode != 0 || result.stdout.length == 0) {
             throw new IOException("DHD display capture failed: " + result.stderr);
         }
@@ -325,21 +322,6 @@ final class DhdNativeDisplayService implements Closeable {
             if (scaled != null && scaled != source) scaled.recycle();
             source.recycle();
         }
-    }
-
-    private static String runText(String[] command) throws Exception {
-        ShellProcess.Result result = run(command, COMMAND_TIMEOUT_MS);
-        if (result.exitCode != 0) throw new IOException(result.stderr);
-        return new String(result.stdout, StandardCharsets.UTF_8);
-    }
-
-    private static ShellProcess.Result run(String[] command, long timeoutMs) throws Exception {
-        return ShellProcess.run(
-                Arrays.asList(command),
-                timeoutMs,
-                256 * 1024,
-                "dhd-display-capture-out",
-                "dhd-display-capture-err");
     }
 
     private static final class DisplaySession implements Closeable {
@@ -382,9 +364,8 @@ final class DhdNativeDisplayService implements Closeable {
         private Surface encoderSurface;
         private HiddenDisplayManager displayBridge;
         private int displayId = -1;
-        private boolean displayDensityOverridden;
-        private boolean displaySizeOverridden;
         private volatile MediaFormat outputFormat;
+        private final DisplayOverrides overrides;
 
         DisplaySession(String sessionKey, String packageName, int width, int height,
                        int densityDpi, int appDensityDpi,
@@ -400,6 +381,8 @@ final class DhdNativeDisplayService implements Closeable {
             this.appDisplayHeight = appDisplayHeight;
             this.frameRate = frameRate;
             this.bitRate = bitRate;
+            this.overrides = new DisplayOverrides(
+                    width, height, densityDpi, appDensityDpi, appDisplayWidth, appDisplayHeight);
         }
 
         void start() throws Exception {
@@ -418,7 +401,7 @@ final class DhdNativeDisplayService implements Closeable {
             displayId = displayBridge.createVirtualDisplay(
                     "DHD " + sessionKey, width, height, densityDpi, encoderSurface);
             if (displayId <= 0) throw new IOException("Android created an invalid task display id.");
-            applyDisplayOverrides();
+            overrides.apply(displayId);
 
             streamServer = new ServerSocket();
             streamServer.setReuseAddress(true);
@@ -426,7 +409,7 @@ final class DhdNativeDisplayService implements Closeable {
             streamPort = streamServer.getLocalPort();
             executor.submit(this::drainEncoder);
             executor.submit(this::serveStream);
-            launchTarget();
+            TaskLauncher.launch(packageName, displayId);
         }
 
         byte[] createdJson() {
@@ -482,139 +465,10 @@ final class DhdNativeDisplayService implements Closeable {
                     encoderSurface = null;
                 }
             }
-            resetDisplayOverrides();
+            overrides.reset(displayId);
             if (displayBridge != null && displayId > 0) displayBridge.releaseVirtualDisplay();
             displayId = -1;
             executor.shutdownNow();
-        }
-
-        private void launchTarget() throws Exception {
-            String component = resolveLaunchComponent();
-            String[] launchCommand = new String[]{
-                    "/system/bin/am", "start", "-W", "--display", Integer.toString(displayId),
-                    "-f", "0x18080000", "-n", component,
-            };
-            ShellProcess.Result result = run(launchCommand, COMMAND_TIMEOUT_MS);
-            if (result.exitCode != 0 || result.stderr.toLowerCase(Locale.ROOT).contains("error") ||
-                    new String(result.stdout, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT).contains("error:")) {
-                throw new IOException("Could not launch " + packageName + " on display " + displayId +
-                        ": " + diagnostic(result));
-            }
-            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(LAUNCH_VERIFY_TIMEOUT_MS);
-            while (System.nanoTime() < deadline) {
-                if (focusedPackageOnDisplay(displayId, packageName)) {
-                    return;
-                }
-                Thread.sleep(100L);
-            }
-            throw new IOException("Android did not verify " + packageName + " on display " + displayId + ".");
-        }
-
-        /**
-         * Keep the encoded buffer fixed while allowing an app profile to use
-         * a larger logical canvas. Android then lays out normal dp-sized
-         * controls instead of stretching them to fill the smaller buffer;
-         * capture and input are mapped back at the DHD boundary.
-         */
-        private void applyDisplayOverrides() throws Exception {
-            if (appDisplayWidth != width || appDisplayHeight != height) {
-                ShellProcess.Result result = run(new String[]{
-                        "/system/bin/wm", "size",
-                        appDisplayWidth + "x" + appDisplayHeight,
-                        "-d", Integer.toString(displayId),
-                }, COMMAND_TIMEOUT_MS);
-                if (result.exitCode != 0 || result.stderr.toLowerCase(Locale.ROOT).contains("error")) {
-                    throw new IOException("Could not set app display size " + appDisplayWidth + "x" +
-                            appDisplayHeight + " on display " + displayId + ": " + diagnostic(result));
-                }
-                displaySizeOverridden = true;
-            }
-
-            if (appDensityDpi == densityDpi) return;
-            ShellProcess.Result result = run(new String[]{
-                    "/system/bin/wm", "density", Integer.toString(appDensityDpi),
-                    "-d", Integer.toString(displayId),
-            }, COMMAND_TIMEOUT_MS);
-            if (result.exitCode != 0 || result.stderr.toLowerCase(Locale.ROOT).contains("error")) {
-                throw new IOException("Could not set app density " + appDensityDpi +
-                        " on display " + displayId + ": " + diagnostic(result));
-            }
-            displayDensityOverridden = true;
-        }
-
-        private void resetDisplayOverrides() {
-            if (displayId <= 0) {
-                displaySizeOverridden = false;
-                displayDensityOverridden = false;
-                return;
-            }
-            if (displaySizeOverridden) {
-                try {
-                    run(new String[]{
-                            "/system/bin/wm", "size", "reset", "-d", Integer.toString(displayId),
-                    }, COMMAND_TIMEOUT_MS);
-                } catch (Throwable ignored) {
-                    // The display may already be gone while unwinding a failed
-                    // session; its per-display override dies with the display.
-                } finally {
-                    displaySizeOverridden = false;
-                }
-            }
-            if (displayDensityOverridden) {
-                try {
-                    run(new String[]{
-                            "/system/bin/wm", "density", "reset", "-d", Integer.toString(displayId),
-                    }, COMMAND_TIMEOUT_MS);
-                } catch (Throwable ignored) {
-                    // The display may already be gone while unwinding a failed
-                    // session; its per-display override dies with the display.
-                } finally {
-                    displayDensityOverridden = false;
-                }
-            }
-        }
-
-        private String resolveLaunchComponent() throws Exception {
-            ShellProcess.Result result = run(new String[]{
-                    "/system/bin/cmd", "package", "resolve-activity", "--brief",
-                    "-a", "android.intent.action.MAIN",
-                    "-c", "android.intent.category.LAUNCHER",
-                    packageName,
-            }, COMMAND_TIMEOUT_MS);
-            if (result.exitCode != 0) {
-                throw new IOException("Could not resolve a launcher for " + packageName +
-                        ": " + diagnostic(result));
-            }
-            String output = new String(result.stdout, StandardCharsets.UTF_8);
-            Pattern componentPattern = Pattern.compile(
-                    "(?m)^\\s*(" + Pattern.quote(packageName) + "/[^\\s]+)\\s*$");
-            Matcher match = componentPattern.matcher(output);
-            if (!match.find()) {
-                throw new IOException("No launcher activity was resolved for " + packageName +
-                        ": " + output.trim());
-            }
-            return match.group(1);
-        }
-
-        private String diagnostic(ShellProcess.Result result) {
-            String stderr = result.stderr == null ? "" : result.stderr.trim();
-            String stdout = new String(result.stdout, StandardCharsets.UTF_8).trim();
-            if (!stderr.isEmpty() && !stdout.isEmpty()) return stderr + " | " + stdout;
-            if (!stderr.isEmpty()) return stderr;
-            if (!stdout.isEmpty()) return stdout;
-            return "exit " + result.exitCode;
-        }
-
-        private boolean focusedPackageOnDisplay(int expectedDisplayId, String expectedPackage) {
-            try {
-                String output = runText(new String[]{"/system/bin/dumpsys", "activity", "activities"});
-                if (DaemonActivityDumpParser.hasFocusedPackage(output, expectedDisplayId, expectedPackage)) {
-                    return true;
-                }
-            } catch (Throwable ignored) {
-                // Verification failure is handled by the caller as unsafe.
-            }
-            return false;
         }
 
         private void drainEncoder() {
