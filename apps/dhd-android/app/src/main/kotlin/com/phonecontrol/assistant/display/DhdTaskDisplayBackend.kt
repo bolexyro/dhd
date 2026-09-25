@@ -35,7 +35,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -121,12 +120,42 @@ class DhdTaskDisplayBackend internal constructor(
         currentPackageName = { session -> records.find(session.sessionKey)?.packageName ?: session.packageName },
         onTaskMissing = ::endMissingAppTask,
     )
+    private val reconciler = DisplayReconciler(
+        nativeManager = nativeManager,
+        records = records,
+        bindings = bindings,
+        retention = retention,
+        platform = platform,
+        nowEpochMs = nowEpochMs,
+        terminalRetentionMs = terminalRetentionMs,
+        host = object : DisplayReconcilerHost {
+            override fun taskSessionFor(nativeSession: DhdVirtualDisplaySession): TaskDisplaySession =
+                nativeSession.toTaskSession()
+
+            override suspend fun removeLocalSession(sessionKey: String, expectedTaskId: String?) =
+                this@DhdTaskDisplayBackend.removeLocalSession(sessionKey, expectedTaskId)
+
+            override suspend fun adopt(
+                record: TaskDisplayRecord,
+                nativeSession: DhdVirtualDisplaySession,
+                taskSession: TaskDisplaySession,
+            ) = adoptNativeSession(record, nativeSession, taskSession)
+
+            override suspend fun foregroundPackage(taskSession: TaskDisplaySession): String? =
+                resolveForeground(taskSession)?.packageName
+
+            override fun publishOpenedApp(taskSession: TaskDisplaySession, packageName: String) =
+                this@DhdTaskDisplayBackend.publishOpenedApp(taskSession, packageName)
+
+            override suspend fun selectActiveSession() = selectActiveSessionAfterReconcile()
+        },
+    )
     private val reconciliationJob: Job
     private val taskLivenessJob: Job
 
     init {
         records.restore(nowEpochMs())
-        reconciliationJob = scope.launch { reconcileNativeSessionsWithRetry() }
+        reconciliationJob = scope.launch { reconciler.reconcileWithRetry() }
         taskLivenessJob = scope.launch {
             reconciliationJob.join()
             livenessMonitor.run()
@@ -656,7 +685,7 @@ class DhdTaskDisplayBackend internal constructor(
     /** Reconcile app state after the native maintenance daemon is restarted. */
     suspend fun reconcileNativeSessionsNow() {
         reconciliationJob.join()
-        reconcileNativeSessionsWithRetry(force = true)
+        reconciler.reconcileWithRetry(force = true)
     }
 
     private suspend fun endMissingAppTask(session: TaskDisplaySession) {
@@ -928,124 +957,30 @@ class DhdTaskDisplayBackend internal constructor(
         }
     }
 
-    private suspend fun reconcileNativeSessionsWithRetry(force: Boolean = false) {
-        var lastFailure: Throwable? = null
-        repeat(RECONCILIATION_ATTEMPTS) { attempt ->
-            try {
-                reconcileNativeSessions(force = force)
-                return
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                lastFailure = error
-                if (attempt + 1 < RECONCILIATION_ATTEMPTS) {
-                    delay(RECONCILIATION_RETRY_DELAY_MS * (1L shl attempt))
-                }
+    private suspend fun adoptNativeSession(
+        record: TaskDisplayRecord,
+        nativeSession: DhdVirtualDisplaySession,
+        taskSession: TaskDisplaySession,
+    ) {
+        stateLock.withLock {
+            val claimedByDifferentRun = bindings.isOwnerBoundToDifferentRun(record.sessionKey)
+            sessions[record.sessionKey] = BoundSession(nativeSession, taskSession)
+            // A forced reconciliation can happen while a
+            // continuation is already using this native owner. Keep
+            // that logical binding instead of silently moving it back
+            // to the stopped owner's key.
+            bindings.ensureOwnerBinding(record.sessionKey)
+            // Keep the terminal action tombstone, and keep any
+            // in-memory stop tombstone until a continuation explicitly
+            // reclaims the display. A live record is not enough to
+            // prove that the stopped run is still active.
+            if (record.status.isTerminal && !claimedByDifferentRun) {
+                bindings.markCancelled(record.sessionKey)
             }
         }
-        markReconciliationUnavailable(
-            lastFailure?.message ?: "The native display could not be reconciled.",
-        )
     }
 
-    private suspend fun reconcileNativeSessions(force: Boolean = false) {
-        val persisted = displayRecords.value
-        val expectedKeys = persisted.map { it.sessionKey }.toSet()
-        val native = nativeManager.reconcile(expectedKeys, force = force)
-        val now = nowEpochMs()
-        persisted.forEach { persistedRecord ->
-            val operationLock = bindings.operationLock(persistedRecord.sessionKey)
-            operationLock.withLock {
-                // Reconciliation can wait on the native daemon while a
-                // continuation claims a retained display. Re-read the local
-                // record after that wait so an old snapshot cannot overwrite
-                // the newer run's lifecycle state.
-                val record = records.find(persistedRecord.sessionKey) ?: return@withLock
-                val nativeSession = native[record.sessionKey]
-                if (nativeSession == null) {
-                    removeLocalSession(record.sessionKey, record.taskId)
-                    val next = DisplayClaimPolicy.withoutNativeSession(
-                        record,
-                        "The DHD display session is no longer active. The display service may have restarted.",
-                        now,
-                        terminalRetentionMs,
-                    )
-                    if (next != record) records.publish(next)
-                    if (!DisplayClaimPolicy.isGone(next)) {
-                        retention.schedule(next)
-                    }
-                    return@withLock
-                }
-
-                val taskSession = nativeSession.toTaskSession()
-                val sameIdentity = taskSession.displayId == record.displayId &&
-                    taskSession.taskId == record.taskId &&
-                    taskSession.packageName == record.nativePackageName &&
-                    taskSession.geometry.width == record.width &&
-                    taskSession.geometry.height == record.height &&
-                    taskSession.geometry.densityDpi == record.densityDpi &&
-                    matchesCurrentAppLayout(nativeSession)
-                val expired = record.status == TaskDisplayStatus.EXPIRED ||
-                    (record.expiresAtEpochMs != null && record.expiresAtEpochMs <= now)
-                val ended = record.status == TaskDisplayStatus.ENDED
-                if (!sameIdentity || expired || ended) {
-                    removeLocalSession(record.sessionKey, record.taskId)
-                    runCatching { nativeManager.close(record.sessionKey) }
-                    val next = when {
-                        expired -> DisplayClaimPolicy.expired(record)
-                        ended -> record
-                        else -> DisplayClaimPolicy.unavailable(
-                            record,
-                            "The native display did not match the persisted task identity.",
-                            now,
-                            terminalRetentionMs,
-                        )
-                    }
-                    if (next != record) records.publish(next)
-                    if (!DisplayClaimPolicy.isGone(next)) {
-                        retention.schedule(next)
-                    }
-                    return@withLock
-                }
-
-                stateLock.withLock {
-                    val claimedByDifferentRun = bindings.isOwnerBoundToDifferentRun(record.sessionKey)
-                    sessions[record.sessionKey] = BoundSession(nativeSession, taskSession)
-                    // A forced reconciliation can happen while a
-                    // continuation is already using this native owner. Keep
-                    // that logical binding instead of silently moving it back
-                    // to the stopped owner's key.
-                    bindings.ensureOwnerBinding(record.sessionKey)
-                    // Keep the terminal action tombstone, and keep any
-                    // in-memory stop tombstone until a continuation explicitly
-                    // reclaims the display. A live record is not enough to
-                    // prove that the stopped run is still active.
-                    if (record.status.isTerminal && !claimedByDifferentRun) {
-                        bindings.markCancelled(record.sessionKey)
-                    }
-                }
-                // Older records only knew the first package launched on this
-                // display. Recover the currently visible app after an upgrade.
-                if (record.ownerPackageName == null) {
-                    val foregroundPackage = try {
-                        resolveForeground(taskSession)?.packageName
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (_: Throwable) {
-                        null
-                    }
-                    val launchable = foregroundPackage?.let { packageName ->
-                        runCatching {
-                            platform.hasLaunchIntent(packageName)
-                        }.getOrDefault(false)
-                    } == true
-                    if (foregroundPackage != null && launchable) {
-                        publishOpenedApp(taskSession, foregroundPackage)
-                    }
-                }
-                retention.schedule(record)
-            }
-        }
+    private suspend fun selectActiveSessionAfterReconcile() {
         stateLock.withLock {
             val liveRecords = displayRecords.value.filter {
                 it.status == TaskDisplayStatus.RUNNING || it.status == TaskDisplayStatus.PAUSED
@@ -1061,22 +996,6 @@ class DhdTaskDisplayBackend internal constructor(
                 .mapNotNull { sessions[it.sessionKey]?.taskSession }
                 .maxByOrNull { session -> candidateRecords.first { it.sessionKey == session.sessionKey }.createdAtEpochMs }
         }
-    }
-
-    /**
-     * A retained record predates the logical-canvas profile, so its durable
-     * metadata cannot describe the app-visible size. Compare the native
-     * session against the current per-package profile before re-adopting it;
-     * otherwise a stale 720x1560 app canvas can survive an APK update and be
-     * rendered as a letterboxed preview forever.
-     */
-    private fun matchesCurrentAppLayout(session: DhdVirtualDisplaySession): Boolean {
-        val expected = TaskDisplaySpec().withFullSizeAppLayout(
-            platform.isFullSizeLayoutEnabled(session.packageName),
-        )
-        return session.appDensityDpi == expected.appDensityDpi &&
-            session.appDisplayWidth == (expected.appDisplayWidth ?: expected.width) &&
-            session.appDisplayHeight == (expected.appDisplayHeight ?: expected.height)
     }
 
     private suspend fun removeLocalSession(sessionKey: String, expectedTaskId: String? = null) {
@@ -1102,17 +1021,6 @@ class DhdTaskDisplayBackend internal constructor(
         }
         staleHandle?.close()
         if (removed) bindings.unbind(sessionKey)
-    }
-
-    private fun markReconciliationUnavailable(message: String) {
-        val now = nowEpochMs()
-        displayRecords.value.forEach { record ->
-            val next = DisplayClaimPolicy.withoutNativeSession(record, message, now, terminalRetentionMs)
-            if (next != record) records.publish(next)
-            if (!DisplayClaimPolicy.isGone(next)) {
-                retention.schedule(next)
-            }
-        }
     }
 
     private fun refreshRetainedExpiry(sessionKey: String) {
@@ -1262,8 +1170,6 @@ class DhdTaskDisplayBackend internal constructor(
         const val TERMINAL_RETENTION_MS: Long = 30 * 60 * 1000L
         private const val MAX_RECORD_PURPOSE_CHARS = 240
         private const val MAX_RECORD_ERROR_CHARS = 4_000
-        private const val RECONCILIATION_ATTEMPTS = 4
-        private const val RECONCILIATION_RETRY_DELAY_MS = 250L
     }
 }
 
