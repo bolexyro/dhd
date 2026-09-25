@@ -1,0 +1,72 @@
+dhd_list_allowed_apps (default)
+  request {"type":"allowed_apps","tool":"dhd_list_allowed_apps","requestId":"<request-id>","includeAll":false}
+  options undefined
+dhd_list_allowed_apps (include all)
+  request {"type":"allowed_apps","tool":"dhd_list_allowed_apps","requestId":"<request-id>","includeAll":true}
+  options undefined
+dhd_browse_app (trimmed query)
+  request {"type":"browse_apps","tool":"dhd_browse_app","requestId":"<request-id>","query":"Spotify"}
+  options undefined
+dhd_set_app_display_layout (full size)
+  request {"type":"set_app_display_layout","tool":"dhd_set_app_display_layout","requestId":"<request-id>","packageName":"com.example.store","layout":"full_size"}
+  options undefined
+dhd_set_app_display_layout (standard)
+  request {"type":"set_app_display_layout","tool":"dhd_set_app_display_layout","requestId":"<request-id>","packageName":"com.example.store","layout":"standard"}
+  options undefined
+dhd_list_displays (all)
+  request {"type":"list_displays","tool":"dhd_list_displays","requestId":"<request-id>"}
+  options undefined
+dhd_close_display (by ref)
+  request {"type":"close_display","tool":"dhd_close_display","requestId":"<request-id>","displayRef":"dsp_0123456789abcd"}
+  options undefined
+dhd_get_foreground_app (default display)
+  request {"type":"foreground_app","tool":"dhd_get_foreground_app","requestId":"<request-id>"}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_get_foreground_app (explicit display)
+  request {"type":"foreground_app","tool":"dhd_get_foreground_app","requestId":"<request-id>","displayRef":"dsp_0123456789abcd"}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_observe (bare)
+  request {"type":"observe","tool":"dhd_observe","requestId":"<request-id>"}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_observe (described)
+  request {"type":"observe","tool":"dhd_observe","requestId":"<request-id>","purpose":"Inspect","targetDescription":"Home screen","displayRef":"dsp_0123456789abcd"}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_open_app (default display)
+  request {"type":"execute_action","tool":"dhd_open_app","requestId":"<request-id>","action":{"type":"open_app","packageName":"com.example.store","metadata":{"purpose":"Open","targetDescription":"Store"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_open_app (explicit display)
+  request {"type":"execute_action","tool":"dhd_open_app","requestId":"<request-id>","displayRef":"dsp_0123456789abcd","action":{"type":"open_app","packageName":"com.example.store","metadata":{"purpose":"Open","targetDescription":"Store"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute (tap)
+  request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"tap","x":10,"y":20,"metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute (type)
+  request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"type","text":"iced tea","metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute (swipe)
+  request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"swipe","startX":180,"startY":600,"endX":180,"endY":200,"metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute (swipe with duration)
+  request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"swipe","startX":180,"startY":600,"endX":180,"endY":200,"durationMs":350,"metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute (back)
+  request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"back","metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute (keypress)
+  request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"keypress","key":"ENTER","metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute (wait)
+  request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"wait","durationMs":500,"metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute (explicit display)
+  request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","displayRef":"dsp_0123456789abcd","action":{"type":"tap","x":10,"y":20,"metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1"}}}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_execute_sequence (every action variant)
+  request {"type":"execute_sequence","tool":"dhd_execute_sequence","requestId":"<request-id>","observationId":"obs-1","displayRef":"dsp_0123456789abcd","actions":[{"type":"tap","x":10,"y":20,"metadata":{"purpose":"Advance the flow","targetDescription":"Next control"}},{"type":"type","text":"iced tea","metadata":{"purpose":"Advance the flow","targetDescription":"Next control"}},{"type":"swipe","startX":180,"startY":600,"endX":180,"endY":200,"metadata":{"purpose":"Advance the flow","targetDescription":"Next control"}},{"type":"swipe","startX":180,"startY":600,"endX":180,"endY":200,"durationMs":350,"metadata":{"purpose":"Advance the flow","targetDescription":"Next control"}},{"type":"back","metadata":{"purpose":"Advance the flow","targetDescription":"Next control"}},{"type":"keypress","key":"ENTER","metadata":{"purpose":"Advance the flow","targetDescription":"Next control"}},{"type":"wait","durationMs":500,"metadata":{"purpose":"Advance the flow","targetDescription":"Next control"}}]}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_request_attention (default display)
+  request {"type":"request_attention","tool":"dhd_request_attention","requestId":"<request-id>","reason":"Unlock the phone"}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+dhd_request_attention (explicit display)
+  request {"type":"request_attention","tool":"dhd_request_attention","requestId":"<request-id>","reason":"Unlock the phone","displayRef":"dsp_0123456789abcd"}
+  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
