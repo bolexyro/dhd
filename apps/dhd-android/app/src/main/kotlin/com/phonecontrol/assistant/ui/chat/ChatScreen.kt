@@ -93,7 +93,7 @@ import com.phonecontrol.assistant.ui.recovery.showsPhoneAccessRecovery
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable
-fun AssistantScreen(
+fun ChatScreen(
     store: ConversationStore,
     coordinator: SessionCoordinator,
     @Suppress("UNUSED_PARAMETER") initialConversationId: String?,

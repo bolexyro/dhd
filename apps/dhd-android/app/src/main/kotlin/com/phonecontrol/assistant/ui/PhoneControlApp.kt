@@ -47,14 +47,14 @@ import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_VIS
 import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.PREFS_NAME
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
-import com.phonecontrol.assistant.ui.chat.AssistantScreen
+import com.phonecontrol.assistant.ui.chat.ChatScreen
 import com.phonecontrol.assistant.ui.chat.ConversationExpiryDialog
 import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
 import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
 import com.phonecontrol.assistant.ui.displays.FullScreenLiveDisplayViewer
 import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
 import com.phonecontrol.assistant.ui.displays.TaskDisplayUiRecord
-import com.phonecontrol.assistant.ui.displays.TaskDisplaysScreen
+import com.phonecontrol.assistant.ui.displays.TaskDisplaysSheet
 import com.phonecontrol.assistant.ui.displays.displayRecordsWithPreviewFallback
 import com.phonecontrol.assistant.ui.displays.surface.PreviewSurfaceDestroyed
 import com.phonecontrol.assistant.ui.displays.viewerPreviewState
@@ -290,7 +290,7 @@ fun PhoneControlApp(
                     },
                 ) {
                     composable(AppRoutes.MAIN) {
-                        AssistantScreen(
+                        ChatScreen(
                             store = conversationStore,
                             coordinator = coordinator,
                             initialConversationId = initialConversationId,
@@ -344,7 +344,7 @@ fun PhoneControlApp(
                     // the screen itself is a bottom sheet rather than a full
                     // page, so it retains the same presentation everywhere.
                     composable(AppRoutes.TASK_DISPLAYS) {
-                        TaskDisplaysScreen(
+                        TaskDisplaysSheet(
                             records = visibleDisplayRecords,
                             onView = { record ->
                                 viewerSessionKey = record.sessionKey
@@ -410,7 +410,7 @@ fun PhoneControlApp(
                 }
 
                 if (taskDisplaysSheetVisible) {
-                    TaskDisplaysScreen(
+                    TaskDisplaysSheet(
                         records = visibleDisplayRecords,
                         onView = { record ->
                             taskDisplaysSheetVisible = false

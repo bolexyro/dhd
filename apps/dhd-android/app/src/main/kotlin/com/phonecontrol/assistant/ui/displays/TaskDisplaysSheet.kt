@@ -61,7 +61,7 @@ import kotlinx.coroutines.delay
  * the lifecycle/daemon implementation can remain outside the UI package.
  */
 @Composable
-fun TaskDisplaysScreen(
+fun TaskDisplaysSheet(
     records: List<TaskDisplayUiRecord>,
     onView: (TaskDisplayUiRecord) -> Unit,
     onEnd: (TaskDisplayUiRecord) -> Unit,
