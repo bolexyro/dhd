@@ -18,6 +18,7 @@ export interface BridgeRequestOptions {
   timeoutMs?: number;
   /** Keep waiting after the phone has accepted a user-dependent request. */
   keepOpenAfterAccepted?: boolean;
+  acceptedTimeoutMs?: number;
   host?: string;
   port?: number;
   token?: string;
@@ -105,17 +106,19 @@ export function requestBridge(
       else resolve(message!);
     };
 
+    const timeOut = () => finish(new Error("Timed out waiting for the phone assistant bridge."));
+    const startDeadline = (milliseconds: number) => {
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      timeoutTimer = setTimeout(timeOut, milliseconds);
+    };
+
     const timeoutMs = options.timeoutMs ?? DEFAULT_BRIDGE_TIMEOUT_MS;
     if (timeoutMs > 0) {
       // Socket inactivity timeouts do not consistently cover a TCP connect
       // that is stuck in SYN-SENT. Keep a wall-clock deadline as well so a
       // filtered or unreachable phone cannot leave callers in CHECKING forever.
-      timeoutTimer = setTimeout(() => {
-        finish(new Error("Timed out waiting for the phone assistant bridge."));
-      }, timeoutMs);
-      socket.setTimeout(timeoutMs, () => {
-        finish(new Error("Timed out waiting for the phone assistant bridge."));
-      });
+      startDeadline(timeoutMs);
+      socket.setTimeout(timeoutMs, timeOut);
     }
     socket.once("error", (error) => {
       finish(new Error(`Could not connect to the phone assistant bridge at ${host}:${port}: ${error.message}`));
@@ -153,6 +156,9 @@ export function requestBridge(
               timeoutTimer = undefined;
             }
             socket.setTimeout(0);
+          } else if (options.acceptedTimeoutMs !== undefined) {
+            startDeadline(options.acceptedTimeoutMs);
+            socket.setTimeout(options.acceptedTimeoutMs);
           }
           continue;
         }
@@ -160,6 +166,9 @@ export function requestBridge(
           finish(undefined, message);
           return;
         }
+        console.error(
+          `[phone-assistant-bridge] ignored unexpected bridge message type: ${typeof message.type === "string" ? message.type : "(missing)"}`,
+        );
       }
     });
   });

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { DHD_MAX_TEXT_CHARS } from "../contract.js";
-import { PHONE_ACCESS_BRIDGE_OPTIONS, defineDhdTool, displayTarget } from "../definition.js";
+import { USER_ATTENTION_BRIDGE_OPTIONS, defineDhdTool, displayTarget } from "../definition.js";
 import { displayRefJsonSchema, objectJsonSchema, textJsonSchema } from "../json-schema.js";
 import { displayTargetFields } from "../schemas.js";
 
@@ -29,5 +29,5 @@ export const requestAttentionTool = defineDhdTool({
     reason: input.reason,
     ...displayTarget(input),
   }),
-  bridgeOptions: PHONE_ACCESS_BRIDGE_OPTIONS,
+  bridgeOptions: USER_ATTENTION_BRIDGE_OPTIONS,
 });

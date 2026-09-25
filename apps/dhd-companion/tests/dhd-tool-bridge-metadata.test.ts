@@ -73,7 +73,7 @@ describe("DHD bridge tool metadata", () => {
       const call = bridge.requestBridge.mock.calls.find(([request]) => request.tool === tool);
       expect(call?.[1]).toEqual({
         timeoutMs: 45_000,
-        keepOpenAfterAccepted: true,
+        acceptedTimeoutMs: 600_000,
       });
     }
     const attentionCall = bridge.requestBridge.mock.calls.find(

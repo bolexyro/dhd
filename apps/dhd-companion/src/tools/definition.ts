@@ -6,7 +6,14 @@ import type { DhdToolName } from "./contract.js";
 import type { JsonSchema } from "./json-schema.js";
 import type { DhdMarkerContext } from "./result/markers.js";
 
+const PHONE_ACCESS_ACCEPTED_TIMEOUT_MS = 10 * 60_000;
+
 export const PHONE_ACCESS_BRIDGE_OPTIONS: BridgeRequestOptions = {
+  timeoutMs: BLOCKING_BRIDGE_TIMEOUT_MS,
+  acceptedTimeoutMs: PHONE_ACCESS_ACCEPTED_TIMEOUT_MS,
+};
+
+export const USER_ATTENTION_BRIDGE_OPTIONS: BridgeRequestOptions = {
   timeoutMs: BLOCKING_BRIDGE_TIMEOUT_MS,
   keepOpenAfterAccepted: true,
 };

@@ -1,12 +1,12 @@
 dhd_execute (tap without regions)
   request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"tap","x":10,"y":20,"metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1","guardRegions":[]}}}
-  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+  options {"timeoutMs":45000,"acceptedTimeoutMs":600000}
 dhd_execute (tap with regions)
   request {"type":"execute_action","tool":"dhd_execute","requestId":"<request-id>","action":{"type":"tap","x":10,"y":20,"metadata":{"purpose":"Tap the search field","targetDescription":"Search field","observationId":"obs-1","guardRegions":[{"left":1,"top":2,"right":30,"bottom":40}]}}}
-  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+  options {"timeoutMs":45000,"acceptedTimeoutMs":600000}
 dhd_execute_sequence (sequence with regions)
   request {"type":"execute_sequence","tool":"dhd_execute_sequence","requestId":"<request-id>","observationId":"obs-1","actions":[{"type":"tap","x":10,"y":20,"metadata":{"purpose":"Advance the flow","targetDescription":"Next control","guardRegions":[{"left":1,"top":2,"right":30,"bottom":40}]}},{"type":"back","metadata":{"purpose":"Advance the flow","targetDescription":"Next control","guardRegions":[]}}]}
-  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+  options {"timeoutMs":45000,"acceptedTimeoutMs":600000}
 dhd_open_app (open app ignores the flag)
   request {"type":"execute_action","tool":"dhd_open_app","requestId":"<request-id>","action":{"type":"open_app","packageName":"com.example.store","metadata":{"purpose":"Open","targetDescription":"Store"}}}
-  options {"timeoutMs":45000,"keepOpenAfterAccepted":true}
+  options {"timeoutMs":45000,"acceptedTimeoutMs":600000}
