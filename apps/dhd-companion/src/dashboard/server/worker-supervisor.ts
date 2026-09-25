@@ -16,6 +16,7 @@ const COMPANION_SCRIPT_JS = resolve(MODULE_DIRECTORY, "../../assistant-companion
 const COMPANION_SCRIPT_TS = resolve(PROJECT_ROOT, "src/assistant-companion.ts");
 const WORKER_RESTART_DELAY_MS = 1_000;
 const WORKER_STOP_GRACE_MS = WORKER_SHUTDOWN_TIMEOUT_MS + 5_000;
+const WORKER_EXIT_AFTER_KILL_MS = 2_000;
 
 function childOutput(child: ChildProcess, source: "companion" | "bridge", state: DashboardState): void {
   for (const stream of [child.stdout, child.stderr]) {
@@ -221,10 +222,9 @@ export class WorkerSupervisor {
       child.once("exit", finish);
       requestGracefulStop(child);
       setTimeout(() => {
-        if (!settled) {
-          killProcessTree(child, "SIGKILL");
-          finish();
-        }
+        if (settled) return;
+        killProcessTree(child, "SIGKILL");
+        setTimeout(finish, WORKER_EXIT_AFTER_KILL_MS);
       }, WORKER_STOP_GRACE_MS);
     });
     await monitor.releaseCompanionPresence(target, checkToIgnore);

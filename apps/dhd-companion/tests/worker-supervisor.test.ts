@@ -12,8 +12,11 @@ class StubbornWorker extends EventEmitter {
   connected = true;
   disconnects = 0;
 
+  exitsOnForceKill = false;
+
   kill(signal?: NodeJS.Signals): boolean {
     this.signals.push(signal);
+    if (signal === "SIGKILL" && this.exitsOnForceKill) setTimeout(() => this.emit("exit", null, "SIGKILL"), 10);
     return true;
   }
 
@@ -67,7 +70,37 @@ describe("worker supervisor shutdown", () => {
 
     await vi.advanceTimersByTimeAsync(5_000);
     expect(worker.signals).toEqual([undefined, "SIGKILL"]);
+    await vi.advanceTimersByTimeAsync(2_000);
     await expect(stopped).resolves.toBeDefined();
+  });
+
+  it("reports the worker stopped once it exits after a force kill", async () => {
+    vi.spyOn(process, "platform", "get").mockReturnValue("darwin");
+    vi.useFakeTimers();
+    const { dashboard, worker } = startedWorker();
+    worker.exitsOnForceKill = true;
+
+    const stopped = dashboard.supervisor.stop("test");
+    await vi.advanceTimersByTimeAsync(15_010);
+
+    await expect(stopped).resolves.toMatchObject({ processStatus: "stopped" });
+  });
+
+  it("stops waiting for the exit event a bounded time after a force kill", async () => {
+    vi.spyOn(process, "platform", "get").mockReturnValue("darwin");
+    vi.useFakeTimers();
+    const { dashboard } = startedWorker();
+    let resolved = false;
+
+    const stopped = dashboard.supervisor.stop("test").then((state) => {
+      resolved = true;
+      return state;
+    });
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(resolved).toBe(false);
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    await expect(stopped).resolves.toMatchObject({ processStatus: "stopping" });
   });
 
   it("asks a Windows worker to stop over IPC and kills its process tree after the grace period", async () => {
@@ -84,6 +117,7 @@ describe("worker supervisor shutdown", () => {
     expect(spawned.slice(1).map(({ command, args }) => [command, ...args])).toEqual([
       ["taskkill", "/pid", "4242", "/T", "/F"],
     ]);
+    await vi.advanceTimersByTimeAsync(2_000);
     await expect(stopped).resolves.toBeDefined();
   });
 });
