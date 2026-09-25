@@ -1,10 +1,10 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { loadConnection } from "../src/dashboard/server/settings-store.js";
+import { loadConnection, saveConnection } from "../src/dashboard/server/settings-store.js";
 import { phoneSnapshot } from "../src/dashboard/server/status-check.js";
 import { ToolCallStore, decodeImage, toJsonValue } from "../src/dashboard/server/tool-call-store.js";
 
@@ -107,6 +107,46 @@ describe("dashboard connection settings", () => {
       token: "",
       deviceId: "",
     });
+  });
+
+  it.each([["null"], ["[]"], ['"text"']])("ignores a settings file containing %s", async (contents) => {
+    stubBridgeEnv();
+
+    await expect(loadConnection(settingsFile(contents))).resolves.toEqual({
+      host: "127.0.0.1",
+      port: 8765,
+      token: "",
+    });
+  });
+
+  it("drops mistyped settings fields instead of crashing", async () => {
+    stubBridgeEnv();
+
+    await expect(
+      loadConnection(settingsFile({ host: 5, port: 9001, token: true, deviceId: 7 })),
+    ).resolves.toEqual({ host: "127.0.0.1", port: 9001, token: "" });
+  });
+
+  it("rewrites the settings file atomically with owner-only permissions", async () => {
+    const home = mkdtempSync(join(tmpdir(), "dhd-settings-home-"));
+    vi.stubEnv("HOME", home);
+    vi.stubEnv("USERPROFILE", home);
+    const directory = join(home, ".dhd");
+    mkdirSync(directory);
+    const path = join(directory, "companion-connection.json");
+    writeFileSync(path, "{\"host\":\"old\"}");
+    chmodSync(path, 0o644);
+
+    await saveConnection({ host: "10.0.0.4", port: 9002, token: "secret", deviceId: "phone-1" });
+
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
+      host: "10.0.0.4",
+      port: 9002,
+      token: "secret",
+      deviceId: "phone-1",
+    });
+    if (process.platform !== "win32") expect(statSync(path).mode & 0o777).toBe(0o600);
+    expect(readdirSync(directory)).toEqual(["companion-connection.json"]);
   });
 
   it("ignores an unreadable settings file", async () => {

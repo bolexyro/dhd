@@ -1,5 +1,8 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+
+import { z } from "zod";
 
 import {
   bridgeHostSetting,
@@ -17,11 +20,18 @@ export interface ConnectionConfig {
   deviceId?: string;
 }
 
-interface StoredConnectionSettings {
-  host?: string;
-  port?: number;
-  token?: string;
-  deviceId?: string;
+const storedConnectionSettingsSchema = z.object({
+  host: z.string().optional().catch(undefined),
+  port: z.number().optional().catch(undefined),
+  token: z.string().optional().catch(undefined),
+  deviceId: z.string().optional().catch(undefined),
+});
+
+type StoredConnectionSettings = z.infer<typeof storedConnectionSettingsSchema>;
+
+function parseStoredSettings(text: string): StoredConnectionSettings {
+  const parsed = storedConnectionSettingsSchema.safeParse(JSON.parse(text));
+  return parsed.success ? parsed.data : {};
 }
 
 export function initialConnection(): ConnectionConfig {
@@ -36,7 +46,7 @@ export async function loadConnection(path = companionSettingsPath()): Promise<Co
   const defaults = initialConnection();
   let stored: StoredConnectionSettings = {};
   try {
-    stored = JSON.parse(await readFile(path, "utf8")) as StoredConnectionSettings;
+    stored = parseStoredSettings(await readFile(path, "utf8"));
   } catch {
     // Default configuration if settings file does not exist
   }
@@ -74,11 +84,19 @@ export async function saveConnection(connection: ConnectionConfig): Promise<void
     token: connection.token,
     ...(connection.deviceId ? { deviceId: connection.deviceId } : {})
   };
-  await mkdir(dirname(companionSettingsPath()), { recursive: true });
-  await writeFile(companionSettingsPath(), `${JSON.stringify(stored, null, 2)}\n`, {
-    encoding: "utf8",
-    mode: 0o600
-  });
+  const path = companionSettingsPath();
+  const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  await mkdir(dirname(path), { recursive: true });
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(stored, null, 2)}\n`, {
+      encoding: "utf8",
+      mode: 0o600
+    });
+    await rename(temporaryPath, path);
+  } catch (error) {
+    await rm(temporaryPath, { force: true });
+    throw error;
+  }
 }
 
 export function sameConnection(left: ConnectionConfig, right: ConnectionConfig): boolean {

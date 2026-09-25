@@ -7,10 +7,11 @@ const discoverPhonesMock = vi.hoisted(() => vi.fn());
 const requestPairingApprovalMock = vi.hoisted(() => vi.fn());
 const writeFileMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mkdirMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const renameMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock("node:fs/promises", async () => {
   const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
-  return { ...actual, writeFile: writeFileMock, mkdir: mkdirMock };
+  return { ...actual, writeFile: writeFileMock, mkdir: mkdirMock, rename: renameMock };
 });
 
 vi.mock("../src/phone/pairing.js", async () => {
