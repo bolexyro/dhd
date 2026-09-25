@@ -78,7 +78,7 @@ class SessionCoordinator(
 ) {
     private val lock = Any()
     private val _state = MutableStateFlow<SessionState>(SessionState.Idle)
-    private val _events = MutableStateFlow<List<ActivityEvent>>(emptyList())
+    private val activityLog = ActivityLog(conversationStore)
     private val _pointerEvent = MutableStateFlow<TaskPointerEvent?>(null)
     private val _toolCalls = MutableStateFlow<List<DhdToolCall>>(emptyList())
     private var sessionJob: Job? = null
@@ -90,7 +90,7 @@ class SessionCoordinator(
     private val completedAttentions = mutableMapOf<String, AttentionResolution>()
 
     val state: StateFlow<SessionState> = _state.asStateFlow()
-    val events: StateFlow<List<ActivityEvent>> = _events.asStateFlow()
+    val events: StateFlow<List<ActivityEvent>> = activityLog.events
     val toolCalls: StateFlow<List<DhdToolCall>> = _toolCalls.asStateFlow()
 
     /** Latest task-display pointer feedback for the read-only live preview. */
@@ -466,7 +466,7 @@ class SessionCoordinator(
         claimedRequestSessionId = null
         _pointerEvent.value = null
         _toolCalls.value = emptyList()
-        _events.value = emptyList()
+        activityLog.clear()
         _state.value = SessionState.Idle
         true
     }
@@ -1148,25 +1148,19 @@ class SessionCoordinator(
         observationId: String? = null,
         targetDescription: String? = null,
         eventId: String? = null,
-    ) {
-        val event = ActivityEvent(
-            id = eventId ?: UUID.randomUUID().toString(),
-            sessionId = sessionId,
-            timestampEpochMs = System.currentTimeMillis(),
-            kind = kind,
-            message = message,
-            actionType = actionType,
-            toolName = toolName,
-            purpose = purpose,
-            observationId = observationId,
-            targetDescription = targetDescription,
-        )
-        _events.value = (_events.value + event).takeLast(MAX_EVENTS)
-        conversationStore?.recordEvent(event)
-    }
+    ) = activityLog.append(
+        kind = kind,
+        message = message,
+        sessionId = sessionId,
+        actionType = actionType,
+        toolName = toolName,
+        purpose = purpose,
+        observationId = observationId,
+        targetDescription = targetDescription,
+        eventId = eventId,
+    )
 
     private companion object {
-        const val MAX_EVENTS = 100
         const val MAX_TOOL_CALLS = 12
         const val MAX_TOOL_NAME_CHARS = 80
         const val MAX_TEXT_CHARS = 240
