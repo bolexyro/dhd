@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.ui
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
@@ -13,15 +12,10 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,10 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -68,8 +59,7 @@ import com.phonecontrol.assistant.ui.pairing.CompanionPairingApprovalDialog
 import com.phonecontrol.assistant.ui.pairing.PairingScreen
 import com.phonecontrol.assistant.ui.settings.ApprovedAppsScreen
 import com.phonecontrol.assistant.ui.settings.SettingsScreen
-import com.phonecontrol.assistant.ui.theme.DarkAssistantColors
-import com.phonecontrol.assistant.ui.theme.LightAssistantColors
+import com.phonecontrol.assistant.ui.theme.DhdTheme
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.ThemeMode
 
@@ -223,44 +213,10 @@ fun PhoneControlApp(
     }
     val viewerState = viewerPreviewState(viewerRecord, previewState)
 
-    val assistantColors = if (isDarkMode) DarkAssistantColors else LightAssistantColors
-    val materialColors = if (isDarkMode) {
-        darkColorScheme(
-            primary = assistantColors.accentBlue,
-            onPrimary = Color.White,
-            secondary = assistantColors.accentGreen,
-            background = assistantColors.background,
-            surface = assistantColors.surfaceCard,
-            onBackground = assistantColors.textPrimary,
-            onSurface = assistantColors.textPrimary,
-        )
-    } else {
-        lightColorScheme(
-            primary = assistantColors.accentBlue,
-            onPrimary = Color.White,
-            secondary = assistantColors.accentGreen,
-            background = assistantColors.background,
-            surface = assistantColors.surfaceCard,
-            onBackground = assistantColors.textPrimary,
-            onSurface = assistantColors.textPrimary,
-        )
-    }
-
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as? Activity)?.window ?: return@SideEffect
-            val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !isDarkMode
-            insetsController.isAppearanceLightNavigationBars = !isDarkMode
-        }
-    }
-
-    CompositionLocalProvider(LocalAssistantColors provides assistantColors) {
-        MaterialTheme(colorScheme = materialColors) {
+    DhdTheme(isDarkMode = isDarkMode) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = assistantColors.background,
+                color = LocalAssistantColors.current.background,
             ) {
                 BackHandler(enabled = permissionSetupStep != null) {
                     onPermissionSetupBack()
@@ -451,7 +407,6 @@ fun PhoneControlApp(
                 }
                 }
             }
-        }
     }
 }
 
