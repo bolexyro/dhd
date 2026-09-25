@@ -123,7 +123,9 @@ class DhdTaskDisplayBackend internal constructor(
     private val _previewState = MutableStateFlow<TaskPreviewState>(TaskPreviewState.Detached)
     private val _previewStates = MutableStateFlow<Map<String, TaskPreviewState>>(emptyMap())
     private val records = DisplayRecordStore(conversationStore)
-    private val expiryJobs = mutableMapOf<String, Job>()
+    private val retention = RetentionScheduler(scope, nowEpochMs) { sessionKey, expiresAt ->
+        expire(sessionKey, expiresAt)
+    }
     private val reconciliationJob: Job
     private val taskLivenessJob: Job
 
@@ -475,7 +477,7 @@ class DhdTaskDisplayBackend internal constructor(
             bindings.clearCancelled(ownerKey)
             bindings.bind(runSessionKey, ownerKey)
             if (currentRecord.status.isTerminal) {
-                expiryJobs.remove(ownerKey)?.cancel()
+                retention.cancel(ownerKey)
                 records.publish(DisplayClaimPolicy.revived(currentRecord))
             }
             TaskDisplayResolution.Ready(
@@ -777,7 +779,7 @@ class DhdTaskDisplayBackend internal constructor(
             error = error,
         )
         records.publish(retained)
-        scheduleExpiry(retained)
+        retention.schedule(retained)
     }
 
     override suspend fun retainForRun(
@@ -883,7 +885,7 @@ class DhdTaskDisplayBackend internal constructor(
             }
             if (!shouldClose && expected != null) return@withLock
             bindings.unbind(sessionKey)
-            expiryJobs.remove(sessionKey)?.cancel()
+            retention.cancel(sessionKey)
             val existing = records.find(sessionKey)
             if (existing != null) {
                 records.publish(DisplayClaimPolicy.ended(existing, nowEpochMs()))
@@ -971,7 +973,7 @@ class DhdTaskDisplayBackend internal constructor(
         bindings.clear()
 
         allKeys.forEach { key ->
-            expiryJobs.remove(key)?.cancel()
+            retention.cancel(key)
         }
 
         if (clearRecords) {
@@ -1044,7 +1046,7 @@ class DhdTaskDisplayBackend internal constructor(
                     )
                     if (next != record) records.publish(next)
                     if (!DisplayClaimPolicy.isGone(next)) {
-                        scheduleExpiry(next)
+                        retention.schedule(next)
                     }
                     return@withLock
                 }
@@ -1075,7 +1077,7 @@ class DhdTaskDisplayBackend internal constructor(
                     }
                     if (next != record) records.publish(next)
                     if (!DisplayClaimPolicy.isGone(next)) {
-                        scheduleExpiry(next)
+                        retention.schedule(next)
                     }
                     return@withLock
                 }
@@ -1115,7 +1117,7 @@ class DhdTaskDisplayBackend internal constructor(
                         publishOpenedApp(taskSession, foregroundPackage)
                     }
                 }
-                scheduleExpiry(record)
+                retention.schedule(record)
             }
         }
         stateLock.withLock {
@@ -1182,7 +1184,7 @@ class DhdTaskDisplayBackend internal constructor(
             val next = DisplayClaimPolicy.withoutNativeSession(record, message, now, terminalRetentionMs)
             if (next != record) records.publish(next)
             if (!DisplayClaimPolicy.isGone(next)) {
-                scheduleExpiry(next)
+                retention.schedule(next)
             }
         }
     }
@@ -1191,17 +1193,7 @@ class DhdTaskDisplayBackend internal constructor(
         val record = records.find(sessionKey) ?: return
         val refreshed = DisplayClaimPolicy.refreshedExpiry(record, nowEpochMs(), terminalRetentionMs) ?: return
         records.publish(refreshed)
-        scheduleExpiry(refreshed)
-    }
-
-    private fun scheduleExpiry(record: TaskDisplayRecord) {
-        val expiresAt = record.expiresAtEpochMs ?: return
-        expiryJobs.remove(record.sessionKey)?.cancel()
-        expiryJobs[record.sessionKey] = scope.launch {
-            val remaining = expiresAt - nowEpochMs()
-            if (remaining > 0) delay(remaining)
-            expire(record.sessionKey, expiresAt)
-        }
+        retention.schedule(refreshed)
     }
 
     private suspend fun expire(sessionKey: String, expectedExpiry: Long) {
@@ -1253,7 +1245,7 @@ class DhdTaskDisplayBackend internal constructor(
             }
             bindings.unbind(sessionKey)
             runCatching { nativeManager.close(sessionKey) }
-            expiryJobs.remove(sessionKey)?.cancel()
+            retention.cancel(sessionKey)
             records.find(sessionKey)?.let { existing ->
                 records.publish(
                     existing.copy(
