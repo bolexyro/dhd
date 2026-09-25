@@ -37,8 +37,6 @@ import { isMainModule } from "./shared/is-main-module.js";
 import {
   codexBinSetting,
   codexHomeDirectory,
-  codexModelSetting,
-  codexReasoningEffortSetting,
   codexRuntimeDirectory,
   isCodeModeHostDisabled,
   isDebugTimingEnabled,
@@ -61,6 +59,13 @@ import {
   type AgentMessageState,
   type AgentMessageStreamUpdate,
 } from "./codex/agent-messages.js";
+import {
+  DEFAULT_CODEX_SERVICE_TIER,
+  normalizeCodexEffort,
+  resolveCodexEffort,
+  resolveCodexModel,
+  serviceTierForFastMode,
+} from "./codex/settings.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -95,19 +100,6 @@ const MINIMAL_CODEX_CONFIG_OVERRIDES = [
 ];
 const PREWARM_ATTEMPTS = 2;
 const PREWARM_RETRY_DELAY_MS = 500;
-// DHD owns its App Server conversation settings. These defaults deliberately
-// do not depend on the user's interactive Codex chat or global config.
-const DEFAULT_CODEX_MODEL = "gpt-6-luna";
-const DEFAULT_CODEX_EFFORT = "high";
-const DEFAULT_CODEX_SERVICE_TIER = "default";
-const FAST_CODEX_SERVICE_TIER = "priority";
-const CODEX_REASONING_EFFORTS = new Set([
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-]);
 type JsonRpcId = number | string;
 
 interface JsonRpcMessage {
@@ -1837,25 +1829,6 @@ export function parsePollInterval(value: string | undefined): number {
     throw new Error("PHONE_ASSISTANT_POLL_MS must be between 250 and 60000.");
   }
   return parsed;
-}
-
-function resolveCodexModel(): string {
-  return codexModelSetting() ?? DEFAULT_CODEX_MODEL;
-}
-
-function resolveCodexEffort(): string {
-  return normalizeCodexEffort(codexReasoningEffortSetting());
-}
-
-export function normalizeCodexEffort(value: string | undefined): string {
-  const normalized = value?.trim().toLowerCase();
-  return normalized && CODEX_REASONING_EFFORTS.has(normalized)
-    ? normalized
-    : DEFAULT_CODEX_EFFORT;
-}
-
-function serviceTierForFastMode(fastMode: boolean): string {
-  return fastMode ? FAST_CODEX_SERVICE_TIER : DEFAULT_CODEX_SERVICE_TIER;
 }
 
 export function quoteWindowsCommand(command: string): string {

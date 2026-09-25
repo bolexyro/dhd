@@ -8,7 +8,6 @@ import {
   disabledConfiguredMcpOverrides,
   emptyToolAnswers,
   extractDynamicToolFailure,
-  normalizeCodexEffort,
   normalizeDynamicArguments,
   parsePollInterval,
   quoteWindowsCommand,
@@ -21,6 +20,7 @@ import {
   extractTurnError,
   extractTurnId,
 } from "../src/codex/extract.js";
+import { normalizeCodexEffort } from "../src/codex/settings.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
