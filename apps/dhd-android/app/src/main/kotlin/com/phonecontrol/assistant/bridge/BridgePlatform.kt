@@ -2,7 +2,6 @@ package com.phonecontrol.assistant.bridge
 
 import android.content.Context
 import android.content.Intent
-import com.phonecontrol.assistant.PhoneControlApplication
 import com.phonecontrol.assistant.apps.InstalledAppsRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
@@ -34,10 +33,11 @@ internal interface BridgePlatform {
 internal class AndroidBridgePlatform(
     private val context: Context,
     preferencesName: String,
+    private val installedAppsRepository: InstalledAppsRepository,
+    private val taskDisplayLayoutPreferences: TaskDisplayLayoutPreferences,
+    private val overlayVisibilityGate: OverlayVisibilityGate,
 ) : BridgePlatform {
     private val preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-    private val installedAppsRepository = InstalledAppsRepository(context)
-    private val taskDisplayLayoutPreferences = TaskDisplayLayoutPreferences(context)
 
     override fun storedString(key: String): String? = preferences.getString(key, null)
 
@@ -59,8 +59,7 @@ internal class AndroidBridgePlatform(
         taskDisplayLayoutPreferences.setFullSizeLayoutEnabled(packageName, enabled)
     }
 
-    override fun overlayVisibilityGate(): OverlayVisibilityGate? =
-        (context.applicationContext as? PhoneControlApplication)?.containerOrNull?.overlayVisibilityGate
+    override fun overlayVisibilityGate(): OverlayVisibilityGate? = overlayVisibilityGate
 
     override fun startSessionService(
         request: String,

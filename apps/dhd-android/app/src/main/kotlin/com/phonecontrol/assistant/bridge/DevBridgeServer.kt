@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.bridge
 
-import android.content.Context
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.core.AndroidBase64Codec
 import com.phonecontrol.assistant.core.Base64Codec
@@ -112,8 +111,8 @@ class DevBridgeServer internal constructor(
     private val newUuid: () -> UUID,
     private val lanAddressProvider: () -> List<String>,
 ) {
-    constructor(
-        context: Context,
+    internal constructor(
+        platform: BridgePlatform,
         coordinator: SessionCoordinator,
         observationProvider: PhoneObservationSource,
         allowedPackagesProvider: () -> Set<String>,
@@ -122,7 +121,7 @@ class DevBridgeServer internal constructor(
         taskDisplayRequiredProvider: () -> Boolean = { false },
         taskDisplayBackend: TaskDisplayBackend? = null,
     ) : this(
-        platform = AndroidBridgePlatform(context, PREFERENCES_NAME),
+        platform = platform,
         coordinator = coordinator,
         observationProvider = observationProvider,
         allowedPackagesProvider = allowedPackagesProvider,

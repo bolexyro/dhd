@@ -5,12 +5,15 @@ import android.view.Surface
 import com.phonecontrol.assistant.adb.DhdAdbProcessRunner
 import com.phonecontrol.assistant.adb.PhoneAccessController
 import com.phonecontrol.assistant.apps.AppPermissionRepository
+import com.phonecontrol.assistant.apps.InstalledAppsRepository
+import com.phonecontrol.assistant.bridge.AndroidBridgePlatform
 import com.phonecontrol.assistant.bridge.DevBridgeServer
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.display.DhdTaskDisplayBackend
 import com.phonecontrol.assistant.display.DhdVirtualDisplayManager
 import com.phonecontrol.assistant.display.PreviewSurfaceDispatcher
+import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.execution.TypedPhoneActionTransport
 import com.phonecontrol.assistant.observation.PhoneObservationProvider
@@ -80,11 +83,19 @@ class AppContainer(context: Context) {
         },
     )
 
+    val installedAppsRepository = InstalledAppsRepository(context)
+
     // The bridge accepts paired LAN connections for the development
     // companion. adb forwarding remains compatible because forwarded
     // clients arrive as loopback and bypass the LAN token check.
     val devBridgeServer = DevBridgeServer(
-        context = context,
+        platform = AndroidBridgePlatform(
+            context = context,
+            preferencesName = DevBridgeServer.PREFERENCES_NAME,
+            installedAppsRepository = installedAppsRepository,
+            taskDisplayLayoutPreferences = TaskDisplayLayoutPreferences(context),
+            overlayVisibilityGate = overlayVisibilityGate,
+        ),
         coordinator = sessionCoordinator,
         observationProvider = observationProvider,
         allowedPackagesProvider = { appPermissionRepository.enabledPackages() },
