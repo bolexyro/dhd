@@ -20,7 +20,6 @@ import com.phonecontrol.assistant.execution.TaskDisplayStatus
 import com.phonecontrol.assistant.execution.TaskDisplayTarget
 import com.phonecontrol.assistant.execution.TransportResult
 import com.phonecontrol.assistant.execution.taskDisplayReference
-import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.policy.PolicyEngine
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
@@ -80,8 +79,6 @@ internal class FakeBridgePlatform : BridgePlatform {
     override fun setFullSizeLayoutEnabled(packageName: String, enabled: Boolean) {
         if (enabled) fullSizePackages += packageName else fullSizePackages -= packageName
     }
-
-    override fun overlayVisibilityGate(): OverlayVisibilityGate? = null
 
     override fun startSessionService(
         request: String,

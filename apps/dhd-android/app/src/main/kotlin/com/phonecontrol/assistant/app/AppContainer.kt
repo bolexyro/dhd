@@ -110,7 +110,6 @@ class AppContainer(context: Context) {
             preferencesName = BridgeCredentials.PREFERENCES_NAME,
             installedAppsRepository = installedAppsRepository,
             taskDisplayLayoutPreferences = taskDisplayLayoutPreferences,
-            overlayVisibilityGate = overlayVisibilityGate,
         ),
         coordinator = sessionCoordinator,
         observationProvider = observationProvider,

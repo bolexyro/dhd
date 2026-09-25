@@ -5,7 +5,6 @@ import android.content.Intent
 import com.phonecontrol.assistant.apps.InstalledAppsRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
-import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.session.AssistantForegroundService
 
 internal const val BRIDGE_LOG_TAG = "PhoneControlBridge"
@@ -17,7 +16,6 @@ internal interface BridgePlatform {
     fun applicationLabel(packageName: String): String
     fun isFullSizeLayoutEnabled(packageName: String): Boolean
     fun setFullSizeLayoutEnabled(packageName: String, enabled: Boolean)
-    fun overlayVisibilityGate(): OverlayVisibilityGate?
     fun startSessionService(
         request: String,
         reasoningEffort: String,
@@ -41,7 +39,6 @@ internal class AndroidBridgePlatform(
     preferencesName: String,
     private val installedAppsRepository: InstalledAppsRepository,
     private val taskDisplayLayoutPreferences: TaskDisplayLayoutPreferences,
-    private val overlayVisibilityGate: OverlayVisibilityGate,
 ) : BridgePlatform {
     private val preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
 
@@ -64,8 +61,6 @@ internal class AndroidBridgePlatform(
     override fun setFullSizeLayoutEnabled(packageName: String, enabled: Boolean) {
         taskDisplayLayoutPreferences.setFullSizeLayoutEnabled(packageName, enabled)
     }
-
-    override fun overlayVisibilityGate(): OverlayVisibilityGate? = overlayVisibilityGate
 
     override fun startSessionService(
         request: String,

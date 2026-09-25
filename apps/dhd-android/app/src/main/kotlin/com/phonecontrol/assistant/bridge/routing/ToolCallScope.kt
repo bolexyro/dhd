@@ -3,7 +3,6 @@ package com.phonecontrol.assistant.bridge.routing
 import com.phonecontrol.assistant.bridge.BridgePlatform
 import com.phonecontrol.assistant.bridge.appLabel
 import com.phonecontrol.assistant.core.ToolNames
-import com.phonecontrol.assistant.overlay.OverlayHideReason
 import com.phonecontrol.assistant.session.DhdToolCallStatus
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.defaultDhdToolPurpose
@@ -17,25 +16,17 @@ internal class ToolCallScope(
     suspend fun withDhdTool(
         json: JSONObject,
         fallbackToolName: String,
-        hideDuringObservation: Boolean = false,
         terminalStatus: DhdToolCallStatus = DhdToolCallStatus.COMPLETED,
         block: suspend () -> Unit,
     ) {
         val toolName = json.optString("tool").trim().ifBlank { fallbackToolName }
         val callId = coordinator.beginToolCall(toolName, toolPurpose(toolName, json))
-        val visibilityToken = if (hideDuringObservation) {
-            platform.overlayVisibilityGate()?.acquire(OverlayHideReason.OBSERVATION)
-        } else {
-            null
-        }
         try {
             block()
             coordinator.finishToolCall(callId, terminalStatus)
         } catch (error: Throwable) {
             coordinator.finishToolCall(callId, DhdToolCallStatus.FAILED)
             throw error
-        } finally {
-            visibilityToken?.close()
         }
     }
 

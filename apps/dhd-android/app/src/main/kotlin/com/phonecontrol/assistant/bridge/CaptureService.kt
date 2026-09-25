@@ -68,13 +68,4 @@ internal class CaptureService(
         }
         return last
     }
-
-    private fun observationFailureCode(message: String): String =
-        if (message.contains("Wireless Debugging", ignoreCase = true) ||
-            message.contains("DHD could not execute", ignoreCase = true)
-        ) {
-            BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE
-        } else {
-            BridgeErrorCodes.OBSERVATION_FAILED
-        }
 }
