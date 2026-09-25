@@ -44,6 +44,7 @@ import {
   serviceTierForFastMode,
 } from "./settings.js";
 import { TurnCompletion, type TurnResult } from "./turn-completion.js";
+import { SingleFlight } from "../shared/single-flight.js";
 
 const MAX_STEER_CHARS = 4_000;
 
@@ -64,7 +65,7 @@ export class CodexAppServerClient {
     onRequest: (message) => void this.handleServerRequest(message),
     onNotification: (message) => this.handleNotification(message),
   });
-  private startPromise: Promise<void> | null = null;
+  private readonly startup = new SingleFlight<void>();
   private initialized = false;
   private loadedThreadIds = new Set<string>();
   private readonly codexHome = codexHomeDirectory();
@@ -113,40 +114,35 @@ export class CodexAppServerClient {
       timing?.log("connection:reuse", `pid=${this.child.pid ?? "?"}`);
       return;
     }
-    if (this.startPromise) return this.startPromise;
+    return this.startup.run(() =>
+      this.startAndInitialize(timing ?? new PhaseTimer("codex-connection")),
+    );
+  }
 
-    const logger = timing ?? new PhaseTimer("codex-connection");
-    this.startPromise = (async () => {
-      if (this.child) await this.stopProcess();
-      logger.log(
-        "spawn:start",
-        `cwd=${this.runtimeCwd} codexHome=${this.codexHome}`,
-      );
-      this.startProcess();
-      logger.log("spawn:complete", `pid=${this.child?.pid ?? "?"}`);
-      logger.log("initialize:start");
-      try {
-        await this.rpc.request("initialize", {
-          clientInfo: {
-            name: "dhd-phone-assistant",
-            title: "DHD phone assistant",
-            version: "0.1.0",
-          },
-          capabilities: { experimentalApi: true },
-        });
-        this.rpc.notify("initialized", {});
-        this.initialized = true;
-        logger.log("initialize:complete");
-      } catch (error) {
-        await this.stopProcess();
-        throw error;
-      }
-    })();
-
+  private async startAndInitialize(logger: PhaseTimer): Promise<void> {
+    if (this.child) await this.stopProcess();
+    logger.log(
+      "spawn:start",
+      `cwd=${this.runtimeCwd} codexHome=${this.codexHome}`,
+    );
+    this.startProcess();
+    logger.log("spawn:complete", `pid=${this.child?.pid ?? "?"}`);
+    logger.log("initialize:start");
     try {
-      await this.startPromise;
-    } finally {
-      this.startPromise = null;
+      await this.rpc.request("initialize", {
+        clientInfo: {
+          name: "dhd-phone-assistant",
+          title: "DHD phone assistant",
+          version: "0.1.0",
+        },
+        capabilities: { experimentalApi: true },
+      });
+      this.rpc.notify("initialized", {});
+      this.initialized = true;
+      logger.log("initialize:complete");
+    } catch (error) {
+      await this.stopProcess();
+      throw error;
     }
   }
 

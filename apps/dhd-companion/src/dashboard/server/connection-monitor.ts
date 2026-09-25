@@ -12,6 +12,7 @@ import {
   requestStatusWithRetry,
   statusCheckError,
 } from "./status-check.js";
+import { SingleFlight } from "../../shared/single-flight.js";
 
 const BRIDGE_CHECK_TOTAL_TIMEOUT_MS = 15_000;
 const PAIRED_DIRECT_CHECK_TIMEOUT_MS = 2_000;
@@ -27,7 +28,7 @@ export interface ConnectionCheckOptions {
 }
 
 export class ConnectionMonitor {
-  private bridgeCheckInFlight: Promise<BridgeCheckResult> | undefined;
+  private readonly bridgeCheck = new SingleFlight<BridgeCheckResult>();
   private lastAutomaticRediscoveryAt = 0;
   private heartbeatRetryAt = 0;
   private heartbeatFailureCount = 0;
@@ -40,26 +41,14 @@ export class ConnectionMonitor {
   constructor(private readonly dashboard: CompanionDashboard) {}
 
   get checkInFlight(): Promise<BridgeCheckResult> | undefined {
-    return this.bridgeCheckInFlight;
+    return this.bridgeCheck.inFlight;
   }
 
   checkConnection(options: ConnectionCheckOptions = {}): Promise<BridgeCheckResult> {
     // Startup, the heartbeat, and the initial page load can all ask for the same
     // probe. Share one operation so an older failure cannot
     // overwrite a newer success or produce a misleading red toast.
-    if (this.bridgeCheckInFlight) return this.bridgeCheckInFlight;
-
-    const operation = this.performConnectionCheck(options);
-    this.bridgeCheckInFlight = operation;
-    void operation.then(
-      () => {
-        if (this.bridgeCheckInFlight === operation) this.bridgeCheckInFlight = undefined;
-      },
-      () => {
-        if (this.bridgeCheckInFlight === operation) this.bridgeCheckInFlight = undefined;
-      }
-    );
-    return operation;
+    return this.bridgeCheck.run(() => this.performConnectionCheck(options));
   }
 
   resetHeartbeatRetry(): void {
@@ -108,7 +97,7 @@ export class ConnectionMonitor {
     // begins. Let it finish before sending the release so its authenticated
     // request cannot arrive after the release and immediately make the phone
     // connected.
-    const inFlightCheck = this.bridgeCheckInFlight;
+    const inFlightCheck = this.bridgeCheck.inFlight;
     if (inFlightCheck && inFlightCheck !== checkToIgnore) await inFlightCheck.catch(() => {});
 
     try {
@@ -137,7 +126,7 @@ export class ConnectionMonitor {
         return;
       }
       if (state.processStatus !== "running") return;
-      if (this.bridgeCheckInFlight) return;
+      if (this.bridgeCheck.inFlight) return;
       if (!state.connection.token) return;
       if (Date.now() < this.heartbeatRetryAt) return;
       try {

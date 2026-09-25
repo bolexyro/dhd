@@ -15,6 +15,7 @@ import {
   remainingCheckTime,
   requestStatusWithRetry,
 } from "./status-check.js";
+import { SingleFlight } from "../../shared/single-flight.js";
 
 const PHONE_DISCOVERY_TIMEOUT_MS = DEFAULT_PHONE_DISCOVERY_TIMEOUT_MS;
 
@@ -31,20 +32,13 @@ function targetHasSavedPairing(target: ConnectionConfig, deviceId: string): bool
 }
 
 export class PairingService {
-  private phoneDiscoveryInFlight: Promise<DiscoveredPhone[]> | undefined;
+  private readonly phoneDiscovery = new SingleFlight<DiscoveredPhone[]>();
   private connectionTransitionInFlight: Promise<CompanionState> | undefined;
 
   constructor(private readonly dashboard: CompanionDashboard) {}
 
-  async discoverPhonesOnNetwork(timeoutMs = PHONE_DISCOVERY_TIMEOUT_MS): Promise<DiscoveredPhone[]> {
-    if (this.phoneDiscoveryInFlight) return this.phoneDiscoveryInFlight;
-    const operation = discoverPhones({ timeoutMs });
-    this.phoneDiscoveryInFlight = operation;
-    try {
-      return await operation;
-    } finally {
-      if (this.phoneDiscoveryInFlight === operation) this.phoneDiscoveryInFlight = undefined;
-    }
+  discoverPhonesOnNetwork(timeoutMs = PHONE_DISCOVERY_TIMEOUT_MS): Promise<DiscoveredPhone[]> {
+    return this.phoneDiscovery.run(() => discoverPhones({ timeoutMs }));
   }
 
   async rediscoverPairedDevice(
