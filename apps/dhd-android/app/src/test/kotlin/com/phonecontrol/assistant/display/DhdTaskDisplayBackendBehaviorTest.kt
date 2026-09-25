@@ -100,6 +100,7 @@ private fun nativeSession(
 )
 
 private class FakeTaskDisplayPlatform : TaskDisplayPlatform {
+    override var sdkInt = 36
     val fullSizePackages = mutableSetOf<String>()
     val rotations = mutableMapOf<Int, Int>()
 
@@ -207,6 +208,30 @@ class DhdTaskDisplayBackendBehaviorTest {
         backend.create("run-1", SHOP)
         val duplicate = runCatching { backend.create("run-1", SHOP) }.exceptionOrNull()
         assertEquals("The task display session is already active.", duplicate?.message)
+    }
+
+    @Test
+    fun `create on a phone without android 16 explains the requirement without asking the daemon`() = runTest {
+        val backend = backend()
+        platform.sdkInt = 35
+
+        val failure = runCatching { backend.create("run-1", SHOP) }.exceptionOrNull()
+
+        assertTrue(failure is DhdTaskDisplayBackend.TaskDisplayException)
+        assertEquals(
+            "DHD task displays currently require Android 16 (API 36). This phone runs Android API 35.",
+            failure?.message,
+        )
+        assertEquals(emptyList<Pair<String, DhdVirtualDisplaySpec>>(), native.created)
+    }
+
+    @Test
+    fun `task displays are supported on android 16 only`() {
+        assertEquals(null, taskDisplayUnsupportedReason(36))
+        assertEquals(
+            "DHD task displays currently require Android 16 (API 36). This phone runs Android API 37.",
+            taskDisplayUnsupportedReason(37),
+        )
     }
 
     @Test

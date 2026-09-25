@@ -2,9 +2,11 @@ package com.phonecontrol.assistant.display
 
 import android.content.Context
 import android.hardware.display.DisplayManager
+import android.os.Build
 import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
 
 internal interface TaskDisplayPlatform {
+    val sdkInt: Int
     fun isFullSizeLayoutEnabled(packageName: String): Boolean
     fun displayRotation(displayId: Int): Int?
     fun hasLaunchIntent(packageName: String): Boolean
@@ -14,6 +16,9 @@ internal class AndroidTaskDisplayPlatform(
     private val appContext: Context,
     private val layoutPreferences: TaskDisplayLayoutPreferences,
 ) : TaskDisplayPlatform {
+    override val sdkInt: Int
+        get() = Build.VERSION.SDK_INT
+
     override fun isFullSizeLayoutEnabled(packageName: String): Boolean =
         layoutPreferences.isFullSizeLayoutEnabled(packageName)
 

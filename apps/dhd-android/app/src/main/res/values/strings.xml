@@ -79,6 +79,7 @@
     <string name="recovery_dhd_needs_your_attention">DHD needs your attention</string>
     <string name="recovery_instructions">Instructions</string>
     <string name="recovery_view_instructions">View instructions</string>
+    <string name="settings_task_displays_need_android_16">Phone access is active · task displays need Android 16 (API 36)</string>
     <string name="settings_version_summary">%1$s • Android SDK %2$d</string>
     <string name="settings_about">About</string>
     <string name="settings_allow_access_to_all_installed_apps">Allow access to all installed apps</string>

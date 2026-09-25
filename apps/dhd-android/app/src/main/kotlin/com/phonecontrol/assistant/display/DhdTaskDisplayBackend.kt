@@ -169,6 +169,7 @@ class DhdTaskDisplayBackend internal constructor(
             if (bindings.isCancelled(sessionKey)) {
                 throw TaskDisplayException("The task display session was stopped before creation.")
             }
+            taskDisplayUnsupportedReason(platform.sdkInt)?.let { reason -> throw TaskDisplayException(reason) }
             stateLock.withLock {
                 if (sessions.containsKey(sessionKey)) {
                     throw TaskDisplayException("The task display session is already active.")

@@ -48,6 +48,7 @@ import com.phonecontrol.assistant.adb.DeveloperConnectionState
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
+import com.phonecontrol.assistant.display.taskDisplayUnsupportedReason
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.ui.components.CircleIconButton
 import com.phonecontrol.assistant.ui.components.SettingsCard
@@ -317,7 +318,11 @@ fun SettingsScreen(
                             SettingsRow(
                                 title = stringResource(R.string.settings_dhd_phone_access),
                                 subtitle = when (developerStatus.state) {
-                                    DeveloperConnectionState.READY -> "Phone access is active"
+                                    DeveloperConnectionState.READY -> if (taskDisplayUnsupportedReason(Build.VERSION.SDK_INT) != null) {
+                                        stringResource(R.string.settings_task_displays_need_android_16)
+                                    } else {
+                                        "Phone access is active"
+                                    }
                                     DeveloperConnectionState.CONNECTING,
                                     DeveloperConnectionState.CHECKING -> "Connecting phone access automatically…"
 
