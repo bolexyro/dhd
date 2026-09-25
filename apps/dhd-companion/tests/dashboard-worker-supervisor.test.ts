@@ -40,14 +40,14 @@ vi.mock("node:child_process", async () => {
   };
 });
 
-vi.mock("../src/pairing.js", async () => {
-  const actual = await vi.importActual<typeof import("../src/pairing.js")>("../src/pairing.js");
+vi.mock("../src/phone/pairing.js", async () => {
+  const actual = await vi.importActual<typeof import("../src/phone/pairing.js")>("../src/phone/pairing.js");
   return { ...actual, discoverPhones: discoverPhonesMock, requestPairingApproval: requestPairingApprovalMock };
 });
 
-vi.mock("../src/phone-assistant-bridge.js", async () => {
-  const actual = await vi.importActual<typeof import("../src/phone-assistant-bridge.js")>(
-    "../src/phone-assistant-bridge.js",
+vi.mock("../src/phone/bridge-client.js", async () => {
+  const actual = await vi.importActual<typeof import("../src/phone/bridge-client.js")>(
+    "../src/phone/bridge-client.js",
   );
   return { ...actual, requestBridge: requestBridgeMock };
 });

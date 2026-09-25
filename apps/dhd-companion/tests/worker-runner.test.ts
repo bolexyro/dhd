@@ -8,9 +8,9 @@ const bridge = vi.hoisted(() => ({
   calls: [] as Array<{ request: Record<string, unknown>; options: unknown }>,
 }));
 
-vi.mock("../src/phone-assistant-bridge.js", async () => {
-  const actual = await vi.importActual<typeof import("../src/phone-assistant-bridge.js")>(
-    "../src/phone-assistant-bridge.js",
+vi.mock("../src/phone/bridge-client.js", async () => {
+  const actual = await vi.importActual<typeof import("../src/phone/bridge-client.js")>(
+    "../src/phone/bridge-client.js",
   );
   return {
     ...actual,

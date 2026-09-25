@@ -43,7 +43,7 @@ import {
   isLoopbackBridgeHost,
   requestBridge,
   type BridgeMessage,
-} from "./phone-assistant-bridge.js";
+} from "./phone/bridge-client.js";
 import { errorMessage, toError } from "./shared/errors.js";
 import { asRecord } from "./shared/guards.js";
 import { isMainModule } from "./shared/is-main-module.js";

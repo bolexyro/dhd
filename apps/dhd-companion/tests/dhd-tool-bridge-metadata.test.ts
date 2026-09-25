@@ -5,7 +5,7 @@ const bridge = vi.hoisted(() => ({
   requestBridge: vi.fn(async () => ({ type: "completed", ok: true }))
 }));
 
-vi.mock("../src/phone-assistant-bridge.js", () => bridge);
+vi.mock("../src/phone/bridge-client.js", () => bridge);
 
 import { invokeDhdTool } from "../src/dhd-tools.js";
 

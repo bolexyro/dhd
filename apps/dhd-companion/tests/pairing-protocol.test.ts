@@ -3,7 +3,7 @@ import { hostname } from "node:os";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { discoverPhones, requestPairingApproval, type DiscoveredPhone } from "../src/pairing.js";
+import { discoverPhones, requestPairingApproval, type DiscoveredPhone } from "../src/phone/pairing.js";
 
 interface ReceivedDatagram {
   text: string;

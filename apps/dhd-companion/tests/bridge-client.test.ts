@@ -16,7 +16,7 @@ import {
   parsePort,
   requestBridge,
   type BridgeRequest,
-} from "../src/phone-assistant-bridge.js";
+} from "../src/phone/bridge-client.js";
 
 afterEach(() => {
   vi.useRealTimers();

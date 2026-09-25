@@ -2,7 +2,7 @@ import dgram from "node:dgram";
 import { randomUUID } from "node:crypto";
 import { hostname, networkInterfaces } from "node:os";
 import net from "node:net";
-import { isRecord } from "./shared/guards.js";
+import { isRecord } from "../shared/guards.js";
 
 export const PAIRING_PROTOCOL_VERSION = 1;
 export const PAIRING_DISCOVERY_PORT = 8766;

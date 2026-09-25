@@ -40,7 +40,7 @@ vi.mock("node:net", () => ({
   },
 }));
 
-const { requestBridge } = await import("../src/phone-assistant-bridge.js");
+const { requestBridge } = await import("../src/phone/bridge-client.js");
 
 afterEach(() => {
   vi.useRealTimers();

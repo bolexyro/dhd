@@ -23,13 +23,13 @@ import {
   parsePort,
   requestBridge,
   type BridgeMessage
-} from "../phone-assistant-bridge.js";
+} from "../phone/bridge-client.js";
 import {
   DEFAULT_PHONE_DISCOVERY_TIMEOUT_MS,
   discoverPhones,
   requestPairingApproval,
   type DiscoveredPhone,
-} from "../pairing.js";
+} from "../phone/pairing.js";
 import type {
   BridgeCheckResult,
   BridgeStatus,

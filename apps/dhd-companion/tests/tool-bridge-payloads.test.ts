@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const requestBridgeMock = vi.hoisted(() => vi.fn(async () => ({ type: "completed", ok: true })));
 
-vi.mock("../src/phone-assistant-bridge.js", async () => {
-  const actual = await vi.importActual<typeof import("../src/phone-assistant-bridge.js")>(
-    "../src/phone-assistant-bridge.js",
+vi.mock("../src/phone/bridge-client.js", async () => {
+  const actual = await vi.importActual<typeof import("../src/phone/bridge-client.js")>(
+    "../src/phone/bridge-client.js",
   );
   return { ...actual, requestBridge: requestBridgeMock };
 });

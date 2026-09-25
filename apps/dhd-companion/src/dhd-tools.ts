@@ -9,7 +9,7 @@ import {
   BLOCKING_BRIDGE_TIMEOUT_MS,
   requestBridge,
   type BridgeMessage,
-} from "./phone-assistant-bridge.js";
+} from "./phone/bridge-client.js";
 import {
   DHD_ACTION_TYPES,
   DHD_KEYPRESS_KEYS,

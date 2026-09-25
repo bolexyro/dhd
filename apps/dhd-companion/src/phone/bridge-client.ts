@@ -1,5 +1,5 @@
 import net from "node:net";
-import { bridgeHostSetting, bridgePortSetting, bridgeTokenSetting } from "./config/env.js";
+import { bridgeHostSetting, bridgePortSetting, bridgeTokenSetting } from "../config/env.js";
 
 export const DEFAULT_BRIDGE_HOST = "127.0.0.1";
 export const DEFAULT_BRIDGE_PORT = 8765;
