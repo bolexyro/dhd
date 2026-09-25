@@ -63,6 +63,9 @@ import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.ui.components.CircleIconButton
 import com.phonecontrol.assistant.ui.components.FullAccessConfirmDialog
+import com.phonecontrol.assistant.ui.components.SettingsCard
+import com.phonecontrol.assistant.ui.components.SettingsRow
+import com.phonecontrol.assistant.ui.components.SettingsRowIcon
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.assistantSwitchColors
 
@@ -239,44 +242,12 @@ fun ApprovedAppsScreen(
             // Full Access Section
             item {
                 SettingsSectionHeader("Global access")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = colors.settingsCard,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                SettingsCard {
+                    SettingsRow(
+                        title = "Full access",
+                        subtitle = "Allow access to all installed apps",
+                        leading = { SettingsRowIcon(R.drawable.ic_apps, "Apps") },
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_apps),
-                            contentDescription = "Apps",
-                            tint = colors.textPrimary,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 14.dp),
-                        ) {
-                            Text(
-                                text = "Full access",
-                                fontWeight = FontWeight.Medium,
-                                color = colors.textPrimary,
-                                fontSize = 15.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = "Allow access to all installed apps",
-                                fontSize = 12.sp,
-                                color = colors.textSecondary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
                         Switch(
                             checked = isFullAccess,
                             onCheckedChange = { checked ->
@@ -305,11 +276,7 @@ fun ApprovedAppsScreen(
                     )
                 } else {
                     // Continuous joined card container for all apps with black dividers
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = colors.settingsCard,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
+                    SettingsCard {
                         Column {
                             filteredApps.forEachIndexed { index, app ->
                                 val enabled = if (isFullAccess) true else (app.packageName in enabledPackages)

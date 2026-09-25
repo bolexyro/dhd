@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,7 +22,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -41,7 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
@@ -51,6 +47,11 @@ import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.ui.components.CircleIconButton
+import com.phonecontrol.assistant.ui.components.SettingsCard
+import com.phonecontrol.assistant.ui.components.SettingsChevron
+import com.phonecontrol.assistant.ui.components.SettingsRow
+import com.phonecontrol.assistant.ui.components.SettingsRowIcon
+import com.phonecontrol.assistant.ui.components.SettingsSetUpAction
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningMeterIcon
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.ThemeMode
@@ -118,48 +119,17 @@ fun SettingsScreen(
             // Preferences Section
             item {
                 SettingsSectionHeader("Preferences")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = colors.settingsCard,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                SettingsCard {
                     Column {
                         // Appearance Selector Row (with DropdownMenu anchored to right side)
-                        Row(
+                        SettingsRow(
+                            title = "Appearance",
+                            subtitle = themeMode.label,
+                            leading = { SettingsRowIcon(R.drawable.ic_sun, "Appearance") },
                             modifier = Modifier
-                                .fillMaxWidth()
                                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                                .clickable { isAppearanceMenuOpen = true }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                .clickable { isAppearanceMenuOpen = true },
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_sun),
-                                contentDescription = "Appearance",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(22.dp),
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 14.dp),
-                            ) {
-                                Text(
-                                    text = "Appearance",
-                                    fontWeight = FontWeight.Medium,
-                                    color = colors.textPrimary,
-                                    fontSize = 15.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = themeMode.label,
-                                    fontSize = 12.sp,
-                                    color = colors.textSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
                             Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
                                 Icon(
                                     painter = painterResource(if (isAppearanceMenuOpen) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down),
@@ -212,39 +182,18 @@ fun SettingsScreen(
                         HorizontalDivider(thickness = 2.dp, color = colors.cardDivider)
 
                         // Reasoning Levels Selector Row (with multi-select DropdownMenu anchored to right side)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { isReasoningMenuOpen = true }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        SettingsRow(
+                            title = "Reasoning levels",
+                            subtitle = "${visibleReasoningEfforts.size} of ${ReasoningEffort.entries.size} enabled",
+                            leading = {
+                                ReasoningMeterIcon(
+                                    effort = ReasoningEffort.default,
+                                    tint = colors.textPrimary,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            },
+                            modifier = Modifier.clickable { isReasoningMenuOpen = true },
                         ) {
-                            ReasoningMeterIcon(
-                                effort = ReasoningEffort.default,
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(22.dp),
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 14.dp),
-                            ) {
-                                Text(
-                                    text = "Reasoning levels",
-                                    fontWeight = FontWeight.Medium,
-                                    color = colors.textPrimary,
-                                    fontSize = 15.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = "${visibleReasoningEfforts.size} of ${ReasoningEffort.entries.size} enabled",
-                                    fontSize = 12.sp,
-                                    color = colors.textSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
                             Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
                                 Icon(
                                     painter = painterResource(if (isReasoningMenuOpen) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down),
@@ -302,47 +251,15 @@ fun SettingsScreen(
                         HorizontalDivider(thickness = 2.dp, color = colors.cardDivider)
 
                         // Approved Apps Row
-                        Row(
+                        SettingsRow(
+                            title = "Approved apps",
+                            subtitle = if (isFullAccess) "Full access enabled" else "$enabledCount of ${apps.size} enabled",
+                            leading = { SettingsRowIcon(R.drawable.ic_apps, "Approved Apps") },
                             modifier = Modifier
-                                .fillMaxWidth()
                                 .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
-                                .clickable { onOpenApprovedApps() }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                .clickable { onOpenApprovedApps() },
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_apps),
-                                contentDescription = "Approved Apps",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(22.dp),
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 14.dp),
-                            ) {
-                                Text(
-                                    text = "Approved apps",
-                                    fontWeight = FontWeight.Medium,
-                                    color = colors.textPrimary,
-                                    fontSize = 15.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = if (isFullAccess) "Full access enabled" else "$enabledCount of ${apps.size} enabled",
-                                    fontSize = 12.sp,
-                                    color = colors.textSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                            Icon(
-                                painter = painterResource(R.drawable.ic_chevron_right),
-                                contentDescription = "Open Approved Apps",
-                                tint = colors.textSecondary,
-                                modifier = Modifier.size(18.dp),
-                            )
+                            SettingsChevron("Open Approved Apps")
                         }
                     }
                 }
@@ -351,51 +268,20 @@ fun SettingsScreen(
             // Integrations & System Section
             item {
                 SettingsSectionHeader("Integrations")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = colors.settingsCard,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                SettingsCard {
                     Column {
                         // Display-over-other-apps overlay
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSetOverlayEnabled(!overlayEnabled) }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        SettingsRow(
+                            title = "Display over other apps",
+                            subtitle = if (overlayPermissionGranted) {
+                                "Floating DHD bubble is ${if (overlayEnabled) "available" else "off"}"
+                            } else {
+                                "Permission required"
+                            },
+                            leading = { SettingsRowIcon(R.drawable.ic_bot, "Display over other apps") },
+                            modifier = Modifier.clickable { onSetOverlayEnabled(!overlayEnabled) },
+                            subtitleColor = if (!overlayPermissionGranted) colors.accentBlue else colors.textSecondary,
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_bot),
-                                contentDescription = "Display over other apps",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(22.dp),
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 14.dp),
-                            ) {
-                                Text(
-                                    text = "Display over other apps",
-                                    fontWeight = FontWeight.Medium,
-                                    color = colors.textPrimary,
-                                    fontSize = 15.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = if (overlayPermissionGranted) {
-                                        "Floating DHD bubble is ${if (overlayEnabled) "available" else "off"}"
-                                    } else {
-                                        "Permission required"
-                                    },
-                                    fontSize = 12.sp,
-                                    color = if (!overlayPermissionGranted) colors.accentBlue else colors.textSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
                             Switch(
                                 checked = overlayEnabled,
                                 onCheckedChange = onSetOverlayEnabled,
@@ -409,55 +295,15 @@ fun SettingsScreen(
                         // Connection instructions are only useful while the companion is offline.
                         if (!companionConnected) {
                             HorizontalDivider(thickness = 2.dp, color = colors.cardDivider)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onOpenCompanion() }
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                            SettingsRow(
+                                title = "Connect desktop companion",
+                                subtitle = "View connection instructions",
+                                leading = {
+                                    SettingsRowIcon(R.drawable.ic_laptop, "Desktop companion connection instructions")
+                                },
+                                modifier = Modifier.clickable { onOpenCompanion() },
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_laptop),
-                                    contentDescription = "Desktop companion connection instructions",
-                                    tint = colors.textPrimary,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(start = 14.dp),
-                                ) {
-                                    Text(
-                                        text = "Connect desktop companion",
-                                        fontWeight = FontWeight.Medium,
-                                        color = colors.textPrimary,
-                                        fontSize = 15.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    Text(
-                                        text = "View connection instructions",
-                                        fontSize = 12.sp,
-                                        color = colors.textSecondary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "Set up",
-                                        color = colors.textSecondary,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.padding(end = 4.dp),
-                                    )
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = "Open connection instructions",
-                                        tint = colors.textSecondary,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
+                                SettingsSetUpAction("Open connection instructions")
                             }
                         }
 
@@ -465,79 +311,39 @@ fun SettingsScreen(
                             HorizontalDivider(thickness = 2.dp, color = colors.cardDivider)
 
                             // DHD local phone connection row
-                            Row(
+                            SettingsRow(
+                                title = "DHD phone access",
+                                subtitle = when (developerStatus.state) {
+                                    DeveloperConnectionState.READY -> "Phone access is active"
+                                    DeveloperConnectionState.CONNECTING,
+                                    DeveloperConnectionState.CHECKING -> "Connecting phone access automatically…"
+
+                                    DeveloperConnectionState.PAIRING_REQUIRED -> if (developerStatus.paired) {
+                                        "Phone access needed; view the steps to reconnect"
+                                    } else {
+                                        "Set up phone access once"
+                                    }
+
+                                    DeveloperConnectionState.PAIRING_SEARCHING -> "Listening for the pairing service…"
+                                    DeveloperConnectionState.PAIRING_SERVICE_FOUND -> "Check the DHD notification"
+                                    DeveloperConnectionState.WIRELESS_DEBUGGING_OFF -> "Phone access needed; view the steps to reconnect"
+                                    DeveloperConnectionState.UNSUPPORTED -> "DHD needs Android 11+ for phone access"
+                                    DeveloperConnectionState.ERROR -> if (developerStatus.paired) {
+                                        "Phone access needed; view the steps to reconnect"
+                                    } else {
+                                        "Set up phone access once"
+                                    }
+                                },
+                                leading = { SettingsRowIcon(R.drawable.ic_terminal, "Wireless Debugging") },
                                 modifier = Modifier
-                                    .fillMaxWidth()
                                     .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
                                     .clickable(enabled = developerStatus.state != DeveloperConnectionState.UNSUPPORTED) {
                                         onOpenPairing()
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                    },
+                                subtitleMaxLines = 2,
+                                subtitleLineHeight = 17.sp,
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_terminal),
-                                    contentDescription = "Wireless Debugging",
-                                    tint = colors.textPrimary,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(start = 14.dp),
-                                ) {
-                                    Text(
-                                        text = "DHD phone access",
-                                        fontWeight = FontWeight.Medium,
-                                        color = colors.textPrimary,
-                                        fontSize = 15.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    Text(
-                                        text = when (developerStatus.state) {
-                                            DeveloperConnectionState.READY -> "Phone access is active"
-                                            DeveloperConnectionState.CONNECTING,
-                                            DeveloperConnectionState.CHECKING -> "Connecting phone access automatically…"
-
-                                            DeveloperConnectionState.PAIRING_REQUIRED -> if (developerStatus.paired) {
-                                                "Phone access needed; view the steps to reconnect"
-                                            } else {
-                                                "Set up phone access once"
-                                            }
-
-                                            DeveloperConnectionState.PAIRING_SEARCHING -> "Listening for the pairing service…"
-                                            DeveloperConnectionState.PAIRING_SERVICE_FOUND -> "Check the DHD notification"
-                                            DeveloperConnectionState.WIRELESS_DEBUGGING_OFF -> "Phone access needed; view the steps to reconnect"
-                                            DeveloperConnectionState.UNSUPPORTED -> "DHD needs Android 11+ for phone access"
-                                            DeveloperConnectionState.ERROR -> if (developerStatus.paired) {
-                                                "Phone access needed; view the steps to reconnect"
-                                            } else {
-                                                "Set up phone access once"
-                                            }
-                                        },
-                                        fontSize = 12.sp,
-                                        color = colors.textSecondary,
-                                        maxLines = 2,
-                                        lineHeight = 17.sp,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "Set up",
-                                        color = colors.textSecondary,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.padding(end = 4.dp),
-                                    )
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = "Open phone access instructions",
-                                        tint = colors.textSecondary,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
+                                SettingsSetUpAction("Open phone access instructions")
                             }
                         }
                     }
@@ -547,45 +353,12 @@ fun SettingsScreen(
             // About Section
             item {
                 SettingsSectionHeader("About")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = colors.settingsCard,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_info),
-                            contentDescription = "Version",
-                            tint = colors.textPrimary,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 14.dp),
-                        ) {
-                            Text(
-                                text = "Version",
-                                fontWeight = FontWeight.Medium,
-                                color = colors.textPrimary,
-                                fontSize = 15.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = "0.1.0 • Android SDK 35",
-                                fontSize = 12.sp,
-                                color = colors.textSecondary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+                SettingsCard {
+                    SettingsRow(
+                        title = "Version",
+                        subtitle = "0.1.0 • Android SDK 35",
+                        leading = { SettingsRowIcon(R.drawable.ic_info, "Version") },
+                    )
                 }
             }
         }
