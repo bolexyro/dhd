@@ -48,9 +48,13 @@ class ConversationRepositoryTest {
             return true
         }
 
+        var expired = false
+
         override fun expireInactiveConversation(): Boolean {
             calls += "expire"
-            return false
+            if (!expired) return false
+            deleteConversation(DHD_CONVERSATION_ID)
+            return true
         }
 
         fun write(item: TimelineItem) {
@@ -70,6 +74,20 @@ class ConversationRepositoryTest {
 
         source.write(message("before"))
         repository.deleteConversation()
+        source.write(message("after"))
+
+        assertEquals(listOf(emptyList(), listOf("before"), emptyList(), listOf("after")), seen)
+    }
+
+    @Test
+    fun `timeline keeps publishing after an inactive conversation is cleared`() = runTest(UnconfinedTestDispatcher()) {
+        val source = CachingSource().apply { expired = true }
+        val repository = ConversationRepository(source)
+        val seen = mutableListOf<List<String>>()
+        backgroundScope.launch { repository.timeline.collect { items -> seen += items.map(TimelineItem::id) } }
+
+        source.write(message("before"))
+        assertTrue(repository.expireInactiveConversation())
         source.write(message("after"))
 
         assertEquals(listOf(emptyList(), listOf("before"), emptyList(), listOf("after")), seen)

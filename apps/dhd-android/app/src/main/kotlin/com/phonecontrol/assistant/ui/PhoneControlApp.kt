@@ -164,8 +164,8 @@ fun PhoneControlApp(
     val container = (context.applicationContext as PhoneControlApplication).container
     val coordinator = container.sessionCoordinator
     val coordinatorState by coordinator.state.collectAsState()
-    val conversationStore = container.conversationStore
-    val showConversationExpiryPrompt by conversationStore.conversationExpiryPrompt.collectAsState()
+    val conversationRepository = container.conversationRepository
+    val showConversationExpiryPrompt by conversationRepository.conversationExpiryPrompt.collectAsState()
     val permissions = container.appPermissionRepository
     val developerModeController = container.phoneAccessController
     val developerStatus by developerModeController.status.collectAsState()
@@ -367,8 +367,8 @@ fun PhoneControlApp(
 
                 if (showConversationExpiryPrompt) {
                     ConversationExpiryDialog(
-                        onKeep = { conversationStore.keepInactiveConversation() },
-                        onClear = { conversationStore.expireInactiveConversation() },
+                        onKeep = { conversationRepository.keepInactiveConversation() },
+                        onClear = { conversationRepository.expireInactiveConversation() },
                     )
                 }
                 }

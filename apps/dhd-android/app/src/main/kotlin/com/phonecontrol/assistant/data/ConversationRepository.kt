@@ -51,9 +51,7 @@ class ConversationRepository internal constructor(private val source: Conversati
         .distinctUntilChanged()
 
     fun deleteConversation(conversationId: String = DHD_CONVERSATION_ID): Boolean =
-        source.deleteConversation(conversationId).also {
-            timelineGeneration.update { generation -> generation + 1 }
-        }
+        source.deleteConversation(conversationId).also { refreshTimeline() }
 
     fun promptForInactiveConversation(): Boolean = source.promptForInactiveConversation()
 
@@ -63,5 +61,10 @@ class ConversationRepository internal constructor(private val source: Conversati
 
     fun keepInactiveConversation(): Boolean = source.keepInactiveConversation()
 
-    fun expireInactiveConversation(): Boolean = source.expireInactiveConversation()
+    fun expireInactiveConversation(): Boolean =
+        source.expireInactiveConversation().also { expired -> if (expired) refreshTimeline() }
+
+    private fun refreshTimeline() {
+        timelineGeneration.update { generation -> generation + 1 }
+    }
 }
