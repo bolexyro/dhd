@@ -5,6 +5,7 @@ import { errorMessage } from "../../shared/errors.js";
 import type { CompanionDashboard } from "./dashboard.js";
 import { discoveredPhoneSnapshot } from "./pairing-service.js";
 import { readRequestBody } from "./request-body.js";
+import { isTrustedDashboardRequest } from "./request-guard.js";
 import { serveStaticFile, staticAssetFor } from "./static.js";
 
 const TOOL_IMAGE_PATH = /^\/api\/tool-calls\/([^/]+)\/images\/(\d+)$/;
@@ -138,12 +139,13 @@ async function handleRequest(
   }
   const pathname = url.pathname;
 
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (!isTrustedDashboardRequest(req)) {
+    writeText(res, 403, "Forbidden");
+    return;
+  }
 
   if (req.method === "OPTIONS") {
-    res.writeHead(204);
+    res.writeHead(204, { "Allow": "GET, POST, OPTIONS" });
     res.end();
     return;
   }

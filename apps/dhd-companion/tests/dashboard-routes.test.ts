@@ -20,11 +20,11 @@ vi.mock("../src/phone/bridge-client.js", async () => {
 const { companionDashboard } = await import("../src/dashboard/server/dashboard.js");
 const { createCompanionWebServer } = await import("../src/dashboard/server/routes.js");
 
-const corsHeaders = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET, POST, OPTIONS",
-  "access-control-allow-headers": "Content-Type",
-};
+const corsHeaderNames = [
+  "access-control-allow-origin",
+  "access-control-allow-methods",
+  "access-control-allow-headers",
+];
 
 const noCacheHeaders = {
   "cache-control": "no-cache, no-store, must-revalidate",
@@ -68,17 +68,50 @@ function headersOf(response: Response, names: string[]): Record<string, string |
   return Object.fromEntries(names.map((name) => [name, response.headers.get(name)]));
 }
 
-function expectCors(response: Response): void {
-  expect(headersOf(response, Object.keys(corsHeaders))).toEqual(corsHeaders);
+function expectNoCors(response: Response): void {
+  expect(headersOf(response, corsHeaderNames)).toEqual(
+    Object.fromEntries(corsHeaderNames.map((name) => [name, null])),
+  );
 }
 
 describe("dashboard route contract", () => {
-  it("answers preflight requests without a body", async () => {
+  it("answers same-origin preflight requests without granting cross-origin access", async () => {
     const response = await fetch(`${baseUrl}/api/check`, { method: "OPTIONS" });
 
     expect(response.status).toBe(204);
+    expect(response.headers.get("allow")).toBe("GET, POST, OPTIONS");
     expect(await response.text()).toBe("");
-    expectCors(response);
+    expectNoCors(response);
+  });
+
+  it.each([
+    ["a foreign host", { Host: "attacker.example" }],
+    ["a loopback host on another port", { Host: "127.0.0.1:1" }],
+    ["a foreign origin", { Origin: "http://attacker.example" }],
+    ["an opaque origin", { Origin: "null" }],
+  ])("rejects a request from %s", async (_label, headers) => {
+    const { port } = server.address() as AddressInfo;
+    const response = await rawRequest([
+      "POST /api/clear-logs HTTP/1.1",
+      ...Object.entries({ Host: `127.0.0.1:${port}`, ...headers }).map(([name, value]) => `${name}: ${value}`),
+      "Content-Length: 0",
+      "Connection: close",
+    ]);
+
+    expect(response.split("\r\n")[0]).toBe("HTTP/1.1 403 Forbidden");
+    expect(response.toLowerCase()).not.toContain("access-control-allow-origin");
+  });
+
+  it.each(["localhost", "LOCALHOST", "[::1]", "127.0.0.1"])("accepts the loopback host %s", async (hostname) => {
+    const { port } = server.address() as AddressInfo;
+    const response = await rawRequest([
+      "GET /api/state HTTP/1.1",
+      `Host: ${hostname}:${port}`,
+      `Origin: http://${hostname.toLowerCase()}:${port}`,
+      "Connection: close",
+    ]);
+
+    expect(response.split("\r\n")[0]).toBe("HTTP/1.1 200 OK");
   });
 
   it("serves the state snapshot as uncached JSON", async () => {
@@ -89,7 +122,7 @@ describe("dashboard route contract", () => {
       "content-type": "application/json",
       "cache-control": "no-store",
     });
-    expectCors(response);
+    expectNoCors(response);
     const state = await response.json();
     expect(Object.keys(state)).toEqual(
       expect.arrayContaining(["processStatus", "bridgeStatus", "settings", "logs", "toolCalls"]),
@@ -109,7 +142,7 @@ describe("dashboard route contract", () => {
       "cache-control": "no-cache",
       connection: "keep-alive",
     });
-    expectCors(response);
+    expectNoCors(response);
     const reader = response.body!.getReader();
     const { value } = await reader.read();
     const frame = new TextDecoder().decode(value);
@@ -265,7 +298,7 @@ describe("dashboard route contract", () => {
     expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).toBe("text/plain");
     expect(await response.text()).toBe("Not Found");
-    expectCors(response);
+    expectNoCors(response);
   });
 
   it("rejects a malformed Host header without crashing", async () => {
