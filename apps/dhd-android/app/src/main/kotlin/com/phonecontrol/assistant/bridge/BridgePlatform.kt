@@ -8,6 +8,8 @@ import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
 import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.session.AssistantForegroundService
 
+internal const val BRIDGE_LOG_TAG = "PhoneControlBridge"
+
 internal interface BridgePlatform {
     fun storedString(key: String): String?
     fun storeString(key: String, value: String)
