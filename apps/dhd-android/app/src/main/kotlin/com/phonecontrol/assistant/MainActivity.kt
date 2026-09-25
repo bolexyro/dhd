@@ -20,7 +20,7 @@ import androidx.compose.runtime.produceState
 import androidx.lifecycle.lifecycleScope
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.sessionIdOrNull
-import com.phonecontrol.assistant.developer.TaskPreviewState
+import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplayRecord

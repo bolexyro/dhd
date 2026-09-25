@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.display
 
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
 import com.phonecontrol.assistant.execution.TaskDisplayRecord

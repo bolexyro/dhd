@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.display
 
 import android.content.Context
 import android.hardware.display.DisplayManager

@@ -1,6 +1,6 @@
 package com.phonecontrol.assistant
 
-import com.phonecontrol.assistant.developer.TaskPreviewState
+import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.ActivityEventKind
 import com.phonecontrol.assistant.domain.TaskPointerEvent

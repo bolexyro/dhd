@@ -77,7 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import com.phonecontrol.assistant.developer.TaskPreviewState
+import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.needsAttention

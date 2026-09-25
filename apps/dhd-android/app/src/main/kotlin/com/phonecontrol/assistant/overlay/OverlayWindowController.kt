@@ -33,7 +33,7 @@ import com.phonecontrol.assistant.core.needsAttention
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
-import com.phonecontrol.assistant.developer.TaskPreviewState
+import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.session.AssistantForegroundService

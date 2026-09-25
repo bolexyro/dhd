@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.display
 
 import android.media.MediaCodec
 import java.io.ByteArrayInputStream
@@ -113,15 +113,6 @@ class DhdLivePreviewProtocolTest {
         assertEquals(100L, DhdVirtualDisplayProtocol.reconnectDelayMs(1))
         assertEquals(200L, DhdVirtualDisplayProtocol.reconnectDelayMs(2))
         assertEquals(2_000L, DhdVirtualDisplayProtocol.reconnectDelayMs(20))
-    }
-
-    @Test
-    fun `first stream preserves startup queue while reconnect resets it`() {
-        // The native encoder may have only one static keyframe available when
-        // the first TextureView surface attaches. That frame must survive the
-        // initial handshake; subsequent decoder handoffs require a fresh IDR.
-        assertEquals(false, DhdNativeDisplayService.shouldResetStreamQueue(false))
-        assertEquals(true, DhdNativeDisplayService.shouldResetStreamQueue(true))
     }
 
     @Test

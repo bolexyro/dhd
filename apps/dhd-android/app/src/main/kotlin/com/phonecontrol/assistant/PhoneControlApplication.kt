@@ -8,9 +8,9 @@ import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.adb.DhdAdbController
 import com.phonecontrol.assistant.adb.DhdAdbProcessRunner
-import com.phonecontrol.assistant.developer.DhdTaskDisplayBackend
-import com.phonecontrol.assistant.developer.PreviewSurfaceDispatcher
-import com.phonecontrol.assistant.developer.DhdVirtualDisplayManager
+import com.phonecontrol.assistant.display.DhdTaskDisplayBackend
+import com.phonecontrol.assistant.display.PreviewSurfaceDispatcher
+import com.phonecontrol.assistant.display.DhdVirtualDisplayManager
 import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.policy.PolicyEngine
 import com.phonecontrol.assistant.session.AssistantForegroundService

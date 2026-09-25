@@ -107,6 +107,15 @@ class NativeDisplayParsersTest {
     }
 
     @Test
+    fun `first stream preserves startup queue while reconnect resets it`() {
+        // The native encoder may have only one static keyframe available when
+        // the first TextureView surface attaches. That frame must survive the
+        // initial handshake; subsequent decoder handoffs require a fresh IDR.
+        assertEquals(false, DhdNativeDisplayService.shouldResetStreamQueue(false))
+        assertEquals(true, DhdNativeDisplayService.shouldResetStreamQueue(true))
+    }
+
+    @Test
     fun `display commands validate their shape before touching the platform`() {
         val service = DhdNativeDisplayService()
         fun stderr(vararg command: String): String =

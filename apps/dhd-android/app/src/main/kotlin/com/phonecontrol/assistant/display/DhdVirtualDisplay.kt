@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.display
 
 import android.content.Context
 import com.phonecontrol.assistant.adb.DhdAdbController
