@@ -1,5 +1,7 @@
 package com.phonecontrol.assistant.bridge
 
+import com.phonecontrol.assistant.bridge.protocol.ActionParser
+import com.phonecontrol.assistant.bridge.protocol.InvalidSequencePayloadException
 import com.phonecontrol.assistant.domain.ActionMetadata
 import com.phonecontrol.assistant.domain.BackAction
 import com.phonecontrol.assistant.domain.GuardRegion
@@ -41,7 +43,7 @@ class BridgeParserTest {
         .also { json -> fields.forEach { (key, value) -> json.put(key, value) } }
 
     private fun parseError(json: JSONObject): String =
-        assertThrows(IllegalArgumentException::class.java) { server.parsePhoneAction(json) }.message!!
+        assertThrows(IllegalArgumentException::class.java) { ActionParser.parsePhoneAction(json) }.message!!
 
     @Test
     fun `every supported action type parses to its typed action`() {
@@ -58,7 +60,7 @@ class BridgeParserTest {
             action("keypress", "key" to "HOME") to KeypressAction(KeypressKey.HOME, metadata),
             action("wait", "durationMs" to 1500) to WaitAction(1500L, metadata),
         )
-        cases.forEach { (json, expected) -> assertEquals(json.toString(), expected, server.parsePhoneAction(json)) }
+        cases.forEach { (json, expected) -> assertEquals(json.toString(), expected, ActionParser.parsePhoneAction(json)) }
     }
 
     @Test
@@ -73,7 +75,7 @@ class BridgeParserTest {
                 BackAction(metadata),
                 KeypressAction(KeypressKey.BACK, metadata),
                 WaitAction(1L, metadata),
-            ).map(server::wireActionName),
+            ).map(ActionParser::wireActionName),
         )
     }
 
@@ -101,18 +103,18 @@ class BridgeParserTest {
 
     @Test
     fun `missing required numeric fields fail before an action is built`() {
-        assertThrows(Exception::class.java) { server.parsePhoneAction(action("tap", "x" to 1)) }
-        assertThrows(Exception::class.java) { server.parsePhoneAction(action("wait")) }
-        assertThrows(Exception::class.java) { server.parsePhoneAction(action("type")) }
+        assertThrows(Exception::class.java) { ActionParser.parsePhoneAction(action("tap", "x" to 1)) }
+        assertThrows(Exception::class.java) { ActionParser.parsePhoneAction(action("wait")) }
+        assertThrows(Exception::class.java) { ActionParser.parsePhoneAction(action("type")) }
     }
 
     @Test
     fun `metadata is validated and trimmed`() {
         assertEquals(
             ActionMetadata(purpose = "Tap", observationId = "obs-1", targetDescription = "Cart"),
-            server.parseMetadata(metadataJson(purpose = "  Tap ", targetDescription = " Cart ", observationId = " obs-1 ")),
+            ActionParser.parseMetadata(metadataJson(purpose = "  Tap ", targetDescription = " Cart ", observationId = " obs-1 ")),
         )
-        assertEquals("", server.parseMetadata(metadataJson(observationId = null)).observationId)
+        assertEquals("", ActionParser.parseMetadata(metadataJson(observationId = null)).observationId)
         val cases = listOf(
             null to "action.metadata is required.",
             metadataJson(purpose = " ") to "metadata.purpose must be 1-240 characters.",
@@ -124,46 +126,46 @@ class BridgeParserTest {
         cases.forEach { (json, message) ->
             assertEquals(
                 message,
-                assertThrows(IllegalArgumentException::class.java) { server.parseMetadata(json) }.message,
+                assertThrows(IllegalArgumentException::class.java) { ActionParser.parseMetadata(json) }.message,
             )
         }
-        assertEquals(240, server.parseMetadata(metadataJson(purpose = "p".repeat(240))).purpose.length)
+        assertEquals(240, ActionParser.parseMetadata(metadataJson(purpose = "p".repeat(240))).purpose.length)
     }
 
     @Test
     fun `guard regions are parsed and bounded`() {
-        assertEquals(emptyList<GuardRegion>(), server.parseGuardRegions(null))
+        assertEquals(emptyList<GuardRegion>(), ActionParser.parseGuardRegions(null))
         assertEquals(
             listOf(GuardRegion(1, 2, 30, 40)),
-            server.parseGuardRegions(
+            ActionParser.parseGuardRegions(
                 JSONArray().put(JSONObject().put("left", 1).put("top", 2).put("right", 30).put("bottom", 40)),
             ),
         )
         val region = JSONObject().put("left", 0).put("top", 0).put("right", 10).put("bottom", 10)
-        assertEquals(8, server.parseGuardRegions(JSONArray(List(8) { region })).size)
+        assertEquals(8, ActionParser.parseGuardRegions(JSONArray(List(8) { region })).size)
         assertEquals(
             "At most 8 guard regions are supported.",
             assertThrows(IllegalArgumentException::class.java) {
-                server.parseGuardRegions(JSONArray(List(9) { region }))
+                ActionParser.parseGuardRegions(JSONArray(List(9) { region }))
             }.message,
         )
         assertEquals(
             "Guard region right must be greater than left",
             assertThrows(IllegalArgumentException::class.java) {
-                server.parseGuardRegions(
+                ActionParser.parseGuardRegions(
                     JSONArray().put(JSONObject().put("left", 10).put("top", 0).put("right", 10).put("bottom", 5)),
                 )
             }.message,
         )
         assertEquals(
             listOf(GuardRegion(0, 0, 10, 10)),
-            server.parseMetadata(metadataJson().put("guardRegions", JSONArray().put(region))).guardRegions,
+            ActionParser.parseMetadata(metadataJson().put("guardRegions", JSONArray().put(region))).guardRegions,
         )
     }
 
     @Test
     fun `sequence requests bind the display reference`() {
-        val request = server.parseSequenceRequest(
+        val request = ActionParser.parseSequenceRequest(
             JSONObject()
                 .put("observationId", " obs-1 ")
                 .put("displayRef", "dsp_0123456789abcd")
@@ -177,8 +179,8 @@ class BridgeParserTest {
     @Test
     fun `sequence request errors carry the failing index`() {
         fun failure(json: JSONObject): Pair<Int?, String?> =
-            assertThrows(DevBridgeServer.InvalidSequencePayloadException::class.java) {
-                server.parseSequenceRequest(json)
+            assertThrows(InvalidSequencePayloadException::class.java) {
+                ActionParser.parseSequenceRequest(json)
             }.let { it.index to it.message }
         val back = action("back").put("metadata", metadataJson(observationId = null))
         assertEquals(null to "observationId must be 1-240 characters.", failure(JSONObject().put("actions", JSONArray().put(back))))
@@ -203,7 +205,7 @@ class BridgeParserTest {
         assertEquals(
             "displayRef must match dsp_ followed by 14 lowercase hexadecimal characters.",
             assertThrows(IllegalArgumentException::class.java) {
-                server.parseSequenceRequest(
+                ActionParser.parseSequenceRequest(
                     JSONObject().put("observationId", "obs-1").put("displayRef", "DSP_0123456789ABCD").put("actions", JSONArray().put(back)),
                 )
             }.message,

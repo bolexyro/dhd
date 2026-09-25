@@ -1,6 +1,23 @@
 package com.phonecontrol.assistant.bridge
 
 import com.phonecontrol.assistant.apps.InstalledUserApp
+import com.phonecontrol.assistant.bridge.protocol.ActionParser.optionalDisplayRef
+import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseGuardRegions
+import com.phonecontrol.assistant.bridge.protocol.ActionParser.parsePhoneAction
+import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseSequenceRequest
+import com.phonecontrol.assistant.bridge.protocol.ActionParser.wireActionName
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.CAPTURE_ATTEMPTS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.CAPTURE_RETRY_DELAY_MS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_AGENT_FEEDBACK_CHARS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_APP_BROWSE_RESULTS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_APP_QUERY_CHARS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_OBSERVATIONS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_REQUEST_CHARS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_TEXT_CHARS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.OPEN_SETTLE_DELAY_MS
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.PACKAGE_PATTERN
+import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.POST_ACTION_SETTLE_DELAY_MS
+import com.phonecontrol.assistant.bridge.protocol.InvalidSequencePayloadException
 import com.phonecontrol.assistant.bridge.protocol.beforeScreenshotOrNull
 import com.phonecontrol.assistant.bridge.protocol.failureCode
 import com.phonecontrol.assistant.bridge.protocol.isSuccessful
@@ -1588,14 +1605,6 @@ class DevBridgeServer internal constructor(
         platform.applicationLabel(packageName)
     }.getOrDefault(packageName)
 
-    private fun optionalDisplayRef(json: JSONObject): String? {
-        val ref = json.optString("displayRef").trim().takeIf(String::isNotEmpty) ?: return null
-        require(DISPLAY_REF_PATTERN.matches(ref)) {
-            "displayRef must match dsp_ followed by 14 lowercase hexadecimal characters."
-        }
-        return ref
-    }
-
     private suspend fun resolveDisplayTarget(
         displayRef: String?,
         fallbackDisplayId: Int? = null,
@@ -2221,60 +2230,6 @@ class DevBridgeServer internal constructor(
         )
     }
 
-    internal fun parseSequenceRequest(json: JSONObject): SequenceRequest {
-        val observationId = json.optString("observationId").trim()
-        if (observationId.isEmpty() || observationId.length > MAX_TEXT_CHARS) {
-            throw InvalidSequencePayloadException(
-                index = null,
-                message = "observationId must be 1-$MAX_TEXT_CHARS characters.",
-            )
-        }
-        val actionsJson = json.optJSONArray("actions")
-            ?: throw InvalidSequencePayloadException(null, "actions must be an array.")
-        if (actionsJson.length() !in 1..MAX_SEQUENCE_ACTIONS) {
-            throw InvalidSequencePayloadException(
-                index = null,
-                message = "A sequence must contain between 1 and $MAX_SEQUENCE_ACTIONS actions.",
-            )
-        }
-        val actions = buildList(actionsJson.length()) {
-            for (index in 0 until actionsJson.length()) {
-                val actionJson = actionsJson.optJSONObject(index)
-                    ?: throw InvalidSequencePayloadException(index, "Sequence action $index must be an object.")
-                val metadata = actionJson.optJSONObject("metadata")
-                if (metadata == null) {
-                    throw InvalidSequencePayloadException(index, "Sequence action $index must include metadata.")
-                }
-                if (metadata.has("observationId")) {
-                    throw InvalidSequencePayloadException(
-                        index,
-                        "Sequence action $index receives observationId from the phone and must not provide one.",
-                    )
-                }
-                val action = try {
-                    parsePhoneAction(actionJson)
-                } catch (error: Exception) {
-                    throw InvalidSequencePayloadException(
-                        index,
-                        "Sequence action $index is invalid: ${error.message ?: "invalid action payload"}",
-                    )
-                }
-                if (action is OpenAppAction) {
-                    throw InvalidSequencePayloadException(
-                        index,
-                        "dhd_execute_sequence does not support open_app; use dhd_open_app first.",
-                    )
-                }
-                add(action)
-            }
-        }
-        return SequenceRequest(
-            observationId = observationId,
-            actions = actions,
-            displayRef = optionalDisplayRef(json),
-        )
-    }
-
     private fun writeInvalidSequenceResult(
         writer: BufferedWriter,
         requestId: String,
@@ -2315,85 +2270,6 @@ class DevBridgeServer internal constructor(
         }
         response.put("steps", steps)
         write(writer, response)
-    }
-
-    internal fun parsePhoneAction(json: JSONObject): PhoneAction {
-        val metadata = parseMetadata(json.optJSONObject("metadata"))
-        return when (json.optString("type")) {
-            "open_app" -> {
-                val packageName = json.optString("packageName")
-                require(PACKAGE_PATTERN.matches(packageName)) { "packageName is not a valid Android package name." }
-                OpenAppAction(packageName, metadata)
-            }
-
-            "tap" -> TapAction(
-                x = json.getInt("x"),
-                y = json.getInt("y"),
-                metadata = metadata,
-            )
-
-            "type" -> TypeAction(json.getString("text"), metadata)
-
-            "swipe" -> SwipeAction(
-                startX = json.getInt("startX"),
-                startY = json.getInt("startY"),
-                endX = json.getInt("endX"),
-                endY = json.getInt("endY"),
-                durationMs = json.optLong("durationMs", 350L),
-                metadata = metadata,
-            )
-
-            "back" -> BackAction(metadata)
-
-            "keypress" -> KeypressAction(
-                key = enumValue<KeypressKey>(json.getString("key")),
-                metadata = metadata,
-            )
-
-            "wait" -> WaitAction(json.getLong("durationMs"), metadata)
-
-            else -> throw IllegalArgumentException(
-                "Unsupported action type. Use open_app, tap, type, swipe, back, keypress, or wait.",
-            )
-        }
-    }
-
-    internal fun parseMetadata(json: JSONObject?): ActionMetadata {
-        require(json != null) { "action.metadata is required." }
-        val purpose = json.optString("purpose").trim()
-        // The companion supplies observationId for the pre-action structural
-        // comparison and may supply guardRegions for strict visual checking.
-        val observationId = json.optString("observationId").trim()
-        val targetDescription = json.optString("targetDescription").trim()
-        require(purpose.isNotEmpty() && purpose.length <= MAX_TEXT_CHARS) {
-            "metadata.purpose must be 1-$MAX_TEXT_CHARS characters."
-        }
-        require(observationId.length <= MAX_TEXT_CHARS) {
-            "metadata.observationId must be at most $MAX_TEXT_CHARS characters."
-        }
-        require(targetDescription.isNotEmpty() && targetDescription.length <= MAX_TEXT_CHARS) {
-            "metadata.targetDescription must be 1-$MAX_TEXT_CHARS characters."
-        }
-        return ActionMetadata(
-            purpose = purpose,
-            observationId = observationId,
-            targetDescription = targetDescription,
-            guardRegions = parseGuardRegions(json.optJSONArray("guardRegions")),
-        )
-    }
-
-    private inline fun <reified T : Enum<T>> enumValue(value: String): T =
-        enumValues<T>().firstOrNull { it.name.equals(value, ignoreCase = true) }
-            ?: throw IllegalArgumentException("Unsupported enum value: $value")
-
-    internal fun wireActionName(action: PhoneAction): String = when (action) {
-        is OpenAppAction -> "open_app"
-        is TapAction -> "tap"
-        is TypeAction -> "type"
-        is SwipeAction -> "swipe"
-        is BackAction -> "back"
-        is KeypressAction -> "keypress"
-        is WaitAction -> "wait"
     }
 
     private fun remember(snapshot: ObservationSnapshot) {
@@ -2737,24 +2613,6 @@ class DevBridgeServer internal constructor(
         )
     }
 
-    internal fun parseGuardRegions(array: JSONArray?): List<GuardRegion> {
-        if (array == null) return emptyList()
-        require(array.length() <= MAX_GUARD_REGIONS) { "At most $MAX_GUARD_REGIONS guard regions are supported." }
-        return buildList(array.length()) {
-            for (index in 0 until array.length()) {
-                val region = array.getJSONObject(index)
-                add(
-                    GuardRegion(
-                        left = region.getInt("left"),
-                        top = region.getInt("top"),
-                        right = region.getInt("right"),
-                        bottom = region.getInt("bottom"),
-                    ),
-                )
-            }
-        }
-    }
-
     private fun errorResponse(requestId: String?, message: String): JSONObject = JSONObject()
         .put("type", "error")
         .put("requestId", requestId ?: JSONObject.NULL)
@@ -2799,17 +2657,6 @@ class DevBridgeServer internal constructor(
         val guardRegions: List<GuardRegion>,
     )
 
-    internal data class SequenceRequest(
-        val observationId: String,
-        val actions: List<PhoneAction>,
-        val displayRef: String? = null,
-    )
-
-    internal class InvalidSequencePayloadException(
-        val index: Int?,
-        message: String,
-    ) : IllegalArgumentException(message)
-
     internal companion object {
         const val TAG = "PhoneControlBridge"
         const val LAN_BIND_HOST = "0.0.0.0"
@@ -2830,20 +2677,6 @@ class DevBridgeServer internal constructor(
         // does not flap the phone UI offline.
         const val COMPANION_PRESENCE_TIMEOUT_MS = 15_000L
         const val COMPANION_PRESENCE_CHECK_INTERVAL_MS = 1_000L
-        const val MAX_REQUEST_CHARS = 16_384
-        const val MAX_TEXT_CHARS = 240
-        const val MAX_AGENT_FEEDBACK_CHARS = 4_000
-        const val MAX_APP_QUERY_CHARS = 120
-        const val MAX_APP_BROWSE_RESULTS = 25
-        const val MAX_GUARD_REGIONS = 8
-        const val MAX_SEQUENCE_ACTIONS = 16
-        const val MAX_OBSERVATIONS = 64
-        const val OPEN_SETTLE_DELAY_MS = 750L
-        const val POST_ACTION_SETTLE_DELAY_MS = 350L
-        const val CAPTURE_ATTEMPTS = 5
-        const val CAPTURE_RETRY_DELAY_MS = 250L
-        val PACKAGE_PATTERN = Regex("[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+")
-        val DISPLAY_REF_PATTERN = Regex("dsp_[a-f0-9]{14}")
     }
 }
 
