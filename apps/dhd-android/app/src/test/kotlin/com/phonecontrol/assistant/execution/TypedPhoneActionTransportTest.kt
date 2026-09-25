@@ -8,7 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class ActionTransportTest {
+class TypedPhoneActionTransportTest {
     private val guard = GuardRegion(left = 100, top = 200, right = 400, bottom = 500)
 
     private val observation = ObservationSnapshot(
