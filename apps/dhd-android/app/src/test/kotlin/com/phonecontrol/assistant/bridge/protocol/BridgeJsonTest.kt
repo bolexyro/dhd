@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.bridge
+package com.phonecontrol.assistant.bridge.protocol
 
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import org.junit.Assert.assertEquals
@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.json.JSONObject
 
-class DevBridgeServerTest {
+class BridgeJsonTest {
     @Test
     fun `full access returns capability without enumerating apps`() {
         val response = buildAllowedAppsResponse(

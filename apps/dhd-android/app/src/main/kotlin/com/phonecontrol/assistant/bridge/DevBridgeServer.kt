@@ -7,6 +7,7 @@ import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseGuardRegions
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parsePhoneAction
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseSequenceRequest
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.wireActionName
+import com.phonecontrol.assistant.bridge.protocol.BridgeJson
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.CAPTURE_ATTEMPTS
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.CAPTURE_RETRY_DELAY_MS
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_AGENT_FEEDBACK_CHARS
@@ -19,11 +20,17 @@ import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.OPEN_SETTLE_DELAY
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.PACKAGE_PATTERN
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.POST_ACTION_SETTLE_DELAY_MS
 import com.phonecontrol.assistant.bridge.protocol.InvalidSequencePayloadException
+import com.phonecontrol.assistant.bridge.protocol.addDisplayLimitRecovery
 import com.phonecontrol.assistant.bridge.protocol.beforeScreenshotOrNull
+import com.phonecontrol.assistant.bridge.protocol.buildAllowedAppsResponse
+import com.phonecontrol.assistant.bridge.protocol.buildAppDisplayLayoutResponse
+import com.phonecontrol.assistant.bridge.protocol.buildBrowseAppsResponse
+import com.phonecontrol.assistant.bridge.protocol.errorResponse
 import com.phonecontrol.assistant.bridge.protocol.failedActionCompletion
 import com.phonecontrol.assistant.bridge.protocol.failureCode
 import com.phonecontrol.assistant.bridge.protocol.isSuccessful
 import com.phonecontrol.assistant.bridge.protocol.resultMessage
+import com.phonecontrol.assistant.bridge.protocol.sessionStateName
 import com.phonecontrol.assistant.bridge.protocol.staleDetailsOrNull
 import com.phonecontrol.assistant.bridge.protocol.unstartedSequenceFailure
 import com.phonecontrol.assistant.bridge.transport.BridgeReply
@@ -191,6 +198,7 @@ class DevBridgeServer internal constructor(
     private val phoneActionMutex = Mutex()
     private val overlayVisibilityGate
         get() = platform.overlayVisibilityGate()
+    private val bridgeJson = BridgeJson(base64)
     private val observations = Collections.synchronizedMap(
         object : LinkedHashMap<String, ObservationSnapshot>(MAX_OBSERVATIONS + 1, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ObservationSnapshot>?): Boolean =
@@ -847,7 +855,7 @@ class DevBridgeServer internal constructor(
             .put("type", "status")
             .put("requestId", requestId)
             .put("ok", true)
-            .put("state", stateName(state))
+            .put("state", sessionStateName(state))
             .put("active", state is SessionState.Running || state is SessionState.Paused)
             .put("companionConnected", companionConnected.value)
         when (state) {
@@ -1282,7 +1290,7 @@ class DevBridgeServer internal constructor(
                     is ObservationCaptureResult.Succeeded -> {
                         remember(captured.snapshot)
                         response
-                            .put("observation", snapshotJson(captured.snapshot))
+                            .put("observation", bridgeJson.snapshotJson(captured.snapshot))
                             .put("screenshotBase64", base64.encode(captured.screenshot))
                             .put("screenshotMimeType", "image/png")
                     }
@@ -1667,7 +1675,7 @@ class DevBridgeServer internal constructor(
             )
             is ObservationCaptureResult.Succeeded -> {
                 remember(captured.snapshot)
-                writeObservation(reply, requestId, captured.snapshot, captured.screenshot)
+                reply.write(bridgeJson.observationResponse(requestId, captured.snapshot, captured.screenshot))
             }
         }
     }
@@ -1879,7 +1887,7 @@ class DevBridgeServer internal constructor(
             toolName = activityToolName,
             targetDisplay = target?.session,
         )
-        writeActionResult(reply, requestId, wireActionName(action), result)
+        reply.write(bridgeJson.actionResultResponse(requestId, wireActionName(action), result))
         if (!result.isSuccessful()) {
             val failureCode = result.failureCode()
             val response = JSONObject()
@@ -1889,12 +1897,12 @@ class DevBridgeServer internal constructor(
                 .put("action", wireActionName(action))
                 .put("message", result.resultMessage())
             failureCode?.let { response.put("code", it) }
-            addBeforeDebug(
+            bridgeJson.addBeforeDebug(
                 response,
                 observation,
                 result.beforeScreenshotOrNull(),
             )
-            result.staleDetailsOrNull()?.let { details -> addStaleDiagnostics(response, details) }
+            result.staleDetailsOrNull()?.let { details -> bridgeJson.addStaleDiagnostics(response, details) }
             if (failureCode == BridgeErrorCodes.DISPLAY_LIMIT_REACHED) {
                 val backend = taskDisplayBackend
                 val displays = if (backend == null) {
@@ -1956,7 +1964,7 @@ class DevBridgeServer internal constructor(
                     .put("ok", true)
                     .put("action", wireActionName(action))
                     .put("message", result.resultMessage())
-                    .put("observation", snapshotJson(captured.snapshot))
+                    .put("observation", bridgeJson.snapshotJson(captured.snapshot))
                     .put("screenshotBase64", base64.encode(captured.screenshot))
                     .put("screenshotMimeType", "image/png")
                 initialPointer?.let { pointer ->
@@ -1967,7 +1975,7 @@ class DevBridgeServer internal constructor(
                             .put("y", pointer.y),
                     )
                 }
-                addBeforeDebug(
+                bridgeJson.addBeforeDebug(
                     response,
                     observation,
                     result.beforeScreenshotOrNull(),
@@ -1985,45 +1993,48 @@ class DevBridgeServer internal constructor(
         val request = try {
             parseSequenceRequest(json)
         } catch (error: InvalidSequencePayloadException) {
-            writeInvalidSequenceResult(reply, requestId, json, error)
+            reply.write(bridgeJson.invalidSequenceResponse(requestId, json, error))
             return
         }
         val observation = synchronized(observations) {
             observations[request.observationId]
         }
         if (observation == null) {
-            writeSequenceResult(
-                reply,
-                requestId,
-                unstartedSequenceFailure(
-                    actions = request.actions,
-                    code = BridgeErrorCodes.OBSERVATION_MISSING,
-                    message = "The supplied observationId is missing or expired; observe the phone before retrying.",
+            reply.write(
+                bridgeJson.sequenceResultResponse(
+                    requestId,
+                    unstartedSequenceFailure(
+                        actions = request.actions,
+                        code = BridgeErrorCodes.OBSERVATION_MISSING,
+                        message = "The supplied observationId is missing or expired; observe the phone before retrying.",
+                    ),
                 ),
             )
             return
         }
         val runSessionKey = coordinator.activeSessionId()
         if (taskDisplayRequiredProvider() && runSessionKey == null) {
-            writeSequenceResult(
-                reply,
-                requestId,
-                unstartedSequenceFailure(
-                    actions = request.actions,
-                    code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
-                    message = "No active task display is available; the physical display was not touched.",
+            reply.write(
+                bridgeJson.sequenceResultResponse(
+                    requestId,
+                    unstartedSequenceFailure(
+                        actions = request.actions,
+                        code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
+                        message = "No active task display is available; the physical display was not touched.",
+                    ),
                 ),
             )
             return
         }
         if (!coordinator.awaitPhoneAccessForTool()) {
-            writeSequenceResult(
-                reply,
-                requestId,
-                unstartedSequenceFailure(
-                    actions = request.actions,
-                    code = BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE,
-                    message = "Phone access is no longer available; the sequence was not executed.",
+            reply.write(
+                bridgeJson.sequenceResultResponse(
+                    requestId,
+                    unstartedSequenceFailure(
+                        actions = request.actions,
+                        code = BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE,
+                        message = "Phone access is no longer available; the sequence was not executed.",
+                    ),
                 ),
             )
             return
@@ -2038,13 +2049,14 @@ class DevBridgeServer internal constructor(
             )) {
                 is TaskDisplayResolution.Ready -> resolution.target
                 is TaskDisplayResolution.Unavailable -> {
-                    writeSequenceResult(
-                        reply,
-                        requestId,
-                        unstartedSequenceFailure(
-                            actions = request.actions,
-                            code = resolution.code,
-                            message = resolution.message,
+                    reply.write(
+                        bridgeJson.sequenceResultResponse(
+                            requestId,
+                            unstartedSequenceFailure(
+                                actions = request.actions,
+                                code = resolution.code,
+                                message = resolution.message,
+                            ),
                         ),
                     )
                     return
@@ -2057,13 +2069,14 @@ class DevBridgeServer internal constructor(
             (observation.taskSessionKey != target.session.sessionKey ||
                 observation.displayId != target.session.displayId)
         ) {
-            writeSequenceResult(
-                reply,
-                requestId,
-                unstartedSequenceFailure(
-                    actions = request.actions,
-                    code = BridgeErrorCodes.DISPLAY_CHANGED,
-                    message = "The observation belongs to a different task display; no input was sent.",
+            reply.write(
+                bridgeJson.sequenceResultResponse(
+                    requestId,
+                    unstartedSequenceFailure(
+                        actions = request.actions,
+                        code = BridgeErrorCodes.DISPLAY_CHANGED,
+                        message = "The observation belongs to a different task display; no input was sent.",
+                    ),
                 ),
             )
             return
@@ -2090,7 +2103,7 @@ class DevBridgeServer internal constructor(
             rememberObservation = ::remember,
             settleAfterAction = ::settleAfterAction,
         ).execute(observation, request.actions)
-        writeSequenceResult(reply, requestId, result, observation)
+        reply.write(bridgeJson.sequenceResultResponse(requestId, result, observation))
     }
 
     private suspend fun settleAfterAction(action: PhoneAction) {
@@ -2123,208 +2136,10 @@ class DevBridgeServer internal constructor(
         )
     }
 
-    private fun writeInvalidSequenceResult(
-        reply: BridgeReply,
-        requestId: String,
-        json: JSONObject,
-        error: InvalidSequencePayloadException,
-    ) {
-        val actions = json.optJSONArray("actions")
-        val response = JSONObject()
-            .put("type", "completed")
-            .put("requestId", requestId)
-            .put("ok", false)
-            .put("action", "sequence")
-            .put("requestedSteps", actions?.length() ?: 0)
-            .put("completedSteps", 0)
-            .put("message", error.message ?: "The sequence payload is invalid.")
-            .put("code", BridgeErrorCodes.INVALID_PAYLOAD)
-            .put("outcome", "failed")
-            .put("executed", false)
-        val steps = JSONArray()
-        error.index?.let { index ->
-            val action = actions
-                ?.optJSONObject(index)
-                ?.optString("type")
-                ?.trim()
-                ?.ifBlank { null }
-                ?: "unknown"
-            steps.put(
-                JSONObject()
-                    .put("index", index)
-                    .put("action", action)
-                    .put("status", "failed")
-                    .put("message", error.message ?: "The sequence action is invalid.")
-                    .put("code", BridgeErrorCodes.INVALID_PAYLOAD)
-                    .put("outcome", "failed")
-                    .put("executed", false),
-            )
-            response.put("failedStep", index)
-        }
-        response.put("steps", steps)
-        reply.write(response)
-    }
-
     private fun remember(snapshot: ObservationSnapshot) {
         synchronized(observations) {
             observations[snapshot.id] = snapshot
         }
-    }
-
-    private fun addBeforeDebug(
-        response: JSONObject,
-        observation: ObservationSnapshot?,
-        screenshot: ByteArray?,
-    ) {
-        if (observation == null || screenshot == null) return
-        response
-            .put("beforeObservation", snapshotJson(observation))
-            .put("beforeScreenshotBase64", base64.encode(screenshot))
-            .put("beforeScreenshotMimeType", "image/png")
-    }
-
-    /** Attach machine-readable freshness diagnostics without changing the
-     * action's safe rejection semantics. */
-    private fun addStaleDiagnostics(
-        response: JSONObject,
-        details: StaleObservationDiagnostics,
-    ) {
-        response
-            .put("inputSent", false)
-            .put("approvedObservationId", details.approvedObservationId)
-        details.currentObservationId?.let { response.put("currentObservationId", it) }
-        response.put(
-            "reasons",
-            JSONArray(details.reasons.map(::staleReasonJson)),
-        )
-    }
-
-    private fun staleReasonJson(reason: StaleObservationReason): JSONObject = JSONObject()
-        .put("code", reason.code.name)
-        .put("approved", staleReasonValue(reason.approved))
-        .put("current", staleReasonValue(reason.current))
-        .also { json ->
-            reason.guardRegion?.let { region ->
-                json.put(
-                    "guardRegion",
-                    JSONObject()
-                        .put("left", region.left)
-                        .put("top", region.top)
-                        .put("right", region.right)
-                        .put("bottom", region.bottom),
-                )
-            }
-        }
-
-    private fun staleReasonValue(value: Any?): Any = when (value) {
-        null -> JSONObject.NULL
-        is ObservationSize -> JSONObject()
-            .put("width", value.width)
-            .put("height", value.height)
-        else -> value
-    }
-
-    private fun writeObservation(
-        reply: BridgeReply,
-        requestId: String,
-        snapshot: ObservationSnapshot,
-        screenshot: ByteArray,
-    ) {
-        reply.write(
-            JSONObject()
-                .put("type", "observation")
-                .put("requestId", requestId)
-                .put("ok", true)
-                .put("observation", snapshotJson(snapshot))
-                .put("screenshotBase64", base64.encode(screenshot))
-                .put("screenshotMimeType", "image/png"),
-        )
-    }
-
-    private fun writeSequenceResult(
-        reply: BridgeReply,
-        requestId: String,
-        result: SequenceExecutionResult,
-        beforeObservation: ObservationSnapshot? = null,
-    ) {
-        val response = JSONObject()
-            .put("type", "completed")
-            .put("requestId", requestId)
-            .put("ok", result.ok)
-            .put("action", "sequence")
-            .put("requestedSteps", result.requestedSteps)
-            .put("completedSteps", result.completedSteps)
-            .put(
-                "message",
-                if (result.ok) {
-                    "Executed ${result.requestedSteps} typed phone actions and returned a fresh observation."
-                } else {
-                    result.failure?.message ?: "The phone sequence failed."
-                },
-            )
-        val steps = JSONArray()
-        result.steps.forEach { step ->
-            val stepJson = JSONObject()
-                .put("index", step.index)
-                .put("action", step.action)
-                .put("status", step.status.name.lowercase())
-                .put("message", step.message)
-            step.observationId?.let { stepJson.put("observationId", it) }
-            step.code?.let { stepJson.put("code", it) }
-            step.outcome?.let { stepJson.put("outcome", it) }
-            step.executed?.let { stepJson.put("executed", it) }
-            step.details?.let { addStaleDiagnostics(stepJson, it) }
-            steps.put(stepJson)
-        }
-        response.put("steps", steps)
-        result.failure?.let { failure ->
-            response
-                .put("failedStep", failure.index)
-                .put("code", failure.code ?: BridgeErrorCodes.SEQUENCE_FAILED)
-                .put("outcome", failure.outcome ?: "failed")
-                .put("executed", failure.executed ?: "unknown")
-            failure.details?.let { addStaleDiagnostics(response, it) }
-        }
-        result.finalObservation?.let { captured ->
-            response
-                .put("observation", snapshotJson(captured.snapshot))
-                .put("screenshotBase64", base64.encode(captured.screenshot))
-                .put("screenshotMimeType", "image/png")
-            if (beforeObservation != null) {
-                addBeforeDebug(response, beforeObservation, result.beforeScreenshot)
-            }
-        }
-        reply.write(response)
-    }
-
-    private fun snapshotJson(snapshot: ObservationSnapshot): JSONObject = JSONObject()
-        .put("id", snapshot.id)
-        .put("packageName", snapshot.packageName)
-        .put("activityName", snapshot.activityName ?: JSONObject.NULL)
-        .put("rotation", snapshot.rotation)
-        .put("width", snapshot.width)
-        .put("height", snapshot.height)
-        .put("screenshotFingerprint", snapshot.screenshotFingerprint)
-        .put(
-            "screenProtection",
-            JSONObject()
-                .put("status", snapshot.screenProtection.status.name.lowercase())
-                .put("requiresUserAttention", snapshot.screenProtection.requiresUserAttention)
-                .put("signals", JSONArray(snapshot.screenProtection.signals))
-                .put("reason", snapshot.screenProtection.reason ?: JSONObject.NULL),
-        )
-        .also { json ->
-            snapshot.taskSessionKey?.let { sessionKey ->
-                json.put("displayRef", taskDisplayReference(sessionKey, snapshot.displayId))
-            }
-        }
-
-    private fun stateName(state: SessionState): String = when (state) {
-        SessionState.Idle -> "idle"
-        is SessionState.Running -> "running"
-        is SessionState.Paused -> "paused"
-        is SessionState.Stopped -> "stopped"
-        is SessionState.Completed -> "completed"
     }
 
     private suspend fun runDemo(request: DemoRequest, reply: BridgeReply) {
@@ -2343,7 +2158,7 @@ class DevBridgeServer internal constructor(
             ),
         )
         val openResult = coordinator.executeAction(open, null)
-        writeActionResult(reply, request.requestId, "open_app", openResult)
+        reply.write(bridgeJson.actionResultResponse(request.requestId, "open_app", openResult))
         if (!openResult.isSuccessful()) {
             failSession(reply, request, openResult.resultMessage())
             return
@@ -2374,7 +2189,7 @@ class DevBridgeServer internal constructor(
             ),
         )
         val tapResult = coordinator.executeAction(tap, tapSnapshot)
-        writeActionResult(reply, request.requestId, "tap", tapResult)
+        reply.write(bridgeJson.actionResultResponse(request.requestId, "tap", tapResult))
         if (!tapResult.isSuccessful()) {
             failSession(reply, request, tapResult.resultMessage())
             return
@@ -2442,41 +2257,6 @@ class DevBridgeServer internal constructor(
         reply.write(errorResponse(request.requestId, message))
     }
 
-    private fun writeActionResult(
-        reply: BridgeReply,
-        requestId: String,
-        action: String,
-        result: ActionExecutionResult,
-    ) {
-        val successful = result.isSuccessful()
-        val response = JSONObject()
-            .put("type", "action_result")
-            .put("requestId", requestId)
-            .put("action", action)
-            .put("ok", successful)
-        when (result) {
-            is ActionExecutionResult.TransportFinished -> {
-                when (val transportResult = result.result) {
-                    is TransportResult.Succeeded -> response.put("message", transportResult.message)
-                    is TransportResult.Rejected -> response
-                        .put("code", transportResult.code.name)
-                        .put("message", transportResult.message)
-                        .also { transportResult.details?.let { details -> addStaleDiagnostics(it, details) } }
-                    is TransportResult.Unsupported -> response.put("message", transportResult.message)
-                }
-            }
-
-            is ActionExecutionResult.PolicyRejected -> response
-                .put("code", BridgeErrorCodes.POLICY_REJECTED)
-                .put("message", result.message)
-                .also { result.details?.let { details -> addStaleDiagnostics(it, details) } }
-            ActionExecutionResult.SessionNotRunning -> response
-                .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING)
-                .put("message", "The phone session is no longer running.")
-        }
-        reply.write(response)
-    }
-
     private fun parseRequest(json: JSONObject): DemoRequest {
         require(json.optString("type") == "demo_run") {
             "Only type=demo_run is accepted by the development bridge."
@@ -2503,12 +2283,6 @@ class DevBridgeServer internal constructor(
             guardRegions = parseGuardRegions(json.optJSONArray("guardRegions")),
         )
     }
-
-    private fun errorResponse(requestId: String?, message: String): JSONObject = JSONObject()
-        .put("type", "error")
-        .put("requestId", requestId ?: JSONObject.NULL)
-        .put("ok", false)
-        .put("message", message)
 
     private fun observationFailureCode(message: String): String =
         if (message.contains("Wireless Debugging", ignoreCase = true) ||
@@ -2580,135 +2354,3 @@ internal fun systemLanIpv4Addresses(): List<String> = runCatching {
         ?.toList()
         ?: emptyList()
 }.getOrDefault(emptyList())
-
-internal fun buildAllowedAppsResponse(
-    requestId: String,
-    fullAccess: Boolean,
-    allowedPackages: Set<String>,
-    includeAll: Boolean = false,
-    apps: List<InstalledUserApp> = emptyList(),
-): JSONObject {
-    val response = JSONObject()
-        .put("type", "allowed_apps")
-        .put("requestId", requestId)
-        .put("ok", true)
-        .put("fullAccess", fullAccess)
-        .put("accessMode", if (fullAccess) "full_access" else "allowlist")
-        .put("canListAllApps", fullAccess)
-
-    if (includeAll) {
-        response
-            .put("apps", JSONArray(apps.map(::buildAppResponse)))
-            .put("count", apps.size)
-            .put(
-                "message",
-                if (fullAccess) {
-                    "Full Access is enabled. Returned all launchable apps on the phone."
-                } else {
-                    "Restricted access is enabled. Returned all launchable apps in the allowlist."
-                },
-            )
-    } else if (fullAccess) {
-        response.put("message", "Full Access is enabled. You can use any launchable app on the phone.")
-    } else {
-        val packages = allowedPackages.toList().sorted()
-        response
-            .put("allowedPackages", JSONArray(packages))
-            .put("count", packages.size)
-    }
-
-    return response
-}
-
-internal fun buildBrowseAppsResponse(
-    requestId: String,
-    query: String,
-    fullAccess: Boolean,
-    allowedPackages: Set<String> = emptySet(),
-    apps: List<InstalledUserApp>,
-    truncated: Boolean,
-): JSONObject = JSONObject()
-    .put("type", "browse_apps")
-    .put("requestId", requestId)
-    .put("ok", true)
-    .put("query", query)
-    .put("fullAccess", fullAccess)
-    .put("accessMode", if (fullAccess) "full_access" else "allowlist")
-    .put(
-        "apps",
-        JSONArray(
-            apps.map { app ->
-                buildAppResponse(
-                    app = app,
-                    canUse = fullAccess || app.packageName in allowedPackages,
-                )
-            },
-        ),
-    )
-    .put("count", apps.size)
-    .put("truncated", truncated)
-
-internal fun buildAppDisplayLayoutResponse(
-    requestId: String,
-    packageName: String,
-    appLabel: String,
-    layout: String,
-    changed: Boolean,
-): JSONObject {
-    val fullSize = layout == "full_size"
-    val layoutDescription = if (fullSize) "full-size" else "standard"
-    return JSONObject()
-        .put("type", "app_display_layout_updated")
-        .put("requestId", requestId)
-        .put("ok", true)
-        .put("appLabel", appLabel)
-        .put("packageName", packageName)
-        .put("layout", layout)
-        .put("fullSizeLayoutEnabled", fullSize)
-        .put("changed", changed)
-        .put("appliesNextOpen", true)
-        .put("requiresFreshDisplay", changed)
-        .put("currentDisplayUnchanged", true)
-        .put("displayGeometryUnchanged", true)
-        .put(
-            "message",
-            if (changed) {
-                "$layoutDescription app layout saved for $appLabel. The next dhd_open_app call without displayRef will use a fresh DHD task display with this layout."
-            } else {
-                "$layoutDescription app layout is already active for $appLabel. Future compatible opens may reuse the current DHD task display."
-            },
-        )
-}
-
-/**
- * Add an actionable display inventory to a session-limit failure. The list
- * intentionally contains only displayRefs and user-facing metadata so the
- * agent can close or reuse a display without receiving native display IDs or
- * coordinator/session keys.
- */
-internal fun addDisplayLimitRecovery(
-    response: JSONObject,
-    packageName: String?,
-    displays: List<JSONObject>,
-): JSONObject {
-    val target = packageName?.trim()?.takeIf(String::isNotEmpty) ?: "the requested app"
-    return response
-        .put(
-            "message",
-            "The DHD virtual-display session limit was reached while opening $target. " +
-                "The displays array lists the active and retained displays. " +
-                "Close an unused display with dhd_close_display using its exact displayRef " +
-                "(stop its active run first if needed), then retry dhd_open_app. " +
-                "To reuse a retained display instead, pass its displayRef to dhd_open_app.",
-        )
-        .put("displays", JSONArray(displays))
-        .put("count", displays.size)
-}
-
-private fun buildAppResponse(app: InstalledUserApp, canUse: Boolean? = null): JSONObject {
-    val response = JSONObject()
-        .put("appLabel", app.label)
-        .put("packageName", app.packageName)
-    if (canUse != null) response.put("canUse", canUse)
-    return response
-}
