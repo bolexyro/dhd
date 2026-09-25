@@ -57,6 +57,7 @@ class AssistantForegroundService : Service() {
             onTaskPreviewSurfaceDestroyed = { _, surface, release ->
                 container.detachTaskPreview(surface, release)
             },
+            uiPreferences = container.uiPreferencesRepository,
         )
         serviceScope.launch {
             coordinator.state.collectLatest { state ->

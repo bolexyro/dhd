@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
@@ -39,8 +38,10 @@ import com.phonecontrol.assistant.overlay.effects.ComposerPerimeterGlow
 import com.phonecontrol.assistant.session.DhdToolCall
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.components.GlassSurface
-import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
-import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
+import com.phonecontrol.assistant.ui.components.reasoning.normalizeReasoningEffort
+import com.phonecontrol.assistant.ui.components.reasoning.selectReasoningEffort
+import com.phonecontrol.assistant.ui.components.reasoning.selectedReasoningEffort
+import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortList
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -76,6 +77,7 @@ fun OverlayPanel(
     onComposerTapped: () -> Unit,
     onTaskPreviewSurfaceAvailable: (TaskDisplaySession, AndroidSurface) -> Unit,
     onTaskPreviewSurfaceDestroyed: (TaskDisplaySession, AndroidSurface, () -> Unit) -> Unit,
+    preferences: UiPreferencesRepository,
 ) {
     val state by sessionState.collectAsState()
     val calls by toolCalls.collectAsState()
@@ -88,50 +90,16 @@ fun OverlayPanel(
     val isCompanionConnected by companionConnected.collectAsState()
     val latestPointerEvent by pointerEvent.collectAsState()
     val active = state is SessionState.Running || state is SessionState.Paused
-    val context = LocalContext.current
-    val preferences = remember(context) {
-        context.getSharedPreferences(UiPreferencesRepository.PREFS_NAME, android.content.Context.MODE_PRIVATE)
-    }
+    val uiPreferences by preferences.state.collectAsState()
     var previewVisible by rememberSaveable { mutableStateOf(false) }
-    var fastMode by rememberSaveable {
-        mutableStateOf(preferences.getBoolean(UiPreferencesRepository.KEY_FAST_MODE, false))
+    val fastMode = uiPreferences.fastMode
+    val visibleReasoningEfforts = uiPreferences.visibleReasoningEffortList
+    val reasoningEffort = uiPreferences.selectedReasoningEffort
+    LaunchedEffect(uiPreferences) {
+        preferences.normalizeReasoningEffort()
     }
-    var reasoningEffortValue by rememberSaveable {
-        mutableStateOf(
-            ReasoningEffort.fromStorage(
-                preferences.getString(
-                    UiPreferencesRepository.KEY_REASONING_EFFORT,
-                    ReasoningEffort.default.storageValue,
-                ),
-            ).storageValue,
-        )
-    }
-    val visibleReasoningEfforts = remember(
-        preferences.getString(UiPreferencesRepository.KEY_VISIBLE_REASONING_EFFORTS, null),
-    ) {
-        visibleReasoningEffortsFromStorage(
-            preferences.getString(UiPreferencesRepository.KEY_VISIBLE_REASONING_EFFORTS, null),
-        )
-    }
-    val reasoningEffort = effectiveReasoningEffort(reasoningEffortValue, visibleReasoningEfforts)
-    LaunchedEffect(reasoningEffortValue, reasoningEffort, visibleReasoningEfforts) {
-        if (reasoningEffortValue != reasoningEffort.storageValue) {
-            reasoningEffortValue = reasoningEffort.storageValue
-            preferences.edit()
-                .putString(UiPreferencesRepository.KEY_REASONING_EFFORT, reasoningEffort.storageValue)
-                .apply()
-        }
-    }
-    val setFastMode: (Boolean) -> Unit = { enabled ->
-        fastMode = enabled
-        preferences.edit().putBoolean(UiPreferencesRepository.KEY_FAST_MODE, enabled).apply()
-    }
-    val setReasoningEffort: (ReasoningEffort) -> Unit = { effort ->
-        if (effort in visibleReasoningEfforts) {
-            reasoningEffortValue = effort.storageValue
-            preferences.edit().putString(UiPreferencesRepository.KEY_REASONING_EFFORT, effort.storageValue).apply()
-        }
-    }
+    val setFastMode: (Boolean) -> Unit = preferences::setFastMode
+    val setReasoningEffort: (ReasoningEffort) -> Unit = preferences::selectReasoningEffort
 
     val recoveryKind = overlayRecoveryKind(
         state = state,

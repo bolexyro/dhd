@@ -33,18 +33,16 @@ import androidx.navigation.compose.rememberNavController
 import com.phonecontrol.assistant.PermissionSetupStep
 import com.phonecontrol.assistant.PhoneControlApplication
 import com.phonecontrol.assistant.apps.InstalledAppsRepository
-import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_FAST_MODE
-import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_REASONING_EFFORT
-import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_THEME_MODE
-import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_VISIBLE_REASONING_EFFORTS
-import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.PREFS_NAME
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.chat.ChatScreen
 import com.phonecontrol.assistant.ui.chat.ChatViewModel
 import com.phonecontrol.assistant.ui.chat.ConversationExpiryDialog
-import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
-import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
+import com.phonecontrol.assistant.ui.components.reasoning.normalizeReasoningEffort
+import com.phonecontrol.assistant.ui.components.reasoning.selectReasoningEffort
+import com.phonecontrol.assistant.ui.components.reasoning.selectedReasoningEffort
+import com.phonecontrol.assistant.ui.components.reasoning.setReasoningEffortVisible
+import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortList
 import com.phonecontrol.assistant.ui.displays.FullScreenLiveDisplayViewer
 import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
 import com.phonecontrol.assistant.ui.displays.TaskDisplayUiRecord
@@ -99,73 +97,24 @@ fun PhoneControlApp(
     onNotificationVisibilityChanged: (mainConversationVisible: Boolean, attentionVisible: Boolean) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    val isSystemDark = isSystemInDarkTheme()
-    var themeMode by rememberSaveable {
-        mutableStateOf(ThemeMode.fromStorage(prefs.getString(KEY_THEME_MODE, "dark")))
-    }
-    var reasoningEffortValue by rememberSaveable {
-        mutableStateOf(
-            ReasoningEffort.fromStorage(
-                prefs.getString(KEY_REASONING_EFFORT, ReasoningEffort.default.storageValue),
-            ).storageValue,
-        )
-    }
-    var visibleReasoningEffortValues by rememberSaveable {
-        mutableStateOf(
-            visibleReasoningEffortsFromStorage(
-                prefs.getString(KEY_VISIBLE_REASONING_EFFORTS, null),
-            ).map(ReasoningEffort::storageValue),
-        )
-    }
-    var fastMode by rememberSaveable {
-        mutableStateOf(prefs.getBoolean(KEY_FAST_MODE, false))
-    }
-
-    val isDarkMode = themeMode.isDark(isSystemDark)
-
-    val setThemeMode: (ThemeMode) -> Unit = { mode ->
-        themeMode = mode
-        prefs.edit().putString(KEY_THEME_MODE, mode.storageValue).apply()
-    }
-    val visibleReasoningEfforts = visibleReasoningEffortsFromStorage(
-        visibleReasoningEffortValues.joinToString(","),
-    )
-    val reasoningEffort = effectiveReasoningEffort(reasoningEffortValue, visibleReasoningEfforts)
-    LaunchedEffect(visibleReasoningEfforts, reasoningEffortValue) {
-        if (reasoningEffortValue != reasoningEffort.storageValue) {
-            reasoningEffortValue = reasoningEffort.storageValue
-            prefs.edit().putString(KEY_REASONING_EFFORT, reasoningEffort.storageValue).apply()
-        }
-    }
-    val setReasoningEffort: (ReasoningEffort) -> Unit = { effort ->
-        if (effort in visibleReasoningEfforts) {
-            reasoningEffortValue = effort.storageValue
-            prefs.edit().putString(KEY_REASONING_EFFORT, effort.storageValue).apply()
-        }
-    }
-    val setFastMode: (Boolean) -> Unit = { enabled ->
-        fastMode = enabled
-        prefs.edit().putBoolean(KEY_FAST_MODE, enabled).apply()
-    }
-    val setReasoningEffortVisibility: (ReasoningEffort, Boolean) -> Unit = { effort, visible ->
-        val current = visibleReasoningEfforts.toSet()
-        val next = if (visible) current + effort else current - effort
-        if (next.isNotEmpty()) {
-            val ordered = ReasoningEffort.entries.filter { it in next }
-            visibleReasoningEffortValues = ordered.map(ReasoningEffort::storageValue)
-            prefs.edit()
-                .putString(KEY_VISIBLE_REASONING_EFFORTS, ordered.joinToString(",") { it.storageValue })
-                .apply()
-            if (reasoningEffort !in ordered) {
-                val fallback = ordered.first()
-                reasoningEffortValue = fallback.storageValue
-                prefs.edit().putString(KEY_REASONING_EFFORT, fallback.storageValue).apply()
-            }
-        }
-    }
-
     val container = (context.applicationContext as PhoneControlApplication).container
+    val uiPreferencesRepository = container.uiPreferencesRepository
+    val uiPreferences by uiPreferencesRepository.state.collectAsState()
+    val isSystemDark = isSystemInDarkTheme()
+    val themeMode = ThemeMode.fromStorage(uiPreferences.themeMode)
+    val isDarkMode = themeMode.isDark(isSystemDark)
+    val visibleReasoningEfforts = uiPreferences.visibleReasoningEffortList
+    val reasoningEffort = uiPreferences.selectedReasoningEffort
+    val fastMode = uiPreferences.fastMode
+    LaunchedEffect(uiPreferences) {
+        uiPreferencesRepository.normalizeReasoningEffort()
+    }
+    val setThemeMode: (ThemeMode) -> Unit = { mode -> uiPreferencesRepository.setThemeMode(mode.storageValue) }
+    val setReasoningEffort: (ReasoningEffort) -> Unit = uiPreferencesRepository::selectReasoningEffort
+    val setFastMode: (Boolean) -> Unit = uiPreferencesRepository::setFastMode
+    val setReasoningEffortVisibility: (ReasoningEffort, Boolean) -> Unit =
+        uiPreferencesRepository::setReasoningEffortVisible
+
     val coordinator = container.sessionCoordinator
     val coordinatorState by coordinator.state.collectAsState()
     val conversationRepository = container.conversationRepository

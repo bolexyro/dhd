@@ -1,13 +1,13 @@
 package com.phonecontrol.assistant.overlay
 
 import android.content.Context
+import com.phonecontrol.assistant.PhoneControlApplication
 import com.phonecontrol.assistant.data.UiPreferencesRepository
 import com.phonecontrol.assistant.overlay.bubble.BubblePosition
 
 object OverlayPreferences {
-    private fun repository(context: Context) = UiPreferencesRepository(
-        context.applicationContext.getSharedPreferences(UiPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE),
-    )
+    private fun repository(context: Context): UiPreferencesRepository =
+        (context.applicationContext as PhoneControlApplication).container.uiPreferencesRepository
 
     fun isEnabled(context: Context): Boolean = repository(context).current().overlayEnabled
 

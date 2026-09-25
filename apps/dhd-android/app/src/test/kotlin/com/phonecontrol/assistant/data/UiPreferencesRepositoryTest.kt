@@ -1,14 +1,9 @@
 package com.phonecontrol.assistant.data
 
 import com.phonecontrol.assistant.testing.InMemorySharedPreferences
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class UiPreferencesRepositoryTest {
     private val preferences = InMemorySharedPreferences()
     private val repository = UiPreferencesRepository(preferences)
@@ -53,14 +48,13 @@ class UiPreferencesRepositoryTest {
     }
 
     @Test
-    fun `changes publish the current snapshot and every later write`() = runTest(UnconfinedTestDispatcher()) {
-        val seen = mutableListOf<UiPreferences>()
-        backgroundScope.launch { repository.changes.collect { seen += it } }
+    fun `state follows writes from any holder of the preferences`() {
+        val overlayRepository = UiPreferencesRepository(preferences)
 
-        repository.setFastMode(true)
-        repository.setThemeMode("light")
+        overlayRepository.setFastMode(true)
+        preferences.edit().putString("pref_theme_mode", "light").apply()
 
-        assertEquals(listOf(false, true, true), seen.map(UiPreferences::fastMode))
-        assertEquals(listOf("dark", "dark", "light"), seen.map(UiPreferences::themeMode))
+        assertEquals(true, repository.state.value.fastMode)
+        assertEquals("light", repository.state.value.themeMode)
     }
 }

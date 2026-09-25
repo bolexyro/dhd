@@ -3,11 +3,9 @@ package com.phonecontrol.assistant.data
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.phonecontrol.assistant.domain.ReasoningEffort
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.conflate
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class UiPreferences(
     val themeMode: String?,
@@ -20,12 +18,14 @@ data class UiPreferences(
 )
 
 class UiPreferencesRepository(private val preferences: SharedPreferences) {
-    val changes: Flow<UiPreferences> = callbackFlow {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> trySend(current()) }
+    private val _state = MutableStateFlow(current())
+    private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> _state.value = current() }
+
+    val state: StateFlow<UiPreferences> = _state.asStateFlow()
+
+    init {
         preferences.registerOnSharedPreferenceChangeListener(listener)
-        send(current())
-        awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
-    }.conflate().distinctUntilChanged()
+    }
 
     fun current(): UiPreferences = UiPreferences(
         themeMode = preferences.getString(KEY_THEME_MODE, DEFAULT_THEME_MODE),

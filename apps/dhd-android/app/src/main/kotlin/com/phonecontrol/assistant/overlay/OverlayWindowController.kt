@@ -2,7 +2,6 @@ package com.phonecontrol.assistant.overlay
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
 import android.provider.Settings
@@ -15,7 +14,11 @@ import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -57,6 +60,7 @@ class OverlayWindowController(
     private val taskDisplaySession: StateFlow<TaskDisplaySession?>,
     private val onTaskPreviewSurfaceAvailable: (TaskDisplaySession, Surface) -> Unit,
     private val onTaskPreviewSurfaceDestroyed: (TaskDisplaySession, Surface, () -> Unit) -> Unit,
+    private val uiPreferences: UiPreferencesRepository,
 ) {
     private companion object {
         const val BUBBLE_SIZE_DP = 56
@@ -351,7 +355,6 @@ class OverlayWindowController(
 
     private fun createViews() {
         if (!Settings.canDrawOverlays(appContext)) return
-        val colors = assistantColors()
         val lifecycleOwner = OverlayViewTreeOwner()
         val initialVisibility = if (hidden) View.GONE else View.VISIBLE
         val panel = ComposeView(appContext).apply {
@@ -373,7 +376,7 @@ class OverlayWindowController(
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             setContent {
-                CompositionLocalProvider(LocalAssistantColors provides colors) {
+                OverlayTheme {
                     OverlayPanel(
                         sessionState = coordinator.state,
                         toolCalls = coordinator.toolCalls,
@@ -403,6 +406,7 @@ class OverlayWindowController(
                         overlayHidden = visibilityGate.hidden,
                         onTaskPreviewSurfaceAvailable = onTaskPreviewSurfaceAvailable,
                         onTaskPreviewSurfaceDestroyed = onTaskPreviewSurfaceDestroyed,
+                        preferences = uiPreferences,
                     )
                 }
             }
@@ -422,7 +426,7 @@ class OverlayWindowController(
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             setContent {
-                CompositionLocalProvider(LocalAssistantColors provides colors) {
+                OverlayTheme {
                     OverlayGlow(
                         sessionState = coordinator.state,
                         panelMode = panelMode,
@@ -651,12 +655,9 @@ class OverlayWindowController(
 
     private fun submitRequest(request: String) {
         _resultMessage.value = null
-        val prefs = appContext.getSharedPreferences(UiPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)
-        val reasoningEffort = ReasoningEffort.fromStorage(
-            prefs.getString(UiPreferencesRepository.KEY_REASONING_EFFORT, ReasoningEffort.default.storageValue),
-        )?.codexValue ?: ReasoningEffort.default.codexValue
-        val fastMode = prefs.getBoolean(UiPreferencesRepository.KEY_FAST_MODE, false)
-        sessionCommands.start(request, DHD_CONVERSATION_ID, reasoningEffort, fastMode)
+        val preferences = uiPreferences.current()
+        val reasoningEffort = ReasoningEffort.fromStorage(preferences.reasoningEffort).codexValue
+        sessionCommands.start(request, DHD_CONVERSATION_ID, reasoningEffort, preferences.fastMode)
         setPanelMode(OverlayPanelMode.WORKING)
     }
 
@@ -720,13 +721,12 @@ class OverlayWindowController(
         }
     }
 
-    private fun assistantColors(): com.phonecontrol.assistant.ui.theme.AssistantColorScheme {
-        val prefs = appContext.getSharedPreferences(UiPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)
-        val mode = ThemeMode.fromStorage(prefs.getString(UiPreferencesRepository.KEY_THEME_MODE, "dark"))
-        val isSystemDark = (appContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
-            Configuration.UI_MODE_NIGHT_NO
-        val isDark = mode.isDark(isSystemDark)
-        return if (isDark) DarkAssistantColors else LightAssistantColors
+    @Composable
+    private fun OverlayTheme(content: @Composable () -> Unit) {
+        val preferences by uiPreferences.state.collectAsState()
+        val isDark = ThemeMode.fromStorage(preferences.themeMode).isDark(isSystemInDarkTheme())
+        val colors = if (isDark) DarkAssistantColors else LightAssistantColors
+        CompositionLocalProvider(LocalAssistantColors provides colors, content = content)
     }
 
     private fun dp(value: Int): Int =
