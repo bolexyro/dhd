@@ -9,12 +9,54 @@ const MODULE_DIRECTORY = fileURLToPath(new URL(".", import.meta.url));
 const PROJECT_ROOT = resolve(MODULE_DIRECTORY, "../../../");
 export const CLIENT_SOURCE_DIRECTORY = resolve(PROJECT_ROOT, "src/dashboard/client");
 export const CLIENT_DIST_DIRECTORY = resolve(PROJECT_ROOT, "dist/dashboard/client");
-const BROWSER_MODULES = new Set(["api", "pricing", "tool-images"]);
+const CLIENT_ROOT: StaticRoot = { source: CLIENT_SOURCE_DIRECTORY, dist: CLIENT_DIST_DIRECTORY };
+const SHARED_ROOT: StaticRoot = {
+  source: resolve(PROJECT_ROOT, "src/shared"),
+  dist: resolve(PROJECT_ROOT, "dist/shared"),
+};
+const STATIC_FILES: Record<string, string> = {
+  "/": "index.html",
+  "/index.html": "index.html",
+  "/styles.css": "styles.css",
+  "/favicon.png": "favicon.png",
+};
+const CLIENT_ENTRY_PATHS = new Set(["/renderer.js", "/renderer.ts"]);
+const CLIENT_MODULE_PATH = /^\/((?:views\/)?[a-z][a-z-]*)\.(?:js|ts)$/;
+const SHARED_MODULE_PATH = /^\/shared\/([a-z][a-z-]*)\.(?:js|ts)$/;
+const BROWSER_SHARED_MODULES = new Set(["errors", "single-flight"]);
 const NO_CACHE_HEADERS = {
   "Cache-Control": "no-cache, no-store, must-revalidate",
   "Pragma": "no-cache",
   "Expires": "0"
 };
+
+export interface StaticRoot {
+  source: string;
+  dist: string;
+}
+
+export interface StaticAsset {
+  root: StaticRoot;
+  fileName: string;
+}
+
+function hasModule(root: StaticRoot, name: string): boolean {
+  return existsSync(resolve(root.source, `${name}.ts`)) || existsSync(resolve(root.dist, `${name}.js`));
+}
+
+export function staticAssetFor(pathname: string): StaticAsset | undefined {
+  if (Object.hasOwn(STATIC_FILES, pathname)) return { root: CLIENT_ROOT, fileName: STATIC_FILES[pathname] };
+  if (CLIENT_ENTRY_PATHS.has(pathname)) return { root: CLIENT_ROOT, fileName: "main.js" };
+  const clientModule = CLIENT_MODULE_PATH.exec(pathname)?.[1];
+  if (clientModule && clientModule !== "main" && hasModule(CLIENT_ROOT, clientModule)) {
+    return { root: CLIENT_ROOT, fileName: `${clientModule}.js` };
+  }
+  const sharedModule = SHARED_MODULE_PATH.exec(pathname)?.[1];
+  if (sharedModule && BROWSER_SHARED_MODULES.has(sharedModule)) {
+    return { root: SHARED_ROOT, fileName: `${sharedModule}.js` };
+  }
+  return undefined;
+}
 
 function getContentType(path: string): string {
   if (path.endsWith(".html")) return "text/html; charset=utf-8";
@@ -24,12 +66,6 @@ function getContentType(path: string): string {
   if (path.endsWith(".png")) return "image/png";
   if (path.endsWith(".svg")) return "image/svg+xml";
   return "text/plain; charset=utf-8";
-}
-
-export function browserModuleName(pathname: string): string | undefined {
-  const name = /^\/([a-z-]+)\.(?:js|ts)$/.exec(pathname)?.[1];
-  if (name === "renderer") return "main";
-  return name && BROWSER_MODULES.has(name) ? name : undefined;
 }
 
 function transpileTsFile(tsCode: string): string {
@@ -43,11 +79,11 @@ function transpileTsFile(tsCode: string): string {
   }).outputText;
 }
 
-export async function serveStaticFile(res: http.ServerResponse, fileName: string): Promise<void> {
+export async function serveStaticFile(res: http.ServerResponse, { root, fileName }: StaticAsset): Promise<void> {
   // If a JS module is requested, check if a corresponding TS source exists and transpile on-the-fly
   if (fileName.endsWith(".js")) {
     const tsFileName = fileName.replace(/\.js$/, ".ts");
-    const srcTsPath = resolve(CLIENT_SOURCE_DIRECTORY, tsFileName);
+    const srcTsPath = resolve(root.source, tsFileName);
     if (existsSync(srcTsPath)) {
       try {
         const tsCode = await readFile(srcTsPath, "utf8");
@@ -64,7 +100,7 @@ export async function serveStaticFile(res: http.ServerResponse, fileName: string
     }
   }
 
-  for (const filePath of [resolve(CLIENT_SOURCE_DIRECTORY, fileName), resolve(CLIENT_DIST_DIRECTORY, fileName)]) {
+  for (const filePath of [resolve(root.source, fileName), resolve(root.dist, fileName)]) {
     if (existsSync(filePath)) {
       try {
         const content = await readFile(filePath);

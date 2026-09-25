@@ -5,15 +5,9 @@ import { errorMessage } from "../../shared/errors.js";
 import type { CompanionDashboard } from "./dashboard.js";
 import { discoveredPhoneSnapshot } from "./pairing-service.js";
 import { readRequestBody } from "./request-body.js";
-import { browserModuleName, serveStaticFile } from "./static.js";
+import { serveStaticFile, staticAssetFor } from "./static.js";
 
 const TOOL_IMAGE_PATH = /^\/api\/tool-calls\/([^/]+)\/images\/(\d+)$/;
-const STATIC_FILES: Record<string, string> = {
-  "/": "index.html",
-  "/index.html": "index.html",
-  "/styles.css": "styles.css",
-  "/favicon.png": "favicon.png",
-};
 
 type JsonAction = (req: http.IncomingMessage) => unknown;
 
@@ -164,12 +158,8 @@ async function handleRequest(
     return;
   }
 
-  const staticFile = Object.hasOwn(STATIC_FILES, pathname) ? STATIC_FILES[pathname] : undefined;
-  if (staticFile) return serveStaticFile(res, staticFile);
-  const browserModule = browserModuleName(pathname);
-  if (browserModule) {
-    return serveStaticFile(res, `${browserModule}.js`);
-  }
+  const staticAsset = staticAssetFor(pathname);
+  if (staticAsset) return serveStaticFile(res, staticAsset);
   writeText(res, 404, "Not Found");
 }
 
