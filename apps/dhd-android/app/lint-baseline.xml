@@ -51,7 +51,7 @@
         errorLine1="        appContext.stopService(Intent(appContext, DhdAdbPairingService::class.java))"
         errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbController.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/PhoneAccessController.kt"
             line="195"
             column="32"/>
     </issue>
@@ -702,7 +702,7 @@
         errorLine1="                    preferences.edit().putBoolean(KEY_PAIRED, false).apply()"
         errorLine2="                    ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbController.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/PhoneAccessController.kt"
             line="647"
             column="21"/>
     </issue>
@@ -713,7 +713,7 @@
         errorLine1="            preferences.edit().putBoolean(KEY_PAIRED, true).apply()"
         errorLine2="            ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbController.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/PhoneAccessController.kt"
             line="679"
             column="13"/>
     </issue>

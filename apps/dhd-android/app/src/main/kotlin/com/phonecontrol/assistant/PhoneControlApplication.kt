@@ -6,7 +6,7 @@ import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.bridge.DevBridgeServer
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
-import com.phonecontrol.assistant.adb.DhdAdbController
+import com.phonecontrol.assistant.adb.PhoneAccessController
 import com.phonecontrol.assistant.adb.DhdAdbProcessRunner
 import com.phonecontrol.assistant.display.DhdTaskDisplayBackend
 import com.phonecontrol.assistant.display.PreviewSurfaceDispatcher
@@ -30,7 +30,7 @@ class PhoneControlApplication : Application() {
     val notificationVisibility = DhdNotificationVisibility()
     lateinit var appPermissionRepository: AppPermissionRepository
         private set
-    lateinit var developerModeController: DhdAdbController
+    lateinit var developerModeController: PhoneAccessController
         private set
     lateinit var processRunner: DhdAdbProcessRunner
         private set
@@ -118,7 +118,7 @@ class PhoneControlApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         appPermissionRepository = AppPermissionRepository(this)
-        developerModeController = DhdAdbController(this).also { it.start() }
+        developerModeController = PhoneAccessController(this).also { it.start() }
         processRunner = DhdAdbProcessRunner(developerModeController)
         conversationStore = ConversationStore(this)
         taskDisplayBackend = DhdTaskDisplayBackend(

@@ -5,7 +5,7 @@ import com.phonecontrol.assistant.execution.PhoneProcessRunner
 
 /** Adapts typed phone argv to DHD's local ADB controller. */
 class DhdAdbProcessRunner(
-    private val controller: DhdAdbController,
+    private val controller: PhoneAccessController,
 ) : PhoneProcessRunner {
     override suspend fun run(command: List<String>): PhoneProcessResult {
         return run(command, onStarted = null)

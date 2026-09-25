@@ -127,7 +127,7 @@ data class DeveloperModeStatus(
  * itself; the user explicitly turns that maintenance switch on when Android
  * has restarted the maintenance process or pairing is needed.
  */
-class DhdAdbController(context: Context) {
+class PhoneAccessController(context: Context) {
     private val appContext = context.applicationContext
     private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

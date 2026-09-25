@@ -32,7 +32,7 @@ class DhdAdbPairingService : Service() {
     private var pairingActive = false
     private var pairingServiceFound = false
 
-    private val controller: DhdAdbController
+    private val controller: PhoneAccessController
         get() = (application as PhoneControlApplication).developerModeController
 
     override fun onCreate() {

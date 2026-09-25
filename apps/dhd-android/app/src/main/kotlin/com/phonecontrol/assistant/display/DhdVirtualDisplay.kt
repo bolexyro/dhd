@@ -1,7 +1,7 @@
 package com.phonecontrol.assistant.display
 
 import android.content.Context
-import com.phonecontrol.assistant.adb.DhdAdbController
+import com.phonecontrol.assistant.adb.PhoneAccessController
 import com.phonecontrol.assistant.execution.PhoneProcessResult
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -141,7 +141,7 @@ interface NativeDisplayManager {
  */
 class DhdVirtualDisplayManager(
     context: Context,
-    private val controller: DhdAdbController,
+    private val controller: PhoneAccessController,
 ) : NativeDisplayManager {
     private val appContext = context.applicationContext
     private val stateMutex = Mutex()

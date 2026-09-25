@@ -8,7 +8,7 @@ import com.phonecontrol.assistant.data.CONVERSATION_DATABASE_NAME
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.RunStatus
 import com.phonecontrol.assistant.data.activityStatus
-import com.phonecontrol.assistant.adb.DhdAdbController
+import com.phonecontrol.assistant.adb.PhoneAccessController
 import com.phonecontrol.assistant.adb.DhdAdbKey
 import com.phonecontrol.assistant.adb.DhdAdbPairingNotification
 import com.phonecontrol.assistant.adb.DhdAdbPairingService
@@ -72,8 +72,8 @@ class PersistedContractsTest {
 
     @Test
     fun `adb connection and identity preference keys`() {
-        assertEquals("dhd_adb_connection", DhdAdbController.PREFERENCES_NAME)
-        assertEquals("paired", DhdAdbController.KEY_PAIRED)
+        assertEquals("dhd_adb_connection", PhoneAccessController.PREFERENCES_NAME)
+        assertEquals("paired", PhoneAccessController.KEY_PAIRED)
         assertEquals("maintenance_port", DhdMaintenanceBootstrap.KEY_MAINTENANCE_PORT)
         assertEquals("maintenance_token", DhdMaintenanceBootstrap.KEY_MAINTENANCE_TOKEN)
         assertEquals("dhd_adb_identity", DhdAdbKey.KEY_STORE_NAME)
