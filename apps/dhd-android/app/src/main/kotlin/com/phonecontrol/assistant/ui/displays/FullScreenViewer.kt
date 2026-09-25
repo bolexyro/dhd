@@ -40,8 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -55,6 +53,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.ui.components.shimmerBrush
 import com.phonecontrol.assistant.ui.displays.surface.PreviewLifecycleBinding
 import com.phonecontrol.assistant.ui.displays.surface.PreviewSurfaceDestroyed
 import com.phonecontrol.assistant.ui.displays.surface.ReadOnlyPreviewTextureView
@@ -310,17 +309,7 @@ private fun AnimatedPurposeText(
         ),
         label = "task_display_purpose_translate",
     )
-    val shimmerBrush = Brush.linearGradient(
-        colors = listOf(
-            colors.accentBlue.copy(alpha = 0.35f),
-            colors.accentBlue,
-            colors.textPrimary,
-            colors.accentBlue,
-            colors.accentBlue.copy(alpha = 0.35f),
-        ),
-        start = Offset(shimmerTranslate, 0f),
-        end = Offset(shimmerTranslate + 180f, 0f),
-    )
+    val shimmerBrush = shimmerBrush(colors.accentBlue, colors.textPrimary, shimmerTranslate, bandWidth = 180f)
     Text(
         text = text,
         modifier = modifier,

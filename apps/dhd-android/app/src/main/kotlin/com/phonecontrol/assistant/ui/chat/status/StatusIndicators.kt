@@ -1,12 +1,5 @@
 package com.phonecontrol.assistant.ui.chat.status
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,8 +17,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
@@ -34,8 +25,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.ui.components.ShimmerLabels
 import com.phonecontrol.assistant.ui.components.THINKING_WORDS
+import com.phonecontrol.assistant.ui.components.THINKING_WORD_INTERVAL_MS
 import com.phonecontrol.assistant.ui.components.nextThinkingWordIndex
+import com.phonecontrol.assistant.ui.components.rememberPulsingShimmer
 import com.phonecontrol.assistant.ui.recovery.AttentionRecoveryCard
 import com.phonecontrol.assistant.ui.recovery.CompanionRecoveryCard
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
@@ -117,38 +111,14 @@ private fun ShimmerThinkingIndicator(
             wordIndex = nextThinkingWordIndex(wordIndex)
         }
     }
-    val infiniteTransition = rememberInfiniteTransition(label = "thinking_shimmer")
-
-    val shimmerTranslate by infiniteTransition.animateFloat(
-        initialValue = -150f,
-        targetValue = 450f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1300, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
+    val shimmer = rememberPulsingShimmer(
+        accent = colors.accentBlue,
+        highlight = colors.textPrimary,
+        labels = ShimmerLabels(
+            transition = "thinking_shimmer",
+            translate = "shimmer_translate",
+            pulse = "pulse_alpha",
         ),
-        label = "shimmer_translate",
-    )
-
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 750, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse_alpha",
-    )
-
-    val shimmerBrush = Brush.linearGradient(
-        colors = listOf(
-            colors.accentBlue.copy(alpha = 0.35f),
-            colors.accentBlue,
-            colors.textPrimary,
-            colors.accentBlue,
-            colors.accentBlue.copy(alpha = 0.35f),
-        ),
-        start = Offset(shimmerTranslate, 0f),
-        end = Offset(shimmerTranslate + 160f, 0f),
     )
 
     Row(
@@ -158,7 +128,7 @@ private fun ShimmerThinkingIndicator(
         Icon(
             painter = painterResource(R.drawable.ic_bot),
             contentDescription = "Thinking",
-            tint = colors.accentBlue.copy(alpha = pulseAlpha),
+            tint = colors.accentBlue.copy(alpha = shimmer.pulseAlpha),
             modifier = Modifier.size(16.dp),
         )
         Spacer(Modifier.width(7.dp))
@@ -166,7 +136,7 @@ private fun ShimmerThinkingIndicator(
             text = THINKING_WORDS[wordIndex],
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            style = TextStyle(brush = shimmerBrush),
+            style = TextStyle(brush = shimmer.brush),
         )
         Spacer(Modifier.width(6.dp))
         Text(
@@ -265,4 +235,3 @@ private fun thinkingDetail(currentPurpose: String, elapsedSeconds: Long): String
 }
 
 private const val COMPANION_WAIT_CALLOUT_SECONDS = 15L
-private const val THINKING_WORD_INTERVAL_MS = 4_000L

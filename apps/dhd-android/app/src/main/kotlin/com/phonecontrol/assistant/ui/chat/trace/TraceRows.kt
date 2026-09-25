@@ -2,13 +2,7 @@ package com.phonecontrol.assistant.ui.chat.trace
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -37,8 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -54,7 +46,8 @@ import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.data.TimelineItem
 import com.phonecontrol.assistant.session.DhdToolCall
-import com.phonecontrol.assistant.ui.theme.AssistantColorScheme
+import com.phonecontrol.assistant.ui.components.ShimmerLabels
+import com.phonecontrol.assistant.ui.components.rememberPulsingShimmer
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.toolActivityColor
 import kotlinx.coroutines.delay
@@ -324,51 +317,6 @@ private fun CurrentToolTraceRow(toolCall: DhdToolCall) {
     )
 }
 
-private data class ToolActivityShimmer(
-    val brush: Brush,
-    val pulseAlpha: Float,
-)
-
-@Composable
-private fun rememberToolActivityShimmer(
-    colors: AssistantColorScheme,
-    shimmerColor: Color,
-): ToolActivityShimmer {
-    val infiniteTransition = rememberInfiniteTransition(label = "tool_activity_shimmer")
-    val shimmerTranslate by infiniteTransition.animateFloat(
-        initialValue = -150f,
-        targetValue = 450f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1300, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "tool_activity_shimmer_translate",
-    )
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 750, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "tool_activity_pulse_alpha",
-    )
-    return ToolActivityShimmer(
-        brush = Brush.linearGradient(
-            colors = listOf(
-                shimmerColor.copy(alpha = 0.35f),
-                shimmerColor,
-                colors.textPrimary,
-                shimmerColor,
-                shimmerColor.copy(alpha = 0.35f),
-            ),
-            start = Offset(shimmerTranslate, 0f),
-            end = Offset(shimmerTranslate + 160f, 0f),
-        ),
-        pulseAlpha = pulseAlpha,
-    )
-}
-
 @Composable
 private fun TraceStepRowContent(
     toolName: String?,
@@ -392,7 +340,15 @@ private fun TraceStepRowContent(
         else -> toolActivityColor(toolName, colors, statusColor, actionType)
     }
     val shimmer = if (isCurrent) {
-        rememberToolActivityShimmer(colors, iconColor)
+        rememberPulsingShimmer(
+            accent = iconColor,
+            highlight = colors.textPrimary,
+            labels = ShimmerLabels(
+                transition = "tool_activity_shimmer",
+                translate = "tool_activity_shimmer_translate",
+                pulse = "tool_activity_pulse_alpha",
+            ),
+        )
     } else {
         null
     }

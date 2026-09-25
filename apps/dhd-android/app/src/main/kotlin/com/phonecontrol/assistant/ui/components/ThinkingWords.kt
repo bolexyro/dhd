@@ -2,6 +2,8 @@ package com.phonecontrol.assistant.ui.components
 
 import kotlin.random.Random
 
+internal const val THINKING_WORD_INTERVAL_MS = 4_000L
+
 internal val THINKING_WORDS = listOf(
     "Thinking…",
     "DHD-ing…",
