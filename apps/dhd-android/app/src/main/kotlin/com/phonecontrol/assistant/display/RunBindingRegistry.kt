@@ -83,8 +83,10 @@ internal class RunBindingRegistry {
     }
 
     fun ensureOwnerBinding(ownerKey: String) {
-        if (runBindings.values.any { ownerKey in it }) return
-        runBindings.getOrPut(ownerKey) { linkedSetOf() }.add(ownerKey)
+        synchronized(lock) {
+            if (runBindings.values.any { ownerKey in it }) return
+            runBindings.getOrPut(ownerKey) { linkedSetOf() }.add(ownerKey)
+        }
     }
 
     fun isOwnerBoundToDifferentRun(ownerKey: String): Boolean = synchronized(lock) {

@@ -78,6 +78,23 @@ class DisplayConcurrencyTest {
         assertEquals(KEYS, registry.previewStates.value.size)
     }
 
+    @Test
+    fun `owner bindings ensured while other runs bind and unbind are all kept`() {
+        val bindings = RunBindingRegistry()
+
+        concurrently(KEYS) { index ->
+            if (index % 2 == 0) {
+                bindings.ensureOwnerBinding("owner-$index")
+            } else {
+                bindings.bind("run-$index", "other-$index")
+                bindings.unbind("other-$index")
+            }
+        }
+
+        val missing = (0 until KEYS step 2).filterNot { bindings.isBound("owner-$it", "owner-$it") }
+        assertEquals(emptyList<Int>(), missing)
+    }
+
     private companion object {
         const val THREADS = 8
         const val KEYS = 2_000
