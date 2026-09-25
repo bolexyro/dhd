@@ -13,6 +13,13 @@ final class SurfaceFlingerIds {
     private static final Pattern SURFACE_FLINGER_DISPLAY_PATTERN = Pattern.compile(
             "^\\s*(?:Virtual\\s+)?Display\\s+(\\d+)\\b",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern QUOTED_UNIQUE_ID_PATTERN = Pattern.compile(
+            "\\buniqueId\\s*[\"'=:\\s]+\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
+    private static final Pattern UNQUOTED_VIRTUAL_UNIQUE_ID_PATTERN = Pattern.compile(
+            "\\buniqueId\\s*[=:\\s]+(virtual:[^,}\\s]+,\\d+,[^,}]*?,\\d+)(?=[,}\\s]|$)",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern UNQUOTED_UNIQUE_ID_PATTERN = Pattern.compile(
+            "\\buniqueId\\s*[\"'=:\\s]+([^,}\\s]+)", Pattern.CASE_INSENSITIVE);
 
     private SurfaceFlingerIds() {}
 
@@ -33,13 +40,11 @@ final class SurfaceFlingerIds {
     }
 
     private static String parseUniqueId(String line) {
-        Matcher quoted = Pattern.compile(
-                "\\buniqueId\\s*[\"'=:\\s]+\"([^\"]+)\"", Pattern.CASE_INSENSITIVE)
-                .matcher(line);
+        Matcher quoted = QUOTED_UNIQUE_ID_PATTERN.matcher(line);
         if (quoted.find()) return quoted.group(1);
-        Matcher unquoted = Pattern.compile(
-                "\\buniqueId\\s*[\"'=:\\s]+([^,}\\s]+)", Pattern.CASE_INSENSITIVE)
-                .matcher(line);
+        Matcher virtual = UNQUOTED_VIRTUAL_UNIQUE_ID_PATTERN.matcher(line);
+        if (virtual.find()) return virtual.group(1);
+        Matcher unquoted = UNQUOTED_UNIQUE_ID_PATTERN.matcher(line);
         return unquoted.find() ? unquoted.group(1) : null;
     }
 
