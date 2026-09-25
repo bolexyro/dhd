@@ -1,6 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { performance } from "node:perf_hooks";
 import * as readline from "node:readline";
 
 import {
@@ -58,6 +57,7 @@ import {
   serviceTierForFastMode,
 } from "./codex/settings.js";
 import { spawnAppServerProcess, type AppServerSpawner } from "./codex/process.js";
+import { PhaseTimer, logCompanionPhase } from "./shared/timing.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -84,32 +84,6 @@ interface PendingRpcRequest {
   resolve: (message: JsonRpcMessage) => void;
   reject: (error: Error) => void;
   timer: NodeJS.Timeout;
-}
-
-/**
- * Human-readable, millisecond-resolution lifecycle timing written to stderr.
- * The companion never includes request text, tool arguments, screenshots, or
- * model output in these diagnostics.
- */
-class PhaseTimer {
-  private readonly startedAt = performance.now();
-
-  constructor(private readonly scope: string) {}
-
-  log(phase: string, details?: string): void {
-    const elapsedMs = Math.round(performance.now() - this.startedAt);
-    const suffix = details ? ` ${details}` : "";
-    console.error(
-      `[dhd-timing] scope=${this.scope} phase=${phase} tsMs=${Date.now()} elapsedMs=${elapsedMs}${suffix}`,
-    );
-  }
-}
-
-function logCompanionPhase(phase: string, details?: string): void {
-  const suffix = details ? ` ${details}` : "";
-  console.error(
-    `[dhd-timing] scope=companion phase=${phase} tsMs=${Date.now()}${suffix}`,
-  );
 }
 
 export interface DynamicToolCallResponse {
