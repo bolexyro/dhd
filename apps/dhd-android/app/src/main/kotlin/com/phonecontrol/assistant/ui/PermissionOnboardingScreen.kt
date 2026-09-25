@@ -86,6 +86,8 @@ import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.overlay.DhdBubblePreview
 import com.phonecontrol.assistant.overlay.DhdComposerPreview
+import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
+import com.phonecontrol.assistant.ui.theme.assistantSwitchColors
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt

@@ -31,8 +31,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -82,7 +80,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -168,10 +165,13 @@ import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.adb.DeveloperConnectionState
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
+import com.phonecontrol.assistant.ui.theme.AssistantColorScheme
+import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
+import com.phonecontrol.assistant.ui.theme.ThemeMode
+import com.phonecontrol.assistant.ui.theme.assistantSwitchColors
+import com.phonecontrol.assistant.ui.theme.toolActivityColor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
-import java.text.DateFormat
-import java.util.Date
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -2594,30 +2594,6 @@ private fun TraceStepRowContent(
             maxLines = 4,
             overflow = TextOverflow.Ellipsis,
         )
-    }
-}
-
-/**
- * Maps the DHD tool represented by an activity row to the same accent used by
- * the live task-display footer. Unknown tools retain the caller's fallback.
- */
-internal fun toolActivityColor(
-    toolName: String?,
-    colors: AssistantColorScheme,
-    fallback: Color = colors.textSecondary,
-    actionType: String? = null,
-): Color {
-    if (actionType.equals("WAIT", ignoreCase = true)) return colors.accentMagenta
-
-    return when (toolName?.lowercase()) {
-        "wait", "dhd_wait", "phone_wait_for" -> colors.accentMagenta
-        ToolNames.OBSERVE, "dhd_observe_app" -> colors.accentBlue
-        ToolNames.EXECUTE, ToolNames.EXECUTE_SEQUENCE -> colors.accentGreen
-        ToolNames.BROWSE_APP -> colors.accentPurple
-        ToolNames.OPEN_APP -> colors.accentCyan
-        ToolNames.FOREGROUND_APP -> colors.accentOrange
-        ToolNames.LIST_ALLOWED_APPS -> colors.accentPink
-        else -> fallback
     }
 }
 
@@ -5350,24 +5326,6 @@ fun ApprovedAppsScreen(
         )
     }
 }
-
-@Composable
-fun assistantSwitchColors(colors: AssistantColorScheme) = SwitchDefaults.colors(
-    checkedThumbColor = if (colors.isDark) Color.Black else Color.White,
-    checkedTrackColor = if (colors.isDark) Color.White else Color.Black,
-    checkedBorderColor = Color.Transparent,
-    uncheckedThumbColor = if (colors.isDark) Color(0xFF8E8E93) else Color(0xFF9CA3AF),
-    uncheckedTrackColor = if (colors.isDark) Color(0xFF212124) else Color(0xFFE5E7EB),
-    uncheckedBorderColor = Color.Transparent,
-    disabledCheckedThumbColor = if (colors.isDark) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.6f),
-    disabledCheckedTrackColor = if (colors.isDark) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f),
-    disabledUncheckedThumbColor = if (colors.isDark) Color(0xFF8E8E93).copy(alpha = 0.4f) else Color(0xFF9CA3AF).copy(
-        alpha = 0.4f
-    ),
-    disabledUncheckedTrackColor = if (colors.isDark) Color(0xFF212124).copy(alpha = 0.4f) else Color(0xFFE5E7EB).copy(
-        alpha = 0.4f
-    ),
-)
 
 @Composable
 private fun SettingsSectionHeader(title: String) {

@@ -67,6 +67,8 @@ import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplayGeometry
 import com.phonecontrol.assistant.R
+import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
+import com.phonecontrol.assistant.ui.theme.toolActivityColor
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**

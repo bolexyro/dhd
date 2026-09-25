@@ -40,11 +40,11 @@ import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.session.AssistantForegroundService
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
-import com.phonecontrol.assistant.ui.DarkAssistantColors
 import com.phonecontrol.assistant.ui.AppRoutes
-import com.phonecontrol.assistant.ui.LightAssistantColors
-import com.phonecontrol.assistant.ui.LocalAssistantColors
-import com.phonecontrol.assistant.ui.ThemeMode
+import com.phonecontrol.assistant.ui.theme.DarkAssistantColors
+import com.phonecontrol.assistant.ui.theme.LightAssistantColors
+import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
+import com.phonecontrol.assistant.ui.theme.ThemeMode
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -732,7 +732,7 @@ class OverlayWindowController(
         }
     }
 
-    private fun assistantColors(): com.phonecontrol.assistant.ui.AssistantColorScheme {
+    private fun assistantColors(): com.phonecontrol.assistant.ui.theme.AssistantColorScheme {
         val prefs = appContext.getSharedPreferences(UiPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)
         val mode = ThemeMode.fromStorage(prefs.getString(UiPreferencesRepository.KEY_THEME_MODE, "dark"))
         val isSystemDark = (appContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=

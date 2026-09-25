@@ -33,6 +33,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.ui.theme.AssistantColorScheme
+import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 sealed interface MarkdownBlock {
     data class Heading(val level: Int, val text: String) : MarkdownBlock
