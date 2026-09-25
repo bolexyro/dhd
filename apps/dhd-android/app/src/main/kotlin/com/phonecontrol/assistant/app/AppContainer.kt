@@ -10,6 +10,7 @@ import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledAppsRepository
 import com.phonecontrol.assistant.bridge.AndroidBridgePlatform
 import com.phonecontrol.assistant.bridge.DevBridgeServer
+import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.data.ConversationRepository
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
@@ -106,7 +107,7 @@ class AppContainer(context: Context) {
     val devBridgeServer = DevBridgeServer(
         platform = AndroidBridgePlatform(
             context = context,
-            preferencesName = DevBridgeServer.PREFERENCES_NAME,
+            preferencesName = BridgeCredentials.PREFERENCES_NAME,
             installedAppsRepository = installedAppsRepository,
             taskDisplayLayoutPreferences = taskDisplayLayoutPreferences,
             overlayVisibilityGate = overlayVisibilityGate,

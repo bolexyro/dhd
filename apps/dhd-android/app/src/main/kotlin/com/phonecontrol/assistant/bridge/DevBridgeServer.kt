@@ -2,6 +2,7 @@ package com.phonecontrol.assistant.bridge
 
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
+import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.optionalDisplayRef
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseGuardRegions
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parsePhoneAction
@@ -170,18 +171,11 @@ class DevBridgeServer internal constructor(
         lanAddressProvider = ::systemLanIpv4Addresses,
     )
 
-    val authenticationToken: String = platform.storedString(KEY_AUTH_TOKEN)
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?: newUuid().toString().replace("-", "").also { token ->
-            platform.storeString(KEY_AUTH_TOKEN, token)
-        }
-    val deviceId: String = platform.storedString(KEY_DEVICE_ID)
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?: newUuid().toString().also { id ->
-            platform.storeString(KEY_DEVICE_ID, id)
-        }
+    private val credentials = BridgeCredentials(platform, newUuid)
+    val authenticationToken: String
+        get() = credentials.authenticationToken
+    val deviceId: String
+        get() = credentials.deviceId
     val listeningPort: Int = port
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var serverSocket: ServerSocket? = null
@@ -613,7 +607,7 @@ class DevBridgeServer internal constructor(
         }
         val requestId = json.optString("requestId").ifBlank { newUuid().toString() }
 
-        if (!isAuthorized(peerAddress, json)) {
+        if (!credentials.isAuthorized(peerAddress, json)) {
             reply.write(
                 errorResponse(requestId, "The phone bridge rejected this network connection. Pair the desktop companion in DHD settings.")
                     .put("code", BridgeErrorCodes.AUTH_REQUIRED),
@@ -2293,16 +2287,6 @@ class DevBridgeServer internal constructor(
             BridgeErrorCodes.OBSERVATION_FAILED
         }
 
-    internal fun isAuthorized(peerAddress: InetAddress, json: JSONObject): Boolean {
-        // adb forward presents the desktop peer as loopback. Keep this local
-        // development path compatible without requiring a token, while every
-        // actual LAN peer must prove possession of the paired token.
-        if (peerAddress.isLoopbackAddress) return true
-        val candidate = json.optString("authToken").trim().toByteArray(Charsets.UTF_8)
-        val expected = authenticationToken.toByteArray(Charsets.UTF_8)
-        return MessageDigest.isEqual(candidate, expected)
-    }
-
     /** Return currently usable IPv4 addresses that the desktop can dial. */
     fun lanIpv4Addresses(): List<String> = lanAddressProvider()
 
@@ -2328,9 +2312,6 @@ class DevBridgeServer internal constructor(
         const val COMPLETED_PAIRING_RESPONSE_TTL_MS = 10_000L
         const val MAX_COMPLETED_PAIRING_RESPONSES = 16
         const val MAX_DESKTOP_NAME_CHARS = 80
-        const val PREFERENCES_NAME = "dhd_companion_link"
-        const val KEY_AUTH_TOKEN = "bridge_auth_token"
-        const val KEY_DEVICE_ID = "device_id"
         // The companion uses short-lived TCP polls. Allow several missed
         // polls before showing a disconnect so one Wi-Fi/scheduler hiccup
         // does not flap the phone UI offline.

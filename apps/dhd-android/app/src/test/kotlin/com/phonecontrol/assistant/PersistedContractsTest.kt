@@ -2,7 +2,7 @@ package com.phonecontrol.assistant
 
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.phonecontrol.assistant.apps.AppPermissionRepository
-import com.phonecontrol.assistant.bridge.DevBridgeServer
+import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.data.AssistantDatabase
 import com.phonecontrol.assistant.data.CONVERSATION_DATABASE_NAME
 import com.phonecontrol.assistant.data.ConversationStore
@@ -64,9 +64,9 @@ class PersistedContractsTest {
 
     @Test
     fun `companion link preference keys`() {
-        assertEquals("dhd_companion_link", DevBridgeServer.PREFERENCES_NAME)
-        assertEquals("bridge_auth_token", DevBridgeServer.KEY_AUTH_TOKEN)
-        assertEquals("device_id", DevBridgeServer.KEY_DEVICE_ID)
+        assertEquals("dhd_companion_link", BridgeCredentials.PREFERENCES_NAME)
+        assertEquals("bridge_auth_token", BridgeCredentials.KEY_AUTH_TOKEN)
+        assertEquals("device_id", BridgeCredentials.KEY_DEVICE_ID)
     }
 
     @Test
