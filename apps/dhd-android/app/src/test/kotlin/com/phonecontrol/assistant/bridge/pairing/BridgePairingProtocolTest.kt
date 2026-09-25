@@ -1,5 +1,7 @@
-package com.phonecontrol.assistant.bridge
+package com.phonecontrol.assistant.bridge.pairing
 
+import com.phonecontrol.assistant.bridge.BridgeHarness
+import com.phonecontrol.assistant.bridge.FIXTURE_DEVICE_ID
 import com.phonecontrol.assistant.testing.CanonicalJson
 import com.phonecontrol.assistant.testing.Goldens
 import java.net.DatagramPacket
@@ -53,7 +55,7 @@ class BridgePairingProtocolTest {
 
     private fun deliverRaw(text: String, from: DatagramSocket = desktopSocket) {
         val bytes = text.toByteArray(Charsets.UTF_8)
-        harness.server.handlePairingRequest(
+        harness.server.pairingServer.handlePacket(
             serverSocket,
             DatagramPacket(bytes, bytes.size, from.localAddress, from.localPort),
         )

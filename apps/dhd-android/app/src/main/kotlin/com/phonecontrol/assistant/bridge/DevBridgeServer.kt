@@ -3,6 +3,10 @@ package com.phonecontrol.assistant.bridge
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
+import com.phonecontrol.assistant.bridge.pairing.PairingProtocol
+import com.phonecontrol.assistant.bridge.pairing.PairingReturnAddress
+import com.phonecontrol.assistant.bridge.pairing.PairingUdpServer
+import com.phonecontrol.assistant.bridge.pairing.PendingCompanionPairing
 import com.phonecontrol.assistant.bridge.presence.CompanionPresence
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.optionalDisplayRef
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseGuardRegions
@@ -114,13 +118,6 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-data class PendingCompanionPairing(
-    val requestId: String,
-    val deviceId: String,
-    val desktopName: String,
-    val expiresAtEpochMs: Long,
-)
-
 /**
  * Authenticated LAN NDJSON bridge used by the development desktop companion.
  *
@@ -180,14 +177,25 @@ class DevBridgeServer internal constructor(
     val listeningPort: Int = port
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var serverSocket: ServerSocket? = null
-    @Volatile private var pairingSocket: DatagramSocket? = null
     @Volatile private var started = false
     private val presence = CompanionPresence(clock)
-  private val pairingStateLock = Any()
-    private val discoveryNonces = LinkedHashMap<String, Long>()
-  private val completedPairingResponses = LinkedHashMap<String, CompletedCompanionPairingResponse>()
-  @Volatile private var pendingCompanionPairingRequest: PendingCompanionPairingRequest? = null
-  private val _pendingCompanionPairing = MutableStateFlow<PendingCompanionPairing?>(null)
+    private val pairing = PairingProtocol<PairingReturnAddress>(
+        deviceId = deviceId,
+        authenticationToken = authenticationToken,
+        listeningPort = listeningPort,
+        deviceInfo = deviceInfo,
+        clock = clock,
+        newUuid = newUuid,
+        lanAddresses = lanAddressProvider,
+    )
+    internal val pairingServer = PairingUdpServer(
+        protocol = pairing,
+        platform = platform,
+        scope = scope,
+        bindHost = LAN_BIND_HOST,
+        port = PAIRING_DISCOVERY_PORT,
+        tag = TAG,
+    )
     private val phoneActionMutex = Mutex()
     private val overlayVisibilityGate
         get() = platform.overlayVisibilityGate()
@@ -199,31 +207,17 @@ class DevBridgeServer internal constructor(
         },
     )
 
-    private data class PendingCompanionPairingRequest(
-        val publicRequest: PendingCompanionPairing,
-        val pairingNonce: String,
-        val address: InetAddress,
-        val port: Int,
-        val socket: DatagramSocket,
-    )
-
-    private data class CompletedCompanionPairingResponse(
-        val pairingNonce: String,
-        val expiresAtEpochMs: Long,
-        val response: JSONObject,
-    )
-
     val companionConnected: StateFlow<Boolean>
         get() = presence.companionConnected
 
-    val pendingCompanionPairing: StateFlow<PendingCompanionPairing?> =
-        _pendingCompanionPairing.asStateFlow()
+    val pendingCompanionPairing: StateFlow<PendingCompanionPairing?>
+        get() = pairing.pendingCompanionPairing
 
     /** Approve the pending desktop request and release the LAN auth token once. */
-    fun approvePendingCompanionPairing(): Boolean = respondToPendingCompanionPairing(approved = true)
+    fun approvePendingCompanionPairing(): Boolean = pairingServer.respond(approved = true)
 
     /** Reject the pending desktop request without revealing the LAN auth token. */
-    fun rejectPendingCompanionPairing(): Boolean = respondToPendingCompanionPairing(approved = false)
+    fun rejectPendingCompanionPairing(): Boolean = pairingServer.respond(approved = false)
 
     fun start() {
         if (started) return
@@ -246,7 +240,7 @@ class DevBridgeServer internal constructor(
                 platform.logError(TAG, "Development bridge stopped", error)
             }
         }
-        scope.launch { runPairingDiscovery() }
+        scope.launch { pairingServer.run() }
         scope.launch { presence.monitor() }
     }
 
@@ -254,290 +248,9 @@ class DevBridgeServer internal constructor(
         started = false
         serverSocket?.close()
         serverSocket = null
-        pairingSocket?.close()
-        pairingSocket = null
-        clearPendingCompanionPairing()
+        pairingServer.stop()
         presence.release()
         scope.coroutineContext[Job]?.cancel()
-    }
-
-    private fun runPairingDiscovery() {
-        try {
-            val socket = DatagramSocket(PAIRING_DISCOVERY_PORT, InetAddress.getByName(LAN_BIND_HOST))
-            pairingSocket = socket
-            val buffer = ByteArray(MAX_REQUEST_CHARS)
-            while (!socket.isClosed) {
-                val packet = DatagramPacket(buffer, buffer.size)
-                socket.receive(packet)
-                runCatching { handlePairingRequest(socket, packet) }
-                    .onFailure { error ->
-                        if (!socket.isClosed) {
-                            platform.logWarning(TAG, "Could not handle a pairing discovery packet", error)
-                        }
-                    }
-            }
-        } catch (_: SocketException) {
-            // Closing the pairing socket is the normal shutdown path.
-        } catch (error: Throwable) {
-            platform.logWarning(TAG, "Pairing discovery stopped", error)
-        } finally {
-            pairingSocket = null
-        }
-    }
-
-    internal fun handlePairingRequest(socket: DatagramSocket, packet: DatagramPacket) {
-        val request = try {
-            JSONObject(
-                String(packet.data, packet.offset, packet.length, Charsets.UTF_8),
-            )
-        } catch (_: Throwable) {
-            return
-        }
-        if (request.optInt("version", -1) != PAIRING_PROTOCOL_VERSION) return
-        when (request.optString("type")) {
-            "dhd_discover_request" -> handlePhoneDiscoveryRequest(socket, packet, request)
-            "dhd_pair_approval_request" -> handlePairingApprovalRequest(socket, packet, request)
-        }
-    }
-
-    private fun handlePhoneDiscoveryRequest(
-        socket: DatagramSocket,
-        packet: DatagramPacket,
-        request: JSONObject,
-    ) {
-        val requestId = request.optString("requestId").trim()
-        if (requestId.isBlank()) return
-
-        val pairingNonce = newUuid().toString().replace("-", "")
-        rememberDiscoveryNonce(pairingNonce)
-        val response = JSONObject()
-            .put("type", "dhd_discover_offer")
-            .put("version", PAIRING_PROTOCOL_VERSION)
-            .put("requestId", requestId)
-            .put("deviceId", deviceId)
-            .put("deviceName", companionDeviceName())
-            .put("model", deviceInfo.model.trim())
-            .put("port", listeningPort)
-            .put("pairingNonce", pairingNonce)
-        addLanAddresses(response)
-        sendPairingResponse(socket, packet, response)
-    }
-
-    private fun handlePairingApprovalRequest(
-        socket: DatagramSocket,
-        packet: DatagramPacket,
-        request: JSONObject,
-    ) {
-        val requestId = request.optString("requestId").trim()
-        val candidateDeviceId = request.optString("deviceId").trim()
-        val pairingNonce = request.optString("pairingNonce").trim()
-        if (requestId.isBlank() || candidateDeviceId != deviceId || pairingNonce.isBlank()) return
-
-        val completedResponse = synchronized(pairingStateLock) {
-            val now = clock.wallMillis()
-            completedPairingResponses.entries.removeIf { (_, value) -> value.expiresAtEpochMs <= now }
-            completedPairingResponses[requestId]
-                ?.takeIf { it.pairingNonce == pairingNonce }
-        }
-        if (completedResponse != null) {
-            sendPairingResponse(socket, packet, completedResponse.response)
-            return
-        }
-
-        val now = clock.wallMillis()
-        val expiresAt = now + PAIRING_APPROVAL_TIMEOUT_MS
-        val desktopName = request.optString("desktopName").trim()
-            .ifBlank { "DHD Companion" }
-            .take(MAX_DESKTOP_NAME_CHARS)
-        val publicRequest = PendingCompanionPairing(
-            requestId = requestId,
-            deviceId = deviceId,
-            desktopName = desktopName,
-            expiresAtEpochMs = expiresAt,
-        )
-        val pending = PendingCompanionPairingRequest(
-            publicRequest = publicRequest,
-            pairingNonce = pairingNonce,
-            address = packet.address,
-            port = packet.port,
-            socket = socket,
-        )
-
-        val existing = synchronized(pairingStateLock) { pendingCompanionPairingRequest }
-        if (existing != null && existing.publicRequest.expiresAtEpochMs > now) {
-            if (existing.publicRequest.requestId == requestId && existing.pairingNonce == pairingNonce) {
-                // UDP retries from the same desktop are expected. Re-send the
-                // acknowledgement instead of turning a lost packet into a
-                // false pairing rejection.
-                sendPairingResponse(
-                    socket,
-                    packet,
-                    JSONObject()
-                        .put("type", "dhd_pair_approval_pending")
-                        .put("version", PAIRING_PROTOCOL_VERSION)
-                        .put("requestId", requestId)
-                        .put("deviceId", deviceId)
-                        .put("expiresAtEpochMs", existing.publicRequest.expiresAtEpochMs),
-                )
-                return
-            }
-            sendPairingResponse(
-                socket,
-                packet,
-                approvalRejection(requestId, "Another desktop pairing request is already waiting for approval."),
-            )
-            return
-        }
-
-        if (!consumeDiscoveryNonce(pairingNonce)) {
-            sendPairingResponse(
-                socket,
-                packet,
-                approvalRejection(requestId, "This discovery request has expired. Refresh the phone list and try again."),
-            )
-            return
-        }
-
-        synchronized(pairingStateLock) {
-            pendingCompanionPairingRequest = pending
-            _pendingCompanionPairing.value = publicRequest
-        }
-
-        sendPairingResponse(
-            socket,
-            packet,
-            JSONObject()
-                .put("type", "dhd_pair_approval_pending")
-                .put("version", PAIRING_PROTOCOL_VERSION)
-                .put("requestId", requestId)
-                .put("deviceId", deviceId)
-                .put("expiresAtEpochMs", expiresAt),
-        )
-        scope.launch {
-            delay(PAIRING_APPROVAL_TIMEOUT_MS)
-            synchronized(pairingStateLock) {
-                if (pendingCompanionPairingRequest?.publicRequest?.requestId == requestId) {
-                    pendingCompanionPairingRequest = null
-                    _pendingCompanionPairing.value = null
-                }
-            }
-        }
-    }
-
-    private fun addLanAddresses(response: JSONObject) {
-        val addresses = JSONArray()
-        lanIpv4Addresses().forEach(addresses::put)
-        response.put("addresses", addresses)
-    }
-
-    private fun sendPairingResponse(
-        socket: DatagramSocket,
-        packet: DatagramPacket,
-        response: JSONObject,
-    ) {
-        val bytes = response.toString().toByteArray(Charsets.UTF_8)
-        socket.send(DatagramPacket(bytes, bytes.size, packet.address, packet.port))
-    }
-
-    private fun approvalRejection(requestId: String, message: String): JSONObject = JSONObject()
-        .put("type", "dhd_pair_approval_rejected")
-        .put("version", PAIRING_PROTOCOL_VERSION)
-        .put("requestId", requestId)
-        .put("deviceId", deviceId)
-        .put("message", message)
-
-    private fun rememberDiscoveryNonce(nonce: String) {
-        val now = clock.wallMillis()
-        synchronized(pairingStateLock) {
-            discoveryNonces.entries.removeIf { (_, expiresAt) -> expiresAt <= now }
-            discoveryNonces[nonce] = now + DISCOVERY_NONCE_TTL_MS
-            while (discoveryNonces.size > MAX_DISCOVERY_NONCES) {
-                discoveryNonces.remove(discoveryNonces.keys.first())
-            }
-        }
-    }
-
-    private fun consumeDiscoveryNonce(nonce: String): Boolean {
-        val now = clock.wallMillis()
-        synchronized(pairingStateLock) {
-            discoveryNonces.entries.removeIf { (_, expiresAt) -> expiresAt <= now }
-            return discoveryNonces.remove(nonce)?.let { it > now } == true
-        }
-    }
-
-    private fun clearPendingCompanionPairing() {
-        synchronized(pairingStateLock) {
-            pendingCompanionPairingRequest = null
-            _pendingCompanionPairing.value = null
-            discoveryNonces.clear()
-            completedPairingResponses.clear()
-        }
-    }
-
-    private fun respondToPendingCompanionPairing(approved: Boolean): Boolean {
-        val pending = synchronized(pairingStateLock) {
-            val current = pendingCompanionPairingRequest
-            if (current == null || current.publicRequest.expiresAtEpochMs <= clock.wallMillis()) {
-                pendingCompanionPairingRequest = null
-                _pendingCompanionPairing.value = null
-                null
-            } else {
-                pendingCompanionPairingRequest = null
-                _pendingCompanionPairing.value = null
-                current
-            }
-        } ?: return false
-
-        val response = if (approved) {
-            JSONObject()
-                .put("type", "dhd_pair_approval_offer")
-                .put("version", PAIRING_PROTOCOL_VERSION)
-                .put("requestId", pending.publicRequest.requestId)
-                .put("deviceId", deviceId)
-                .put("port", listeningPort)
-                .put("token", authenticationToken)
-                .also(::addLanAddresses)
-        } else {
-            approvalRejection(
-                pending.publicRequest.requestId,
-                "The phone declined the desktop companion pairing request.",
-            )
-        }
-        synchronized(pairingStateLock) {
-            completedPairingResponses[pending.publicRequest.requestId] = CompletedCompanionPairingResponse(
-                pairingNonce = pending.pairingNonce,
-                expiresAtEpochMs = clock.wallMillis() + COMPLETED_PAIRING_RESPONSE_TTL_MS,
-                response = response,
-            )
-            while (completedPairingResponses.size > MAX_COMPLETED_PAIRING_RESPONSES) {
-                completedPairingResponses.remove(completedPairingResponses.keys.first())
-            }
-        }
-        // The approval callback is invoked by Compose on the main thread;
-        // keep the UDP write on the bridge's IO scope so Android never blocks
-        // or rejects it as network work on the UI thread.
-        scope.launch {
-            runCatching {
-                sendPairingResponse(
-                    pending.socket,
-                    DatagramPacket(ByteArray(0), 0, pending.address, pending.port),
-                    response,
-                )
-            }.onFailure { error ->
-                platform.logWarning(TAG, "Could not send the companion pairing response", error)
-            }
-        }
-        return true
-    }
-
-    private fun companionDeviceName(): String {
-        val manufacturer = deviceInfo.manufacturer.trim()
-        val model = deviceInfo.model.trim()
-        return listOf(manufacturer, model)
-            .filter(String::isNotBlank)
-            .distinct()
-            .joinToString(" ")
-            .ifBlank { "DHD phone" }
     }
 
     /**
@@ -2286,13 +1999,6 @@ class DevBridgeServer internal constructor(
         const val LAN_BIND_HOST = "0.0.0.0"
         const val DEFAULT_PORT = 8765
         const val PAIRING_DISCOVERY_PORT = 8766
-        const val PAIRING_PROTOCOL_VERSION = 1
-        const val PAIRING_APPROVAL_TIMEOUT_MS = 60_000L
-        const val DISCOVERY_NONCE_TTL_MS = 90_000L
-        const val MAX_DISCOVERY_NONCES = 32
-        const val COMPLETED_PAIRING_RESPONSE_TTL_MS = 10_000L
-        const val MAX_COMPLETED_PAIRING_RESPONSES = 16
-        const val MAX_DESKTOP_NAME_CHARS = 80
     }
 }
 

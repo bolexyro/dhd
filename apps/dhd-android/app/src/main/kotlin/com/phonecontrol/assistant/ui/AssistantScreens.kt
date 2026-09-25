@@ -153,7 +153,7 @@ import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.DevBridgeServer
-import com.phonecontrol.assistant.bridge.PendingCompanionPairing
+import com.phonecontrol.assistant.bridge.pairing.PendingCompanionPairing
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.isActive
