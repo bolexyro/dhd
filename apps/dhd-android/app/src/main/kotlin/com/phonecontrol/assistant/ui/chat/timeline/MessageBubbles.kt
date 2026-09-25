@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.data.TimelineItem
 import com.phonecontrol.assistant.ui.components.MarkdownContent
-import com.phonecontrol.assistant.ui.components.parseInlineMarkdown
+import com.phonecontrol.assistant.ui.components.rememberInlineMarkdown
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable
@@ -44,7 +44,7 @@ internal fun MessageBubble(message: TimelineItem.Message) {
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Text(
-                        text = parseInlineMarkdown(message.text, colors),
+                        text = rememberInlineMarkdown(message.text, colors),
                         color = colors.userBubbleText,
                         fontSize = 15.sp,
                         lineHeight = 21.sp,

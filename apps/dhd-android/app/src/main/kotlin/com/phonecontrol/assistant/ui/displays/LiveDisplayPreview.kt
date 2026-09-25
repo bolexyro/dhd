@@ -72,12 +72,16 @@ fun LiveDisplayPreview(
     val latestOnSurfaceAvailable = rememberUpdatedState(onSurfaceAvailable)
     val latestOnSurfaceDestroyed = rememberUpdatedState(onSurfaceDestroyed)
     val latestOnExpandBoundsChanged = rememberUpdatedState(onExpandBoundsChanged)
+    val reportedExpandBounds = remember { ReportedBounds() }
     var textureView by remember { mutableStateOf<ReadOnlyPreviewTextureView?>(null) }
     val colors = LocalAssistantColors.current
     val density = androidx.compose.ui.platform.LocalDensity.current
 
     DisposableEffect(state.sessionKey) {
-        onDispose { latestOnExpandBoundsChanged.value(null) }
+        onDispose {
+            reportedExpandBounds.value = null
+            latestOnExpandBoundsChanged.value(null)
+        }
     }
 
     val previewLifecycle = LocalLifecycleOwner.current.lifecycle
@@ -124,14 +128,16 @@ fun LiveDisplayPreview(
                 val bounds = coordinates.boundsInRoot()
                 val insetPx = with(density) { 6.dp.toPx() }
                 val buttonSizePx = with(density) { 48.dp.toPx() }
-                latestOnExpandBoundsChanged.value(
-                    Rect(
-                        left = bounds.right - insetPx - buttonSizePx,
-                        top = bounds.top + insetPx,
-                        right = bounds.right - insetPx,
-                        bottom = bounds.top + insetPx + buttonSizePx,
-                    ),
+                val expandBounds = Rect(
+                    left = bounds.right - insetPx - buttonSizePx,
+                    top = bounds.top + insetPx,
+                    right = bounds.right - insetPx,
+                    bottom = bounds.top + insetPx + buttonSizePx,
                 )
+                if (expandBounds != reportedExpandBounds.value) {
+                    reportedExpandBounds.value = expandBounds
+                    latestOnExpandBoundsChanged.value(expandBounds)
+                }
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -308,3 +314,5 @@ internal fun PreviewStatusOverlay(state: LiveDisplayPreviewState) {
         }
     }
 }
+
+private class ReportedBounds(var value: Rect? = null)

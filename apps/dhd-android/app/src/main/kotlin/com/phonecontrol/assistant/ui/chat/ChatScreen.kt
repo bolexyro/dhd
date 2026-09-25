@@ -177,13 +177,17 @@ fun ChatScreen(
         )
     }
     val continuationRunId = state.continuationSessionIdOrNullForUi()
-    val activeTaskRunIds = activeTaskRunIds(timeline, active, activeSessionId, continuationRunId)
-    val recentTimeline = recentTimelineItems(
-        timeline = timeline,
-        nowEpochMs = System.currentTimeMillis(),
-        active = active,
-        activeTaskRunIds = activeTaskRunIds,
-    )
+    val activeTaskRunIds = remember(timeline, active, activeSessionId, continuationRunId) {
+        activeTaskRunIds(timeline, active, activeSessionId, continuationRunId)
+    }
+    val recentTimeline = remember(timeline, active, activeTaskRunIds) {
+        recentTimelineItems(
+            timeline = timeline,
+            nowEpochMs = System.currentTimeMillis(),
+            active = active,
+            activeTaskRunIds = activeTaskRunIds,
+        )
+    }
 
     Scaffold(
         containerColor = colors.background,

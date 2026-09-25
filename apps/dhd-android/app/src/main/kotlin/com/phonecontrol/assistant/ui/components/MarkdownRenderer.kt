@@ -48,15 +48,22 @@ sealed interface MarkdownBlock {
     data class Paragraph(val text: String) : MarkdownBlock
 }
 
+private val INLINE_MARKDOWN_PATTERN = Regex("""(\*\*\*[^*]+\*\*\*|___[^_]+___|\*\*[^*]+\*\*|__[^_]+__|(?<!\*)\*[^*]+\*(?!\*)|(?<!_)_[^_]+_(?!_)|`[^`]+`|\[([^\]]+)\]\(([^)]+)\))""")
+private val UNORDERED_LIST_ITEM_PATTERN = Regex("""^(\s*)[-*+]\s+(.*)$""")
+private val ORDERED_LIST_ITEM_PATTERN = Regex("""^(\s*)(\d+)\.\s+(.*)$""")
+private val ORDERED_LIST_PREFIX_PATTERN = Regex("""^\d+\.\s+""")
+
+@Composable
+fun rememberInlineMarkdown(text: String, colors: AssistantColorScheme): AnnotatedString =
+    remember(text, colors) { parseInlineMarkdown(text, colors) }
+
 fun parseInlineMarkdown(
     text: String,
     colors: AssistantColorScheme,
 ): AnnotatedString {
     return buildAnnotatedString {
-        val pattern = Regex("""(\*\*\*[^*]+\*\*\*|___[^_]+___|\*\*[^*]+\*\*|__[^_]+__|(?<!\*)\*[^*]+\*(?!\*)|(?<!_)_[^_]+_(?!_)|`[^`]+`|\[([^\]]+)\]\(([^)]+)\))""")
-
         var currentIndex = 0
-        val matches = pattern.findAll(text)
+        val matches = INLINE_MARKDOWN_PATTERN.findAll(text)
 
         for (match in matches) {
             if (match.range.first > currentIndex) {
@@ -187,7 +194,7 @@ fun parseMarkdownBlocks(rawMarkdown: String): List<MarkdownBlock> {
         }
 
         // 5. Unordered List Items
-        val unorderedMatch = Regex("""^(\s*)[-*+]\s+(.*)$""").matchEntire(line)
+        val unorderedMatch = UNORDERED_LIST_ITEM_PATTERN.matchEntire(line)
         if (unorderedMatch != null) {
             val indent = unorderedMatch.groupValues[1].length / 2
             val itemText = unorderedMatch.groupValues[2]
@@ -197,7 +204,7 @@ fun parseMarkdownBlocks(rawMarkdown: String): List<MarkdownBlock> {
         }
 
         // 6. Ordered List Items
-        val orderedMatch = Regex("""^(\s*)(\d+)\.\s+(.*)$""").matchEntire(line)
+        val orderedMatch = ORDERED_LIST_ITEM_PATTERN.matchEntire(line)
         if (orderedMatch != null) {
             val number = orderedMatch.groupValues[2]
             val itemText = orderedMatch.groupValues[3]
@@ -225,7 +232,7 @@ fun parseMarkdownBlocks(rawMarkdown: String): List<MarkdownBlock> {
                 nextTrimmed.startsWith("- ") ||
                 nextTrimmed.startsWith("* ") ||
                 nextTrimmed.startsWith("+ ") ||
-                Regex("""^\d+\.\s+""").containsMatchIn(nextTrimmed) ||
+                ORDERED_LIST_PREFIX_PATTERN.containsMatchIn(nextTrimmed) ||
                 nextTrimmed == "---" || nextTrimmed == "***" || nextTrimmed == "___"
             ) {
                 break
@@ -261,7 +268,7 @@ fun MarkdownContent(
                         else -> 15.5.sp
                     }
                     Text(
-                        text = parseInlineMarkdown(block.text, colors),
+                        text = rememberInlineMarkdown(block.text, colors),
                         style = baseTextStyle.copy(
                             fontSize = fontSize,
                             fontWeight = FontWeight.Bold,
@@ -328,7 +335,7 @@ fun MarkdownContent(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            text = parseInlineMarkdown(block.text, colors),
+                            text = rememberInlineMarkdown(block.text, colors),
                             style = baseTextStyle.copy(
                                 fontStyle = FontStyle.Italic,
                                 color = colors.textSecondary,
@@ -359,7 +366,7 @@ fun MarkdownContent(
                             modifier = Modifier.padding(end = 8.dp),
                         )
                         Text(
-                            text = parseInlineMarkdown(block.text, colors),
+                            text = rememberInlineMarkdown(block.text, colors),
                             style = baseTextStyle.copy(color = colors.textPrimary),
                         )
                     }
@@ -380,7 +387,7 @@ fun MarkdownContent(
                             modifier = Modifier.padding(end = 8.dp),
                         )
                         Text(
-                            text = parseInlineMarkdown(block.text, colors),
+                            text = rememberInlineMarkdown(block.text, colors),
                             style = baseTextStyle.copy(color = colors.textPrimary),
                         )
                     }
@@ -388,7 +395,7 @@ fun MarkdownContent(
 
                 is MarkdownBlock.Paragraph -> {
                     Text(
-                        text = parseInlineMarkdown(block.text, colors),
+                        text = rememberInlineMarkdown(block.text, colors),
                         style = baseTextStyle.copy(color = colors.textPrimary),
                     )
                 }
