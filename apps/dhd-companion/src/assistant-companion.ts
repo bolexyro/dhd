@@ -1562,7 +1562,7 @@ function streamedAgentMessageId(sessionId: string): string {
   return `dhd-agent-${sessionId}`;
 }
 
-interface ActiveCodexTurn {
+export interface ActiveCodexTurn {
   sessionId: string;
   client: CodexAppServerClient;
 }
@@ -1757,7 +1757,7 @@ async function prewarmCodexClient(
   return false;
 }
 
-async function processPendingRequest(
+export async function processPendingRequest(
   pending: BridgeMessage,
   codexClient: CodexAppServerClient,
 ): Promise<void> {
@@ -1910,7 +1910,7 @@ async function processPendingRequest(
   }
 }
 
-async function processPendingSteer(active: ActiveCodexTurn): Promise<void> {
+export async function processPendingSteer(active: ActiveCodexTurn): Promise<void> {
   const pending = await requestBridge(
     {
       type: "pending_steer",
