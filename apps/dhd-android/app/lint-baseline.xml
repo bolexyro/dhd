@@ -202,100 +202,100 @@
     <issue
         id="GradleDependency"
         message="A newer version of androidx.activity:activity-compose than 1.10.1 is available: 1.13.0"
-        errorLine1="    implementation(&quot;androidx.activity:activity-compose:1.10.1&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="activity = &quot;1.10.1&quot;"
+        errorLine2="           ~~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="64"
-            column="20"/>
+            file="../gradle/libs.versions.toml"
+            line="6"
+            column="12"/>
     </issue>
 
     <issue
         id="GradleDependency"
         message="A newer version of androidx.activity:activity-ktx than 1.10.1 is available: 1.13.0"
-        errorLine1="    implementation(&quot;androidx.activity:activity-ktx:1.10.1&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="activity = &quot;1.10.1&quot;"
+        errorLine2="           ~~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="65"
-            column="20"/>
+            file="../gradle/libs.versions.toml"
+            line="6"
+            column="12"/>
     </issue>
 
     <issue
         id="GradleDependency"
         message="A newer version of androidx.core:core-ktx than 1.16.0 is available: 1.19.1"
-        errorLine1="    implementation(&quot;androidx.core:core-ktx:1.16.0&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="coreKtx = &quot;1.16.0&quot;"
+        errorLine2="          ~~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="66"
-            column="20"/>
+            file="../gradle/libs.versions.toml"
+            line="7"
+            column="11"/>
     </issue>
 
     <issue
         id="GradleDependency"
         message="A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.8.7 is available: 2.11.0"
-        errorLine1="    implementation(&quot;androidx.lifecycle:lifecycle-runtime-ktx:2.8.7&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="67"
-            column="20"/>
+            file="../gradle/libs.versions.toml"
+            line="8"
+            column="13"/>
     </issue>
 
     <issue
         id="GradleDependency"
         message="A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.8.7 is available: 2.11.0"
-        errorLine1="    implementation(&quot;androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="68"
-            column="20"/>
+            file="../gradle/libs.versions.toml"
+            line="8"
+            column="13"/>
     </issue>
 
     <issue
         id="GradleDependency"
         message="A newer version of androidx.navigation:navigation-compose than 2.9.8 is available: 2.10.2"
-        errorLine1="    implementation(&quot;androidx.navigation:navigation-compose:2.9.8&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="navigation = &quot;2.9.8&quot;"
+        errorLine2="             ~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="69"
-            column="20"/>
+            file="../gradle/libs.versions.toml"
+            line="9"
+            column="14"/>
     </issue>
 
     <issue
         id="GradleDependency"
         message="A newer version of androidx.room:room-runtime than 2.8.4 is available: 2.8.5"
-        errorLine1="    implementation(&quot;androidx.room:room-runtime:2.8.4&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="room = &quot;2.8.4&quot;"
+        errorLine2="       ~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="70"
-            column="20"/>
+            file="../gradle/libs.versions.toml"
+            line="10"
+            column="8"/>
     </issue>
 
     <issue
         id="GradleDependency"
         message="A newer version of androidx.room:room-ktx than 2.8.4 is available: 2.8.5"
-        errorLine1="    implementation(&quot;androidx.room:room-ktx:2.8.4&quot;)"
-        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="room = &quot;2.8.4&quot;"
+        errorLine2="       ~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="71"
-            column="20"/>
+            file="../gradle/libs.versions.toml"
+            line="10"
+            column="8"/>
     </issue>
 
     <issue
         id="GradleDependency"
         message="A newer version of androidx.room:room-compiler than 2.8.4 is available: 2.8.5"
-        errorLine1="    ksp(&quot;androidx.room:room-compiler:2.8.4&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="room = &quot;2.8.4&quot;"
+        errorLine2="       ~~~~~~~">
         <location
-            file="build.gradle.kts"
-            line="72"
-            column="9"/>
+            file="../gradle/libs.versions.toml"
+            line="10"
+            column="8"/>
     </issue>
 
     <issue
