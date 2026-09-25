@@ -20,6 +20,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+internal fun pairingServiceStartMode(action: String?): Int =
+    if (action == DhdAdbPairingService.ACTION_SUBMIT_CODE) Service.START_NOT_STICKY else Service.START_REDELIVER_INTENT
+
 /** Keeps the one-time Wireless Debugging pairing flow alive while Settings is foreground. */
 class DhdAdbPairingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -80,7 +83,7 @@ class DhdAdbPairingService : Service() {
                 stopPairingService()
             }
         }
-        return START_REDELIVER_INTENT
+        return pairingServiceStartMode(intent?.action)
     }
 
     override fun onDestroy() {
