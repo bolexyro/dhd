@@ -272,11 +272,6 @@ button:disabled {
   color: var(--text-secondary);
 }
 
-.subbar-detail {
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
 /* Main Body & Tab Panels */
 .main-body {
   flex: 1;
@@ -346,23 +341,6 @@ button:disabled {
 }
 
 /* Session Hero Card */
-.session-hero {
-  background-color: var(--bg-panel);
-}
-
-.session-hero-body {
-  padding: 20px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.session-title-wrap {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
 .session-main-title {
   font-size: 20px;
   font-weight: 700;
@@ -414,21 +392,6 @@ button:disabled {
   overflow: hidden;
 }
 
-.code-box-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background-color: var(--bg-subtle);
-  border-bottom: 1px solid var(--border-subtle);
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.code-box-meta {
-  color: var(--text-dim);
-}
-
 .code-box-content {
   padding: 12px 14px;
   font-size: 12.5px;
@@ -436,13 +399,6 @@ button:disabled {
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-/* Two Column Grid */
-.grid-two-col {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
 }
 
 .data-row {
@@ -930,39 +886,6 @@ button:disabled {
   font-weight: 650;
   letter-spacing: -0.015em;
   margin-bottom: 5px;
-}
-
-.pairing-copy {
-  color: var(--text-secondary);
-  font-size: 12.5px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.nav-step {
-  color: var(--text-primary);
-  font-weight: 600;
-  background-color: var(--bg-elevated);
-  padding: 1px 5px;
-  border-radius: var(--radius-xs);
-  font-size: 11.5px;
-}
-
-.pairing-security-note {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--text-dim);
-  font-size: 11px;
-  line-height: 1.45;
-  padding-top: 4px;
-}
-
-.note-icon {
-  width: 13px;
-  height: 13px;
-  flex-shrink: 0;
-  color: var(--text-muted);
 }
 
 /* Console Panel */
@@ -1752,9 +1675,6 @@ html[data-theme="light"] .toast-box.info {
 @media (max-width: 768px) {
   .app-container {
     padding: 0 16px;
-  }
-  .grid-two-col {
-    grid-template-columns: 1fr;
   }
   .token-usage-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
