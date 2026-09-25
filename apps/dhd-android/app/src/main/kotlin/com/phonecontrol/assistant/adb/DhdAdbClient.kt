@@ -7,10 +7,19 @@ import java.io.DataOutputStream
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
+
+internal class DhdAdbUnauthorizedException(
+    message: String,
+    cause: Throwable? = null,
+) : IOException(message, cause)
+
+internal fun Throwable.isAdbAuthorizationRejection(): Boolean =
+    generateSequence(this) { it.cause }.any { it is DhdAdbUnauthorizedException }
 
 internal data class DhdAdbCommandResult(
     val exitCode: Int?,
@@ -48,22 +57,32 @@ internal class DhdAdbClient(
         var response = read()
         if (response.command == DhdAdbProtocol.A_STLS) {
             write(DhdAdbProtocol.A_STLS, DhdAdbProtocol.A_STLS_VERSION, 0)
-            val secure = sslContext().socketFactory.createSocket(
-                raw,
-                host,
-                port,
-                true,
-            ) as SSLSocket
-            secure.useClientMode = true
-            secure.startHandshake()
-            tlsSocket = secure
-            input = DataInputStream(secure.inputStream)
-            output = DataOutputStream(secure.outputStream)
-            response = read()
+            response = authorizeOverTls(raw)
         }
         if (response.command != DhdAdbProtocol.A_CNXN) {
-            throw IOException("Wireless Debugging rejected DHD's ADB connection (${response.commandName()}).")
+            throw DhdAdbUnauthorizedException(
+                "Wireless Debugging rejected DHD's ADB connection (${response.commandName()}).",
+            )
         }
+    }
+
+    private fun authorizeOverTls(raw: Socket): DhdAdbMessage = try {
+        val secure = sslContext().socketFactory.createSocket(
+            raw,
+            host,
+            port,
+            true,
+        ) as SSLSocket
+        secure.useClientMode = true
+        secure.startHandshake()
+        tlsSocket = secure
+        input = DataInputStream(secure.inputStream)
+        output = DataOutputStream(secure.outputStream)
+        read()
+    } catch (error: SocketTimeoutException) {
+        throw error
+    } catch (error: IOException) {
+        throw DhdAdbUnauthorizedException("Wireless Debugging did not accept DHD's ADB key.", error)
     }
 
     fun shellV2(command: String): DhdAdbCommandResult {

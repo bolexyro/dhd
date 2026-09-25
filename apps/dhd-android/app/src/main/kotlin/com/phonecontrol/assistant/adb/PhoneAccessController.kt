@@ -648,7 +648,7 @@ class PhoneAccessController internal constructor(
                         message = "ADB is reachable, but DHD's maintenance service could not start. Retrying; pairing is still saved.",
                     )
                     scheduleMaintenanceRetry()
-                } else {
+                } else if (error.isAdbAuthorizationRejection()) {
                     mdns.stop()
                     endpoint = null
                     preferences.edit().putBoolean(KEY_PAIRED, false).apply()
@@ -657,6 +657,15 @@ class PhoneAccessController internal constructor(
                         paired = false,
                         message = "DHD is not authorized by Wireless Debugging. Pair DHD once, then it will reconnect automatically.",
                     )
+                } else {
+                    mdns.stop()
+                    endpoint = null
+                    publish(
+                        DeveloperConnectionState.CONNECTING,
+                        paired = true,
+                        message = "Could not reach Wireless Debugging's ADB service. Retrying; pairing is still saved.",
+                    )
+                    scheduleMaintenanceRetry()
                 }
             }
         } finally {
