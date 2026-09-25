@@ -79,9 +79,6 @@ interface PhoneActionTransport {
     /** Invalidate every display currently claimed by one coordinator run. */
     fun cancelSessionForRun(sessionKey: String) = cancelSession(sessionKey)
 
-    /** Release resources associated with a completed task display. */
-    suspend fun closeSession(sessionKey: String) = Unit
-
     /** Retain a terminal task display for the read-only viewer. */
     suspend fun retainSession(
         sessionKey: String,
@@ -154,10 +151,6 @@ class TypedPhoneActionTransport(
 
     override fun cancelSessionForRun(sessionKey: String) {
         taskDisplayBackend?.cancelForRun(sessionKey)
-    }
-
-    override suspend fun closeSession(sessionKey: String) {
-        taskDisplayBackend?.close(sessionKey)
     }
 
     override suspend fun retainSession(

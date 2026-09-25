@@ -62,10 +62,6 @@ internal class RunBindingRegistry {
         }
     }
 
-    fun ownerKeysForRun(runKey: String): List<String> = synchronized(lock) {
-        ownerKeysForRunLocked(runKey)
-    }
-
     private fun ownerKeysForRunLocked(runKey: String): List<String> {
         val owners = runBindings[runKey].orEmpty()
         return if (owners.isNotEmpty()) {

@@ -51,7 +51,7 @@ class AppContainer(context: Context) {
     val taskDisplayLayoutPreferences = TaskDisplayLayoutPreferences(context)
     val taskDisplayBackend = DhdTaskDisplayBackend(
         context,
-        DhdVirtualDisplayManager(context, phoneAccessController),
+        DhdVirtualDisplayManager(phoneAccessController),
         processRunner,
         taskDisplayLayoutPreferences,
         conversationStore,

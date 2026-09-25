@@ -275,10 +275,6 @@ interface TaskDisplayBackend {
     /** All known display records, ordered newest first. */
     val displayRecords: StateFlow<List<TaskDisplayRecord>>
 
-    /** Alias used by display-manager consumers. */
-    val taskDisplays: StateFlow<List<TaskDisplayRecord>>
-        get() = displayRecords
-
     /** Create and launch [packageName] on a display owned by [sessionKey]. */
     suspend fun create(
         sessionKey: String,
@@ -349,9 +345,6 @@ interface TaskDisplayBackend {
 
     /** Restart decoding on the currently attached preview surface after an error. */
     suspend fun retryLiveSurface(sessionKey: String) = Unit
-
-    /** Refresh retained-display expiry after a user or agent actually uses it. */
-    suspend fun touch(sessionKey: String) = Unit
 
     /** Invalidate agent work immediately while leaving the display viewable. */
     fun cancel(sessionKey: String)

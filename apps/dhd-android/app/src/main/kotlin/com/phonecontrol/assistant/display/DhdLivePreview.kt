@@ -106,9 +106,6 @@ class DhdLivePreviewHandle internal constructor(
     /** Connecting becomes LIVE only after MediaCodec reports a rendered frame. */
     val state: StateFlow<DhdLivePreviewState> = stateFlow.asStateFlow()
 
-    /** Alias for adapters that treat the handle as a playback source. */
-    val playbackState: StateFlow<DhdLivePreviewState> = state
-
     init {
         streamJob = scope.launch { reconnectingStreamLoop() }
     }

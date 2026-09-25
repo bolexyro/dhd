@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.display
 
-import android.content.Context
 import com.phonecontrol.assistant.adb.PhoneAccessController
 import com.phonecontrol.assistant.execution.PhoneProcessResult
 import java.io.IOException
@@ -140,10 +139,8 @@ interface NativeDisplayManager {
  * session key and validates the exact display id returned by the daemon.
  */
 class DhdVirtualDisplayManager(
-    context: Context,
     private val controller: PhoneAccessController,
 ) : NativeDisplayManager {
-    private val appContext = context.applicationContext
     private val stateMutex = Mutex()
     private val sessions = LinkedHashMap<String, DhdVirtualDisplaySession>()
     /** Cancellation tombstones are process-local and intentionally retained. */
@@ -287,17 +284,6 @@ class DhdVirtualDisplayManager(
             throw IOException(failureMessage(result, "The virtual display stream could not be attached."))
         }
         return DhdLivePreviewHandle(session)
-    }
-
-    suspend fun detachLiveSurface(session: DhdVirtualDisplaySession) {
-        if (!isCurrentSession(session)) return
-        controller.execute(
-            listOf(
-                DhdVirtualDisplayProtocol.COMMAND,
-                DhdVirtualDisplayProtocol.DETACH,
-                session.sessionKey,
-            ),
-        )
     }
 
     override suspend fun capture(session: DhdVirtualDisplaySession): DhdVirtualDisplayCapture {
@@ -512,7 +498,4 @@ class DhdVirtualDisplayManager(
 
     private fun failureMessage(result: PhoneProcessResult, fallback: String): String =
         result.stderr.ifBlank { fallback }
-
-    private companion object {
-    }
 }

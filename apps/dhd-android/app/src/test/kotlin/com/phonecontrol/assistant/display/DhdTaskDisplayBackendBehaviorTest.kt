@@ -325,21 +325,6 @@ class DhdTaskDisplayBackendBehaviorTest {
     }
 
     @Test
-    fun `using a retained display refreshes its expiry`() = runTest {
-        val backend = backend()
-        val session = backend.create("run-1", SHOP)
-        backend.retainForRun("run-1", TaskDisplayStatus.STOPPED)
-        advanceTimeBy(40_000)
-        runCurrent()
-        backend.touch("run-1")
-        assertEquals(now() + RETENTION_MS, backend.record("run-1").expiresAtEpochMs)
-        advanceTimeBy(40_000)
-        runCurrent()
-        assertEquals(TaskDisplayStatus.STOPPED, backend.record("run-1").status)
-        assertEquals(session, backend.current("run-1"))
-    }
-
-    @Test
     fun `a retained display is the default target and is revived when claimed`() = runTest {
         val backend = backend()
         val session = backend.create("run-1", SHOP)

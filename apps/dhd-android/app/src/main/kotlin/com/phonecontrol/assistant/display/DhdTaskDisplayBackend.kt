@@ -1,7 +1,6 @@
 package com.phonecontrol.assistant.display
 
 import android.content.Context
-import android.view.Display
 import android.view.Surface
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.data.ConversationStore
@@ -633,13 +632,6 @@ class DhdTaskDisplayBackend internal constructor(
         attachLiveSurface(session, surface)
     }
 
-    override suspend fun touch(sessionKey: String) {
-        val operationLock = bindings.operationLock(sessionKey)
-        operationLock.withLock {
-            refreshRetainedExpiry(sessionKey)
-        }
-    }
-
     override fun cancel(sessionKey: String) {
         bindings.markCancelled(sessionKey)
         // Tombstone both layers synchronously. This closes the race where an
@@ -1128,13 +1120,6 @@ class DhdTaskDisplayBackend internal constructor(
         lastPurpose = lastPurpose,
         error = error,
     )
-
-    private suspend fun TaskDisplaySession.nativeOrThrow(): DhdVirtualDisplaySession = stateLock.withLock {
-        sessions[sessionKey]
-            ?.takeIf { it.taskSession == this }
-            ?.nativeSession
-            ?: throw TaskDisplayException("The task display session is no longer active.")
-    }
 
     private data class BoundSession(
         val nativeSession: DhdVirtualDisplaySession,
