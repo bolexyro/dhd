@@ -1,0 +1,23 @@
+{
+  "peer": "loopback",
+  "request": {
+    "layout": "full_size",
+    "packageName": "shop",
+    "requestId": "req-set_app_display_layout",
+    "type": "set_app_display_layout"
+  },
+  "response": [
+    {
+      "message": "set_app_display_layout accepted by the phone.",
+      "requestId": "req-set_app_display_layout",
+      "type": "accepted"
+    },
+    {
+      "code": "INVALID_PACKAGE",
+      "message": "packageName is not a valid Android package name.",
+      "ok": false,
+      "requestId": "req-set_app_display_layout",
+      "type": "error"
+    }
+  ]
+}

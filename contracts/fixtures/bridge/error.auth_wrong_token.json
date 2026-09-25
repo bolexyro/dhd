@@ -1,0 +1,17 @@
+{
+  "peer": "lan",
+  "request": {
+    "authToken": "not-the-token",
+    "requestId": "req-status",
+    "type": "status"
+  },
+  "response": [
+    {
+      "code": "AUTH_REQUIRED",
+      "message": "The phone bridge rejected this network connection. Pair the desktop companion in DHD settings.",
+      "ok": false,
+      "requestId": "req-status",
+      "type": "error"
+    }
+  ]
+}

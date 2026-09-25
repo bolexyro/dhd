@@ -1,0 +1,24 @@
+{
+  "peer": "loopback",
+  "request": {
+    "displayRef": "dsp_f5948bdce477d1",
+    "requestId": "req-close_display",
+    "type": "close_display"
+  },
+  "response": [
+    {
+      "message": "close_display accepted by the phone.",
+      "requestId": "req-close_display",
+      "type": "accepted"
+    },
+    {
+      "appLabel": "Shop",
+      "displayRef": "dsp_f5948bdce477d1",
+      "message": "The selected task display was ended.",
+      "ok": true,
+      "requestId": "req-close_display",
+      "status": "ended",
+      "type": "display_closed"
+    }
+  ]
+}

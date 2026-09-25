@@ -1,0 +1,19 @@
+{
+  "peer": "loopback",
+  "request": {
+    "type": "heartbeat"
+  },
+  "response": [
+    {
+      "message": "heartbeat accepted by the phone.",
+      "requestId": "00000000-0000-0dd0-0000-000000000001",
+      "type": "accepted"
+    },
+    {
+      "message": "Desktop companion heartbeat acknowledged.",
+      "ok": true,
+      "requestId": "00000000-0000-0dd0-0000-000000000001",
+      "type": "heartbeat"
+    }
+  ]
+}

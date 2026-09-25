@@ -1,0 +1,75 @@
+{
+  "peer": "loopback",
+  "request": {
+    "action": {
+      "metadata": {
+        "observationId": "obs-1",
+        "purpose": "Tap the cart button",
+        "targetDescription": "Cart button"
+      },
+      "type": "tap",
+      "x": 100,
+      "y": 200
+    },
+    "requestId": "req-execute_action",
+    "tool": "dhd_execute",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "action": "tap",
+      "message": "Tapped the cart button.",
+      "ok": true,
+      "requestId": "req-execute_action",
+      "type": "action_result"
+    },
+    {
+      "action": "tap",
+      "beforeObservation": {
+        "activityName": "com.example.shop.MainActivity",
+        "displayRef": "dsp_f8f137e6086916",
+        "height": 1560,
+        "id": "obs-1",
+        "packageName": "com.example.shop",
+        "rotation": 0,
+        "screenProtection": {
+          "reason": null,
+          "requiresUserAttention": false,
+          "signals": [],
+          "status": "visible"
+        },
+        "screenshotFingerprint": "fp-obs-1",
+        "width": 720
+      },
+      "beforeScreenshotBase64": "YmVmb3Jl",
+      "beforeScreenshotMimeType": "image/png",
+      "message": "Tapped the cart button.",
+      "observation": {
+        "activityName": "com.example.shop.MainActivity",
+        "displayRef": "dsp_f8f137e6086916",
+        "height": 1560,
+        "id": "obs-2",
+        "packageName": "com.example.shop",
+        "rotation": 0,
+        "screenProtection": {
+          "reason": null,
+          "requiresUserAttention": false,
+          "signals": [],
+          "status": "visible"
+        },
+        "screenshotFingerprint": "fp-obs-2",
+        "width": 720
+      },
+      "ok": true,
+      "requestId": "req-execute_action",
+      "screenshotBase64": "iVBORw==",
+      "screenshotMimeType": "image/png",
+      "type": "completed"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-status",
+    "type": "status"
+  },
+  "response": [
+    {
+      "message": "status accepted by the phone.",
+      "requestId": "req-status",
+      "type": "accepted"
+    },
+    {
+      "active": true,
+      "companionConnected": false,
+      "conversationId": "conversation-1",
+      "currentPurpose": "Preparing request",
+      "fastMode": false,
+      "ok": true,
+      "request": "Buy milk",
+      "requestId": "req-status",
+      "sessionId": "{{sessionId}}",
+      "state": "paused",
+      "type": "status"
+    }
+  ]
+}

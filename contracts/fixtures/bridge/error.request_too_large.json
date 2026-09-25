@@ -1,0 +1,15 @@
+{
+  "peer": "loopback",
+  "rawRequest": {
+    "fill": "x",
+    "lineLength": 16385
+  },
+  "response": [
+    {
+      "message": "The bridge request is too large.",
+      "ok": false,
+      "requestId": null,
+      "type": "error"
+    }
+  ]
+}

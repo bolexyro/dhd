@@ -1,0 +1,24 @@
+{
+  "peer": "loopback",
+  "request": {
+    "messageId": "message-1",
+    "requestId": "req-stream_agent_message",
+    "sessionId": "other",
+    "text": "Hi",
+    "type": "stream_agent_message"
+  },
+  "response": [
+    {
+      "message": "stream_agent_message accepted by the phone.",
+      "requestId": "req-stream_agent_message",
+      "type": "accepted"
+    },
+    {
+      "code": "SESSION_NOT_RUNNING",
+      "message": "The phone session is no longer active.",
+      "ok": false,
+      "requestId": "req-stream_agent_message",
+      "type": "error"
+    }
+  ]
+}

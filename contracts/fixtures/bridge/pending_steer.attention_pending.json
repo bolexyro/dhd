@@ -1,0 +1,24 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-pending_steer",
+    "type": "pending_steer"
+  },
+  "response": [
+    {
+      "message": "pending_steer accepted by the phone.",
+      "requestId": "req-pending_steer",
+      "type": "accepted"
+    },
+    {
+      "active": true,
+      "attentionPending": true,
+      "available": false,
+      "ok": true,
+      "requestId": "req-pending_steer",
+      "sessionId": "{{sessionId}}",
+      "steerId": "{{steerId}}",
+      "type": "pending_steer"
+    }
+  ]
+}

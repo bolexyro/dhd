@@ -1,0 +1,157 @@
+{
+  "peer": "loopback",
+  "request": {
+    "actions": [
+      {
+        "metadata": {
+          "purpose": "Tap the search field",
+          "targetDescription": "Search field"
+        },
+        "type": "tap",
+        "x": 100,
+        "y": 200
+      },
+      {
+        "metadata": {
+          "purpose": "Type milk",
+          "targetDescription": "Search field"
+        },
+        "text": "milk",
+        "type": "type"
+      },
+      {
+        "metadata": {
+          "purpose": "Go back",
+          "targetDescription": "Back"
+        },
+        "type": "back"
+      }
+    ],
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "tool": "dhd_execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "approvedObservationId": "obs-1",
+      "code": "FOREGROUND_CHANGED",
+      "completedSteps": 1,
+      "currentObservationId": "obs-live",
+      "executed": false,
+      "failedStep": 1,
+      "inputSent": false,
+      "message": "Another app came to the front.",
+      "ok": false,
+      "outcome": "failed",
+      "reasons": [
+        {
+          "approved": null,
+          "code": "GUARD_REGION_CHANGED",
+          "current": null,
+          "guardRegion": {
+            "bottom": 220,
+            "left": 10,
+            "right": 110,
+            "top": 20
+          }
+        },
+        {
+          "approved": {
+            "height": 1560,
+            "width": 720
+          },
+          "code": "DISPLAY_SIZE_CHANGED",
+          "current": {
+            "height": 720,
+            "width": 1560
+          }
+        },
+        {
+          "approved": "com.example.shop",
+          "code": "PACKAGE_CHANGED",
+          "current": "com.example.mail"
+        },
+        {
+          "approved": 0,
+          "code": "ROTATION_CHANGED",
+          "current": 1
+        },
+        {
+          "approved": null,
+          "code": "TASK_SESSION_CHANGED",
+          "current": "other-run"
+        }
+      ],
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 3,
+      "steps": [
+        {
+          "action": "tap",
+          "index": 0,
+          "message": "Tapped the search field.",
+          "observationId": "obs-2",
+          "status": "success"
+        },
+        {
+          "action": "type",
+          "approvedObservationId": "obs-1",
+          "code": "FOREGROUND_CHANGED",
+          "currentObservationId": "obs-live",
+          "executed": false,
+          "index": 1,
+          "inputSent": false,
+          "message": "Another app came to the front.",
+          "outcome": "failed",
+          "reasons": [
+            {
+              "approved": null,
+              "code": "GUARD_REGION_CHANGED",
+              "current": null,
+              "guardRegion": {
+                "bottom": 220,
+                "left": 10,
+                "right": 110,
+                "top": 20
+              }
+            },
+            {
+              "approved": {
+                "height": 1560,
+                "width": 720
+              },
+              "code": "DISPLAY_SIZE_CHANGED",
+              "current": {
+                "height": 720,
+                "width": 1560
+              }
+            },
+            {
+              "approved": "com.example.shop",
+              "code": "PACKAGE_CHANGED",
+              "current": "com.example.mail"
+            },
+            {
+              "approved": 0,
+              "code": "ROTATION_CHANGED",
+              "current": 1
+            },
+            {
+              "approved": null,
+              "code": "TASK_SESSION_CHANGED",
+              "current": "other-run"
+            }
+          ],
+          "status": "failed"
+        }
+      ],
+      "type": "completed"
+    }
+  ]
+}

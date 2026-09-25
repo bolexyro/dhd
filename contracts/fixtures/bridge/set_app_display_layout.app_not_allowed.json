@@ -1,0 +1,23 @@
+{
+  "peer": "loopback",
+  "request": {
+    "layout": "full_size",
+    "packageName": "com.example.mail",
+    "requestId": "req-set_app_display_layout",
+    "type": "set_app_display_layout"
+  },
+  "response": [
+    {
+      "message": "set_app_display_layout accepted by the phone.",
+      "requestId": "req-set_app_display_layout",
+      "type": "accepted"
+    },
+    {
+      "code": "APP_NOT_ALLOWED",
+      "message": "The app is not allowed for the current DHD access mode.",
+      "ok": false,
+      "requestId": "req-set_app_display_layout",
+      "type": "error"
+    }
+  ]
+}

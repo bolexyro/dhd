@@ -1,0 +1,33 @@
+{
+  "peer": "loopback",
+  "request": {
+    "guardRegions": [
+      {
+        "bottom": 400,
+        "left": 0,
+        "right": 400,
+        "top": 0
+      }
+    ],
+    "packageName": "com.example.shop",
+    "purpose": "Tap the demo button",
+    "requestId": "req-demo_run",
+    "targetDescription": "Demo button",
+    "type": "demo_run",
+    "x": 100,
+    "y": 200
+  },
+  "response": [
+    {
+      "message": "demo_run accepted by the phone.",
+      "requestId": "req-demo_run",
+      "type": "accepted"
+    },
+    {
+      "message": "The phone already has an active session.",
+      "ok": false,
+      "requestId": "req-demo_run",
+      "type": "error"
+    }
+  ]
+}

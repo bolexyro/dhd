@@ -1,0 +1,49 @@
+{
+  "peer": "loopback",
+  "request": {
+    "guardRegions": [
+      {
+        "bottom": 400,
+        "left": 0,
+        "right": 400,
+        "top": 0
+      }
+    ],
+    "packageName": "com.example.shop",
+    "purpose": "Tap the demo button",
+    "requestId": "req-demo_run",
+    "targetDescription": "Demo button",
+    "type": "demo_run",
+    "x": 100,
+    "y": 200
+  },
+  "response": [
+    {
+      "message": "demo_run accepted by the phone.",
+      "requestId": "req-demo_run",
+      "type": "accepted"
+    },
+    {
+      "action": "open_app",
+      "message": "Executed open_app.",
+      "ok": true,
+      "requestId": "req-demo_run",
+      "type": "action_result"
+    },
+    {
+      "action": "tap",
+      "message": "Executed tap.",
+      "ok": true,
+      "requestId": "req-demo_run",
+      "type": "action_result"
+    },
+    {
+      "height": 1560,
+      "message": "Opened com.example.shop and tapped 100,200.",
+      "observationId": "obs-demo-2",
+      "requestId": "req-demo_run",
+      "type": "completed",
+      "width": 720
+    }
+  ]
+}

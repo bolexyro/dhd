@@ -1,0 +1,39 @@
+{
+  "peer": "loopback",
+  "request": {
+    "purpose": "Checking the cart",
+    "requestId": "req-observe",
+    "targetDescription": "Cart",
+    "tool": "dhd_observe",
+    "type": "observe"
+  },
+  "response": [
+    {
+      "message": "observe accepted by the phone.",
+      "requestId": "req-observe",
+      "type": "accepted"
+    },
+    {
+      "observation": {
+        "activityName": "com.example.shop.MainActivity",
+        "height": 1560,
+        "id": "obs-1",
+        "packageName": "com.example.shop",
+        "rotation": 0,
+        "screenProtection": {
+          "reason": null,
+          "requiresUserAttention": false,
+          "signals": [],
+          "status": "visible"
+        },
+        "screenshotFingerprint": "fp-obs-1",
+        "width": 720
+      },
+      "ok": true,
+      "requestId": "req-observe",
+      "screenshotBase64": "iVBORw==",
+      "screenshotMimeType": "image/png",
+      "type": "observation"
+    }
+  ]
+}

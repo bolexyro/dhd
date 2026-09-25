@@ -1,0 +1,35 @@
+{
+  "peer": "loopback",
+  "request": {
+    "includeAll": true,
+    "requestId": "req-allowed_apps",
+    "type": "allowed_apps"
+  },
+  "response": [
+    {
+      "message": "allowed_apps accepted by the phone.",
+      "requestId": "req-allowed_apps",
+      "type": "accepted"
+    },
+    {
+      "accessMode": "full_access",
+      "apps": [
+        {
+          "appLabel": "Shop",
+          "packageName": "com.example.shop"
+        },
+        {
+          "appLabel": "Mail",
+          "packageName": "com.example.mail"
+        }
+      ],
+      "canListAllApps": true,
+      "count": 2,
+      "fullAccess": true,
+      "message": "Full Access is enabled. Returned all launchable apps on the phone.",
+      "ok": true,
+      "requestId": "req-allowed_apps",
+      "type": "allowed_apps"
+    }
+  ]
+}

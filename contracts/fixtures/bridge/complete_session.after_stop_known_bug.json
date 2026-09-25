@@ -1,0 +1,25 @@
+{
+  "peer": "loopback",
+  "request": {
+    "message": "Late completion.",
+    "requestId": "req-complete_session",
+    "sessionId": "{{sessionId}}",
+    "type": "complete_session"
+  },
+  "response": [
+    {
+      "message": "complete_session accepted by the phone.",
+      "requestId": "req-complete_session",
+      "type": "accepted"
+    },
+    {
+      "conversationId": "conversation-1",
+      "feedback": null,
+      "message": "Late completion.",
+      "ok": true,
+      "requestId": "req-complete_session",
+      "sessionId": "{{sessionId}}",
+      "type": "session_completed"
+    }
+  ]
+}

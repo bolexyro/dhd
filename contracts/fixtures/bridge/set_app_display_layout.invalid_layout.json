@@ -1,0 +1,23 @@
+{
+  "peer": "loopback",
+  "request": {
+    "layout": "huge",
+    "packageName": "com.example.shop",
+    "requestId": "req-set_app_display_layout",
+    "type": "set_app_display_layout"
+  },
+  "response": [
+    {
+      "message": "set_app_display_layout accepted by the phone.",
+      "requestId": "req-set_app_display_layout",
+      "type": "accepted"
+    },
+    {
+      "code": "INVALID_APP_DISPLAY_LAYOUT",
+      "message": "layout must be either full_size or standard.",
+      "ok": false,
+      "requestId": "req-set_app_display_layout",
+      "type": "error"
+    }
+  ]
+}

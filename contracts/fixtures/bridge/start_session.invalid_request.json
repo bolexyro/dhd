@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "request": " ",
+    "requestId": "req-start_session",
+    "type": "start_session"
+  },
+  "response": [
+    {
+      "message": "start_session accepted by the phone.",
+      "requestId": "req-start_session",
+      "type": "accepted"
+    },
+    {
+      "message": "The phone bridge failed: request must be 1-16384 characters.",
+      "ok": false,
+      "requestId": "req-start_session",
+      "type": "error"
+    }
+  ]
+}

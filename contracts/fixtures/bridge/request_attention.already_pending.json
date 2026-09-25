@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "reason": "Second",
+    "requestId": "req-request_attention",
+    "type": "request_attention"
+  },
+  "response": [
+    {
+      "message": "request_attention accepted by the phone.",
+      "requestId": "req-request_attention",
+      "type": "accepted"
+    },
+    {
+      "code": "ATTENTION_ALREADY_PENDING",
+      "message": "The phone assistant is already waiting for the user's attention.",
+      "ok": false,
+      "requestId": "req-request_attention",
+      "type": "error"
+    }
+  ]
+}

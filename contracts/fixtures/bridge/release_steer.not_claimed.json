@@ -1,0 +1,24 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-release_steer",
+    "sessionId": "{{sessionId}}",
+    "steerId": "missing",
+    "type": "release_steer"
+  },
+  "response": [
+    {
+      "message": "release_steer accepted by the phone.",
+      "requestId": "req-release_steer",
+      "type": "accepted"
+    },
+    {
+      "ok": false,
+      "released": false,
+      "requestId": "req-release_steer",
+      "sessionId": "{{sessionId}}",
+      "steerId": "missing",
+      "type": "steer_released"
+    }
+  ]
+}

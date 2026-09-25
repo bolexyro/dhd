@@ -1,0 +1,23 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-claim_steer",
+    "sessionId": "{{sessionId}}",
+    "steerId": "missing",
+    "type": "claim_steer"
+  },
+  "response": [
+    {
+      "message": "claim_steer accepted by the phone.",
+      "requestId": "req-claim_steer",
+      "type": "accepted"
+    },
+    {
+      "code": "STEER_NOT_AVAILABLE",
+      "message": "No unclaimed steer matched the supplied session and steer id.",
+      "ok": false,
+      "requestId": "req-claim_steer",
+      "type": "error"
+    }
+  ]
+}

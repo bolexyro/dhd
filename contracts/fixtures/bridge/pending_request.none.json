@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-pending_request",
+    "type": "pending_request"
+  },
+  "response": [
+    {
+      "message": "pending_request accepted by the phone.",
+      "requestId": "req-pending_request",
+      "type": "accepted"
+    },
+    {
+      "available": false,
+      "ok": true,
+      "requestId": "req-pending_request",
+      "type": "pending_request",
+      "warmupRequested": false
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-complete_session",
+    "sessionId": "other",
+    "type": "complete_session"
+  },
+  "response": [
+    {
+      "message": "complete_session accepted by the phone.",
+      "requestId": "req-complete_session",
+      "type": "accepted"
+    },
+    {
+      "code": "SESSION_NOT_RUNNING",
+      "message": "The phone session is no longer active.",
+      "ok": false,
+      "requestId": "req-complete_session",
+      "type": "error"
+    }
+  ]
+}

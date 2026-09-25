@@ -1,0 +1,14 @@
+{
+  "peer": "loopback",
+  "rawRequest": {
+    "line": null
+  },
+  "response": [
+    {
+      "message": "The bridge received an empty request.",
+      "ok": false,
+      "requestId": null,
+      "type": "error"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-request_attention",
+    "type": "request_attention"
+  },
+  "response": [
+    {
+      "message": "request_attention accepted by the phone.",
+      "requestId": "req-request_attention",
+      "type": "accepted"
+    },
+    {
+      "code": "SESSION_NOT_RUNNING",
+      "message": "The phone assistant has no active session to interrupt.",
+      "ok": false,
+      "requestId": "req-request_attention",
+      "type": "error"
+    }
+  ]
+}

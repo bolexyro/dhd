@@ -1,0 +1,23 @@
+{
+  "peer": "loopback",
+  "request": {
+    "reason": "Sign in please.",
+    "requestId": "req-request_attention",
+    "type": "request_attention"
+  },
+  "response": [
+    {
+      "message": "request_attention accepted by the phone.",
+      "requestId": "req-request_attention",
+      "type": "accepted"
+    },
+    {
+      "code": "SESSION_STOPPED",
+      "message": "The attention step was cancelled because the phone session stopped.",
+      "ok": false,
+      "requestId": "req-request_attention",
+      "sessionId": "{{sessionId}}",
+      "type": "attention_cancelled"
+    }
+  ]
+}

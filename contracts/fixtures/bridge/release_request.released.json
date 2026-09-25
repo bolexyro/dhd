@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-release_request",
+    "sessionId": "{{sessionId}}",
+    "type": "release_request"
+  },
+  "response": [
+    {
+      "message": "release_request accepted by the phone.",
+      "requestId": "req-release_request",
+      "type": "accepted"
+    },
+    {
+      "ok": true,
+      "released": true,
+      "requestId": "req-release_request",
+      "sessionId": "{{sessionId}}",
+      "type": "request_released"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-companion_disconnected",
+    "type": "companion_disconnected"
+  },
+  "response": [
+    {
+      "message": "companion_disconnected accepted by the phone.",
+      "requestId": "req-companion_disconnected",
+      "type": "accepted"
+    },
+    {
+      "message": "Desktop companion presence released.",
+      "ok": true,
+      "requestId": "req-companion_disconnected",
+      "type": "companion_disconnected"
+    }
+  ]
+}

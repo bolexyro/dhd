@@ -1,0 +1,40 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-observe",
+    "tool": "dhd_observe",
+    "type": "observe"
+  },
+  "response": [
+    {
+      "message": "observe accepted by the phone.",
+      "requestId": "req-observe",
+      "type": "accepted"
+    },
+    {
+      "observation": {
+        "activityName": "com.example.shop.MainActivity",
+        "displayRef": "dsp_f8f137e6086916",
+        "height": 1560,
+        "id": "obs-1",
+        "packageName": "com.example.shop",
+        "rotation": 0,
+        "screenProtection": {
+          "reason": "The payment screen is protected.",
+          "requiresUserAttention": true,
+          "signals": [
+            "FLAG_SECURE"
+          ],
+          "status": "secure"
+        },
+        "screenshotFingerprint": "fp-obs-1",
+        "width": 720
+      },
+      "ok": true,
+      "requestId": "req-observe",
+      "screenshotBase64": "iVBORw==",
+      "screenshotMimeType": "image/png",
+      "type": "observation"
+    }
+  ]
+}

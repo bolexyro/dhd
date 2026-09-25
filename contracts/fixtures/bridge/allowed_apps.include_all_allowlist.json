@@ -1,0 +1,31 @@
+{
+  "peer": "loopback",
+  "request": {
+    "includeAll": true,
+    "requestId": "req-allowed_apps",
+    "type": "allowed_apps"
+  },
+  "response": [
+    {
+      "message": "allowed_apps accepted by the phone.",
+      "requestId": "req-allowed_apps",
+      "type": "accepted"
+    },
+    {
+      "accessMode": "allowlist",
+      "apps": [
+        {
+          "appLabel": "Shop",
+          "packageName": "com.example.shop"
+        }
+      ],
+      "canListAllApps": false,
+      "count": 1,
+      "fullAccess": false,
+      "message": "Restricted access is enabled. Returned all launchable apps in the allowlist.",
+      "ok": true,
+      "requestId": "req-allowed_apps",
+      "type": "allowed_apps"
+    }
+  ]
+}

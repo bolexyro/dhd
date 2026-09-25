@@ -1,0 +1,41 @@
+{
+  "peer": "loopback",
+  "request": {
+    "reason": "Approve the payment on the phone.",
+    "requestId": "req-request_attention",
+    "type": "request_attention"
+  },
+  "response": [
+    {
+      "message": "request_attention accepted by the phone.",
+      "requestId": "req-request_attention",
+      "type": "accepted"
+    },
+    {
+      "acknowledged": true,
+      "message": "The user confirmed that the attention step is complete. Observe the phone before taking the next action.",
+      "observation": {
+        "activityName": "com.example.shop.MainActivity",
+        "displayRef": "dsp_f8f137e6086916",
+        "height": 1560,
+        "id": "obs-attention",
+        "packageName": "com.example.shop",
+        "rotation": 0,
+        "screenProtection": {
+          "reason": null,
+          "requiresUserAttention": false,
+          "signals": [],
+          "status": "visible"
+        },
+        "screenshotFingerprint": "fp-obs-attention",
+        "width": 720
+      },
+      "ok": true,
+      "requestId": "req-request_attention",
+      "screenshotBase64": "iVBORw==",
+      "screenshotMimeType": "image/png",
+      "sessionId": "{{sessionId}}",
+      "type": "attention_resolved"
+    }
+  ]
+}

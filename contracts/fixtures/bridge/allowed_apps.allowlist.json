@@ -1,0 +1,27 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-allowed_apps",
+    "type": "allowed_apps"
+  },
+  "response": [
+    {
+      "message": "allowed_apps accepted by the phone.",
+      "requestId": "req-allowed_apps",
+      "type": "accepted"
+    },
+    {
+      "accessMode": "allowlist",
+      "allowedPackages": [
+        "com.example.alpha",
+        "com.example.shop"
+      ],
+      "canListAllApps": false,
+      "count": 2,
+      "fullAccess": false,
+      "ok": true,
+      "requestId": "req-allowed_apps",
+      "type": "allowed_apps"
+    }
+  ]
+}

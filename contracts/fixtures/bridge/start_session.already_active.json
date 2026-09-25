@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "request": "Buy bread",
+    "requestId": "req-start_session",
+    "type": "start_session"
+  },
+  "response": [
+    {
+      "message": "start_session accepted by the phone.",
+      "requestId": "req-start_session",
+      "type": "accepted"
+    },
+    {
+      "message": "The phone already has an active session.",
+      "ok": false,
+      "requestId": "req-start_session",
+      "type": "error"
+    }
+  ]
+}

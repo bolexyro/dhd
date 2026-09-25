@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-foreground_app",
+    "type": "foreground_app"
+  },
+  "response": [
+    {
+      "message": "foreground_app accepted by the phone.",
+      "requestId": "req-foreground_app",
+      "type": "accepted"
+    },
+    {
+      "code": "TASK_DISPLAY_UNAVAILABLE",
+      "message": "No task display is available.",
+      "ok": false,
+      "requestId": "req-foreground_app",
+      "type": "error"
+    }
+  ]
+}

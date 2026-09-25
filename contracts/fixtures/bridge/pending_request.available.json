@@ -1,0 +1,28 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-pending_request",
+    "type": "pending_request"
+  },
+  "response": [
+    {
+      "message": "pending_request accepted by the phone.",
+      "requestId": "req-pending_request",
+      "type": "accepted"
+    },
+    {
+      "available": true,
+      "codexThreadId": null,
+      "continuation": false,
+      "conversationId": "conversation-1",
+      "fastMode": false,
+      "ok": true,
+      "reasoningEffort": "high",
+      "request": "Buy milk",
+      "requestId": "req-pending_request",
+      "sessionId": "{{sessionId}}",
+      "type": "pending_request",
+      "warmupRequested": true
+    }
+  ]
+}

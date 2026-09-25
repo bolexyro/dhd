@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "query": " ",
+    "requestId": "req-browse_apps",
+    "type": "browse_apps"
+  },
+  "response": [
+    {
+      "message": "browse_apps accepted by the phone.",
+      "requestId": "req-browse_apps",
+      "type": "accepted"
+    },
+    {
+      "code": "INVALID_APP_QUERY",
+      "message": "App search requires a query between 1 and 120 characters.",
+      "ok": false,
+      "requestId": "req-browse_apps",
+      "type": "error"
+    }
+  ]
+}

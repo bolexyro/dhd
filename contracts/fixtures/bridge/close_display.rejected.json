@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "displayRef": "dsp_f8f137e6086916",
+    "requestId": "req-close_display",
+    "type": "close_display"
+  },
+  "response": [
+    {
+      "message": "close_display accepted by the phone.",
+      "requestId": "req-close_display",
+      "type": "accepted"
+    },
+    {
+      "code": "DISPLAY_CHANGED",
+      "message": "The display was recreated.",
+      "ok": false,
+      "requestId": "req-close_display",
+      "type": "error"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "peer": "loopback",
+  "request": {
+    "layout": "full_size",
+    "packageName": "com.example.missing",
+    "requestId": "req-set_app_display_layout",
+    "type": "set_app_display_layout"
+  },
+  "response": [
+    {
+      "message": "set_app_display_layout accepted by the phone.",
+      "requestId": "req-set_app_display_layout",
+      "type": "accepted"
+    },
+    {
+      "code": "APP_NOT_FOUND",
+      "message": "No launchable app matches packageName=com.example.missing.",
+      "ok": false,
+      "requestId": "req-set_app_display_layout",
+      "type": "error"
+    }
+  ]
+}

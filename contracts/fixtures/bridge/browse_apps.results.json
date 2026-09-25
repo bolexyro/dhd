@@ -1,0 +1,37 @@
+{
+  "peer": "loopback",
+  "request": {
+    "query": "example",
+    "requestId": "req-browse_apps",
+    "type": "browse_apps"
+  },
+  "response": [
+    {
+      "message": "browse_apps accepted by the phone.",
+      "requestId": "req-browse_apps",
+      "type": "accepted"
+    },
+    {
+      "accessMode": "allowlist",
+      "apps": [
+        {
+          "appLabel": "Shop",
+          "canUse": true,
+          "packageName": "com.example.shop"
+        },
+        {
+          "appLabel": "Mail",
+          "canUse": false,
+          "packageName": "com.example.mail"
+        }
+      ],
+      "count": 2,
+      "fullAccess": false,
+      "ok": true,
+      "query": "example",
+      "requestId": "req-browse_apps",
+      "truncated": false,
+      "type": "browse_apps"
+    }
+  ]
+}

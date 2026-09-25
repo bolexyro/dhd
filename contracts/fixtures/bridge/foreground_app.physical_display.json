@@ -1,0 +1,31 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-foreground_app",
+    "type": "foreground_app"
+  },
+  "response": [
+    {
+      "message": "foreground_app accepted by the phone.",
+      "requestId": "req-foreground_app",
+      "type": "accepted"
+    },
+    {
+      "activityName": "com.example.shop.MainActivity",
+      "height": 1080,
+      "message": "The current foreground app is com.example.shop.",
+      "ok": true,
+      "packageName": "com.example.shop",
+      "requestId": "req-foreground_app",
+      "rotation": 1,
+      "screenProtection": {
+        "reason": null,
+        "requiresUserAttention": false,
+        "signals": [],
+        "status": "visible"
+      },
+      "type": "foreground_app",
+      "width": 2400
+    }
+  ]
+}

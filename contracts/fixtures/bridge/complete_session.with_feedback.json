@@ -1,0 +1,27 @@
+{
+  "peer": "loopback",
+  "request": {
+    "agentMessageId": "message-1",
+    "feedback": "I added one litre of milk to the cart.",
+    "message": "Milk added.",
+    "requestId": "req-complete_session",
+    "sessionId": "{{sessionId}}",
+    "type": "complete_session"
+  },
+  "response": [
+    {
+      "message": "complete_session accepted by the phone.",
+      "requestId": "req-complete_session",
+      "type": "accepted"
+    },
+    {
+      "conversationId": "conversation-1",
+      "feedback": "I added one litre of milk to the cart.",
+      "message": "I added one litre of milk to the cart.",
+      "ok": true,
+      "requestId": "req-complete_session",
+      "sessionId": "{{sessionId}}",
+      "type": "session_completed"
+    }
+  ]
+}

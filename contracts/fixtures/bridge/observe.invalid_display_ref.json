@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "displayRef": "display-7",
+    "requestId": "req-observe",
+    "type": "observe"
+  },
+  "response": [
+    {
+      "message": "observe accepted by the phone.",
+      "requestId": "req-observe",
+      "type": "accepted"
+    },
+    {
+      "message": "The phone bridge failed: displayRef must match dsp_ followed by 14 lowercase hexadecimal characters.",
+      "ok": false,
+      "requestId": "req-observe",
+      "type": "error"
+    }
+  ]
+}

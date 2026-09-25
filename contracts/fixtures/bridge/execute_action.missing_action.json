@@ -1,0 +1,20 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-execute_action",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "message": "The phone bridge failed: action must be an object.",
+      "ok": false,
+      "requestId": "req-execute_action",
+      "type": "error"
+    }
+  ]
+}

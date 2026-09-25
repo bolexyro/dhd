@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-status",
+    "type": "status"
+  },
+  "response": [
+    {
+      "message": "status accepted by the phone.",
+      "requestId": "req-status",
+      "type": "accepted"
+    },
+    {
+      "active": false,
+      "companionConnected": false,
+      "ok": true,
+      "requestId": "req-status",
+      "state": "idle",
+      "type": "status"
+    }
+  ]
+}
