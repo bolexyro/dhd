@@ -6,10 +6,10 @@ import type {
 } from "../src/companion-events.js";
 import {
   CodexAppServerClient,
-  extractCompanionTokenUsageEvent,
   handleDynamicToolCall,
   shouldInterruptForPhoneStop,
 } from "../src/assistant-companion.js";
+import { extractCompanionTokenUsageEvent } from "../src/codex/extract.js";
 import { startFakeAppServer, type FakeAppServer } from "./support/fake-app-server.js";
 
 let server: FakeAppServer;

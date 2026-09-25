@@ -7,18 +7,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   disabledConfiguredMcpOverrides,
   emptyToolAnswers,
-  extractCompanionPlanUpdatedEvent,
   extractDynamicToolFailure,
-  extractText,
-  extractThreadId,
-  extractTurnError,
-  extractTurnId,
   normalizeCodexEffort,
   normalizeDynamicArguments,
   parsePollInterval,
   quoteWindowsCommand,
   resolveCodexBin,
 } from "../src/assistant-companion.js";
+import {
+  extractCompanionPlanUpdatedEvent,
+  extractText,
+  extractThreadId,
+  extractTurnError,
+  extractTurnId,
+} from "../src/codex/extract.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
