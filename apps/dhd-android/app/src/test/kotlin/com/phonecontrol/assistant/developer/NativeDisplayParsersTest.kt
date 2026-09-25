@@ -25,16 +25,16 @@ class NativeDisplayParsersTest {
 
     @Test
     fun `logical unique id is read from the requested display and unquoted ids stop at a comma`() {
-        assertEquals(taskUniqueId, DhdNativeDisplayService.findLogicalUniqueId(getDisplaysSingleLine, 7))
-        assertEquals("local:4619827259835644672", DhdNativeDisplayService.findLogicalUniqueId(getDisplaysSingleLine, 0))
-        assertEquals(taskUniqueId, DhdNativeDisplayService.findLogicalUniqueId(getDisplaysMultiLine, 7))
+        assertEquals(taskUniqueId, SurfaceFlingerIds.findLogicalUniqueId(getDisplaysSingleLine, 7))
+        assertEquals("local:4619827259835644672", SurfaceFlingerIds.findLogicalUniqueId(getDisplaysSingleLine, 0))
+        assertEquals(taskUniqueId, SurfaceFlingerIds.findLogicalUniqueId(getDisplaysMultiLine, 7))
         assertEquals(
             "virtual:com.android.shell",
-            DhdNativeDisplayService.findLogicalUniqueId(getDisplaysMultiLine, 8),
+            SurfaceFlingerIds.findLogicalUniqueId(getDisplaysMultiLine, 8),
         )
-        assertNull(DhdNativeDisplayService.findLogicalUniqueId(getDisplaysSingleLine, 9))
-        assertNull(DhdNativeDisplayService.findLogicalUniqueId(null, 7))
-        assertNull(DhdNativeDisplayService.findLogicalUniqueId("Display id 7: DisplayInfo{no id here}", 7))
+        assertNull(SurfaceFlingerIds.findLogicalUniqueId(getDisplaysSingleLine, 9))
+        assertNull(SurfaceFlingerIds.findLogicalUniqueId(null, 7))
+        assertNull(SurfaceFlingerIds.findLogicalUniqueId("Display id 7: DisplayInfo{no id here}", 7))
     }
 
     @Test
@@ -45,12 +45,12 @@ class NativeDisplayParsersTest {
                uniqueId="$taskUniqueId" layerStack=7
             Virtual Display 11529215046068469762 (virtual): displayName="other"
         """.trimIndent()
-        assertEquals("11529215046068469761", DhdNativeDisplayService.findSurfaceFlingerId(dump, 7, taskUniqueId))
-        assertNull(DhdNativeDisplayService.findSurfaceFlingerId(dump, 7, "virtual:missing"))
-        assertNull(DhdNativeDisplayService.findSurfaceFlingerId(dump, 7, null))
-        assertNull(DhdNativeDisplayService.findSurfaceFlingerId(dump, 7, ""))
-        assertNull(DhdNativeDisplayService.findSurfaceFlingerId(null, 7, taskUniqueId))
-        assertNull(DhdNativeDisplayService.findSurfaceFlingerId("uniqueId=\"$taskUniqueId\"", 7, taskUniqueId))
+        assertEquals("11529215046068469761", SurfaceFlingerIds.findSurfaceFlingerId(dump, 7, taskUniqueId))
+        assertNull(SurfaceFlingerIds.findSurfaceFlingerId(dump, 7, "virtual:missing"))
+        assertNull(SurfaceFlingerIds.findSurfaceFlingerId(dump, 7, null))
+        assertNull(SurfaceFlingerIds.findSurfaceFlingerId(dump, 7, ""))
+        assertNull(SurfaceFlingerIds.findSurfaceFlingerId(null, 7, taskUniqueId))
+        assertNull(SurfaceFlingerIds.findSurfaceFlingerId("uniqueId=\"$taskUniqueId\"", 7, taskUniqueId))
     }
 
     @Test
@@ -59,12 +59,12 @@ class NativeDisplayParsersTest {
             Display 101 (virtual): uniqueId="$taskUniqueId"
             Display 102 (virtual): uniqueId="$taskUniqueId"
         """.trimIndent()
-        assertNull(DhdNativeDisplayService.findSurfaceFlingerId(dump, 7, taskUniqueId))
+        assertNull(SurfaceFlingerIds.findSurfaceFlingerId(dump, 7, taskUniqueId))
         val repeated = """
             Display 101 (virtual): uniqueId="$taskUniqueId"
                mirror of uniqueId="$taskUniqueId"
         """.trimIndent()
-        assertEquals("101", DhdNativeDisplayService.findSurfaceFlingerId(repeated, 7, taskUniqueId))
+        assertEquals("101", SurfaceFlingerIds.findSurfaceFlingerId(repeated, 7, taskUniqueId))
     }
 
     @Test
@@ -74,10 +74,10 @@ class NativeDisplayParsersTest {
             Display 201 Virtual display displayName="dhd-task-abc"
             Display 202 DisplayDevice name="other"
         """.trimIndent()
-        assertEquals("201", DhdNativeDisplayService.findUniqueSurfaceFlingerVirtualDisplayId(singleLine, "DHD-TASK-ABC"))
+        assertEquals("201", SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(singleLine, "DHD-TASK-ABC"))
 
         val headerInline = "Display 301 (virtual) displayName=\"dhd-task-abc\""
-        assertEquals("301", DhdNativeDisplayService.findUniqueSurfaceFlingerVirtualDisplayId(headerInline, "dhd-task-abc"))
+        assertEquals("301", SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(headerInline, "dhd-task-abc"))
 
         val multiLine = """
             Display 401 (virtual)
@@ -85,7 +85,7 @@ class NativeDisplayParsersTest {
             Display 402 (virtual)
                name="other"
         """.trimIndent()
-        assertEquals("401", DhdNativeDisplayService.findUniqueSurfaceFlingerVirtualDisplayId(multiLine, "dhd-task-abc"))
+        assertEquals("401", SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(multiLine, "dhd-task-abc"))
     }
 
     @Test
@@ -94,16 +94,16 @@ class NativeDisplayParsersTest {
             Display 501 (virtual) displayName="dhd-task-abc"
             Display 502 (virtual) displayName="dhd-task-abc"
         """.trimIndent()
-        assertNull(DhdNativeDisplayService.findUniqueSurfaceFlingerVirtualDisplayId(ambiguous, "dhd-task-abc"))
+        assertNull(SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(ambiguous, "dhd-task-abc"))
         val nameAfterNextHeader = """
             Display 601 (virtual)
             Display 602 (physical)
                name="dhd-task-abc"
         """.trimIndent()
-        assertNull(DhdNativeDisplayService.findUniqueSurfaceFlingerVirtualDisplayId(nameAfterNextHeader, "dhd-task-abc"))
-        assertNull(DhdNativeDisplayService.findUniqueSurfaceFlingerVirtualDisplayId(ambiguous, ""))
-        assertNull(DhdNativeDisplayService.findUniqueSurfaceFlingerVirtualDisplayId(ambiguous, null))
-        assertNull(DhdNativeDisplayService.findUniqueSurfaceFlingerVirtualDisplayId(null, "dhd-task-abc"))
+        assertNull(SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(nameAfterNextHeader, "dhd-task-abc"))
+        assertNull(SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(ambiguous, ""))
+        assertNull(SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(ambiguous, null))
+        assertNull(SurfaceFlingerIds.findUniqueSurfaceFlingerVirtualDisplayId(null, "dhd-task-abc"))
     }
 
     @Test
