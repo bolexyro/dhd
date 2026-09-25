@@ -31,9 +31,10 @@ describe("phone assistant bridge configuration", () => {
     expect(isLoopbackBridgeHost("192.168.1.42")).toBe(false);
   });
 
-  it("requires a token for non-loopback bridge targets", () => {
-    expect(bridgeConfigurationError("127.0.0.1", undefined)).toBeNull();
+  it("requires a token for every bridge target, including loopback", () => {
+    expect(bridgeConfigurationError("127.0.0.1", undefined)).toContain("TOKEN");
     expect(bridgeConfigurationError("192.168.1.42", "  ")).toContain("TOKEN");
+    expect(bridgeConfigurationError("127.0.0.1", "paired-token")).toBeNull();
     expect(bridgeConfigurationError("192.168.1.42", "paired-token")).toBeNull();
   });
 
@@ -66,7 +67,7 @@ describe("phone assistant bridge configuration", () => {
 
     const result = requestBridge(
       { type: "status", requestId: "request-timeout" },
-      { host: "127.0.0.1", port: 8765, timeoutMs: 100 }
+      { host: "127.0.0.1", port: 8765, token: "paired-token", timeoutMs: 100 }
     );
     const rejection = expect(result).rejects.toThrow("Timed out waiting for the phone assistant bridge.");
 
@@ -98,6 +99,7 @@ describe("phone assistant bridge configuration", () => {
       {
         host: "127.0.0.1",
         port: 8765,
+        token: "paired-token",
         timeoutMs: 100,
         keepOpenAfterAccepted: true,
       },

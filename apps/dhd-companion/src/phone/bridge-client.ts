@@ -73,8 +73,8 @@ export function bridgeConfigurationError(
   host: string = environmentBridgeTarget().host,
   token: string | undefined = bridgeTokenSetting(),
 ): string | null {
-  if (!isLoopbackBridgeHost(host) && !token?.trim()) {
-    return "PHONE_ASSISTANT_BRIDGE_TOKEN is required when PHONE_ASSISTANT_BRIDGE_HOST is not loopback.";
+  if (!token?.trim()) {
+    return `PHONE_ASSISTANT_BRIDGE_TOKEN is required to reach the phone at ${host}. Pair the phone from the dashboard first.`;
   }
   return null;
 }

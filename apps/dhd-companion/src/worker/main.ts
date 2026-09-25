@@ -21,7 +21,7 @@ function logStartupBanner(): void {
   );
   if (isLoopbackBridgeHost(target.host)) {
     console.error(
-      "[phone-assistant-companion] loopback mode: adb forward tcp:8765 tcp:8765 is still supported",
+      "[phone-assistant-companion] loopback mode: adb forward tcp:8765 tcp:8765 works when PHONE_ASSISTANT_BRIDGE_TOKEN matches the paired phone",
     );
   } else {
     console.error(

@@ -52,7 +52,7 @@ function connect(
 ): { result: ReturnType<typeof requestBridge>; socket: FakeSocket } {
   const result = requestBridge(
     { type: "status", requestId: "request-1" },
-    { host: "127.0.0.1", port: 8765, token: "", ...options },
+    { host: "127.0.0.1", port: 8765, token: "paired-token", ...options },
   );
   const socket = sockets.created.at(-1)?.socket as FakeSocket;
   socket.emit("connect");
@@ -75,10 +75,13 @@ describe("phone bridge NDJSON framing", () => {
     expect(socket.destroyed).toBe(true);
   });
 
-  it("rejects a non-loopback target without a token before connecting", async () => {
+  it("rejects a target without a token before connecting, including loopback", async () => {
     await expect(
       requestBridge({ type: "status", requestId: "request-1" }, { host: "192.168.1.2", port: 9000, token: " " }),
-    ).rejects.toThrow("PHONE_ASSISTANT_BRIDGE_TOKEN is required when PHONE_ASSISTANT_BRIDGE_HOST is not loopback.");
+    ).rejects.toThrow("PHONE_ASSISTANT_BRIDGE_TOKEN is required to reach the phone at 192.168.1.2.");
+    await expect(
+      requestBridge({ type: "status", requestId: "request-2" }, { host: "127.0.0.1", port: 8765, token: "" }),
+    ).rejects.toThrow("PHONE_ASSISTANT_BRIDGE_TOKEN is required to reach the phone at 127.0.0.1.");
     expect(sockets.created).toEqual([]);
   });
 

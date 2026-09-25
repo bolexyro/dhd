@@ -126,7 +126,9 @@ it only on a trusted network and do not forward ports `8765` or `8766` from the
 router to the internet.
 
 If a local USB/ADB fallback is useful, start the phone-side app and forward
-its loopback port instead:
+its loopback port instead. The phone still requires the pairing token, so pair
+once through the dashboard and set `PHONE_ASSISTANT_BRIDGE_TOKEN` to the
+`token` value saved in `~/.dhd/companion-connection.json`:
 
 ```powershell
 adb forward tcp:8765 tcp:8765
@@ -304,7 +306,9 @@ typed action boundary.
 ## Phone-first run
 
 Install the sideloaded Android debug build, enable the apps you want in its
-allowlist, and forward the phone bridge:
+allowlist, pair it once through the dashboard, set
+`PHONE_ASSISTANT_BRIDGE_TOKEN` to the `token` value saved in
+`~/.dhd/companion-connection.json`, and forward the phone bridge:
 
 ```powershell
 adb forward tcp:8765 tcp:8765

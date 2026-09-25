@@ -123,8 +123,9 @@ The phone bridge then releases its current address, port, and credential. The
 dashboard stores those details so you do not have to copy them individually.
 
 `adb forward` remains a loopback fallback for local development. The phone
-requires the pairing token from loopback peers too, so set
-`PHONE_ASSISTANT_BRIDGE_TOKEN` to the token shown in DHD settings:
+requires the pairing token from loopback peers too. Pair the phone once
+through the dashboard, then set `PHONE_ASSISTANT_BRIDGE_TOKEN` to the `token`
+value saved in `~/.dhd/companion-connection.json`:
 
 ```powershell
 adb forward tcp:8765 tcp:8765

@@ -90,7 +90,7 @@ describe("companion worker poll loop", () => {
       expect.arrayContaining([
         "[phone-assistant-companion] waiting for a request typed in the Android app",
         "[phone-assistant-companion] phone bridge target 127.0.0.1:8765",
-        "[phone-assistant-companion] loopback mode: adb forward tcp:8765 tcp:8765 is still supported",
+        "[phone-assistant-companion] loopback mode: adb forward tcp:8765 tcp:8765 works when PHONE_ASSISTANT_BRIDGE_TOKEN matches the paired phone",
         "[phone-assistant-companion] a logged-in Codex CLI must be available on this companion host",
       ]),
     );

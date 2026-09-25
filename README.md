@@ -142,4 +142,4 @@ Type a request in DHD on the phone. Keep the desktop companion window running wh
 - The desktop companion lives in [`apps/dhd-companion/`](apps/dhd-companion/).
 - To change the isolated Codex home or companion working directory, set `PHONE_ASSISTANT_CODEX_HOME` or `PHONE_ASSISTANT_CODEX_CWD` before running setup and the dashboard.
 - The [`legacy/`](legacy/) folder holds the older USB adb phone-control tooling in its own pnpm workspace. DHD does not use it, and a normal install skips it. See its [README](legacy/README.md).
-- If Wi-Fi discovery is blocked, `adb forward tcp:8765 tcp:8765` is available as a loopback development fallback.
+- If Wi-Fi discovery is blocked, `adb forward tcp:8765 tcp:8765` is available as a loopback development fallback. Pair once through the dashboard first and set `PHONE_ASSISTANT_BRIDGE_TOKEN` to the `token` saved in `~/.dhd/companion-connection.json`, because the phone requires it from every connection.
