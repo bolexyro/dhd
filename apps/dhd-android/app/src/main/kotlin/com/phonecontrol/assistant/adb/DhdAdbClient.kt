@@ -32,6 +32,7 @@ internal class DhdAdbClient(
     private var tlsSocket: SSLSocket? = null
     private var input: DataInputStream? = null
     private var output: DataOutputStream? = null
+    private var nextLocalId = 1
 
     fun connect() {
         check(socket == null) { "ADB client is already connected." }
@@ -78,6 +79,7 @@ internal class DhdAdbClient(
         try {
             while (true) {
                 val message = read()
+                if (message.arg1 != channel.localId) continue
                 when (message.command) {
                     DhdAdbProtocol.A_WRTE -> {
                         decoder.append(message.data)
@@ -117,8 +119,9 @@ internal class DhdAdbClient(
                     )
                 }
             }
-        } finally {
+        } catch (error: Throwable) {
             closeQuietly()
+            throw error
         }
 
         return DhdAdbCommandResult(
@@ -129,9 +132,10 @@ internal class DhdAdbClient(
     }
 
     private fun open(service: String): AdbChannel {
-        val localId = 1
+        val localId = nextLocalId++
         write(DhdAdbProtocol.A_OPEN, localId, 0, service)
-        val response = read()
+        var response = read()
+        while (response.arg1 != localId) response = read()
         return when (response.command) {
             DhdAdbProtocol.A_OKAY -> AdbChannel(localId, response.arg0)
             DhdAdbProtocol.A_CLSE -> {
