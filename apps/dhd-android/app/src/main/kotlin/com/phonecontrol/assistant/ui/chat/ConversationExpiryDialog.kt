@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.ui.components.DhdDialog
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlinx.coroutines.delay
 
@@ -44,12 +43,8 @@ internal fun ConversationExpiryDialog(
         onClear()
     }
 
-    AlertDialog(
+    DhdDialog(
         onDismissRequest = onKeep,
-        containerColor = colors.surfaceCard,
-        titleContentColor = colors.textPrimary,
-        textContentColor = colors.textSecondary,
-        shape = RoundedCornerShape(20.dp),
         title = { Text("This conversation is stale", fontWeight = FontWeight.SemiBold) },
         text = {
             Column(

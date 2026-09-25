@@ -13,14 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.bridge.CompanionBridgeServer
 import com.phonecontrol.assistant.bridge.pairing.PendingCompanionPairing
+import com.phonecontrol.assistant.ui.components.DhdConfirmDialog
 import com.phonecontrol.assistant.ui.settings.SettingsSectionFooter
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
@@ -123,31 +121,13 @@ fun CompanionPairingApprovalDialog(
     pending: PendingCompanionPairing?,
     bridgeServer: CompanionBridgeServer,
 ) {
-    val colors = LocalAssistantColors.current
     pending ?: return
-    AlertDialog(
-        onDismissRequest = { bridgeServer.rejectPendingCompanionPairing() },
-        containerColor = colors.surfaceCard,
-        titleContentColor = colors.textPrimary,
-        textContentColor = colors.textSecondary,
-        shape = RoundedCornerShape(20.dp),
-        title = { Text("Allow desktop companion?", fontWeight = FontWeight.SemiBold) },
-        text = {
-            Text(
-                text = "${pending.desktopName} wants to connect to DHD on this local network. Approve only if you recognize this computer.",
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { bridgeServer.approvePendingCompanionPairing() }) {
-                Text("Approve", color = colors.accentBlue, fontWeight = FontWeight.SemiBold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { bridgeServer.rejectPendingCompanionPairing() }) {
-                Text("Reject", color = colors.textSecondary)
-            }
-        },
+    DhdConfirmDialog(
+        title = "Allow desktop companion?",
+        message = "${pending.desktopName} wants to connect to DHD on this local network. Approve only if you recognize this computer.",
+        confirmLabel = "Approve",
+        dismissLabel = "Reject",
+        onConfirm = { bridgeServer.approvePendingCompanionPairing() },
+        onDismiss = { bridgeServer.rejectPendingCompanionPairing() },
     )
 }

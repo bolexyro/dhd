@@ -26,14 +26,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -81,6 +78,7 @@ import com.phonecontrol.assistant.ui.chat.status.rememberElapsedSeconds
 import com.phonecontrol.assistant.ui.chat.timeline.ConversationTimeline
 import com.phonecontrol.assistant.ui.chat.timeline.activeTaskRunIds
 import com.phonecontrol.assistant.ui.chat.timeline.recentTimelineItems
+import com.phonecontrol.assistant.ui.components.DhdConfirmDialog
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningEffortOverlay
 import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
 import com.phonecontrol.assistant.ui.displays.surface.PreviewSurfaceDestroyed
@@ -508,41 +506,21 @@ fun ChatScreen(
     }
 
     if (showStartFreshConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showStartFreshConfirmation = false },
-            containerColor = colors.surfaceCard,
-            titleContentColor = colors.textPrimary,
-            textContentColor = colors.textSecondary,
-            shape = RoundedCornerShape(20.dp),
-            title = { Text("Start fresh?", fontWeight = FontWeight.SemiBold) },
-            text = {
-                Text(
-                    "This clears the DHD conversation timeline and rotates its stored Codex thread " +
-                            "binding. App permissions and DHD's local phone connection remain unchanged.",
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                )
+        DhdConfirmDialog(
+            title = "Start fresh?",
+            message = "This clears the DHD conversation timeline and rotates its stored Codex thread " +
+                    "binding. App permissions and DHD's local phone connection remain unchanged.",
+            confirmLabel = "Start fresh",
+            onConfirm = {
+                showStartFreshConfirmation = false
+                steerDrafts = emptyList()
+                steerDraftSessionId = null
+                carrySteerDraftsToNextRun = false
+                composerEditText = null
+                coordinator.reset()
+                onStartFresh()
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showStartFreshConfirmation = false
-                        steerDrafts = emptyList()
-                        steerDraftSessionId = null
-                        carrySteerDraftsToNextRun = false
-                        composerEditText = null
-                        coordinator.reset()
-                        onStartFresh()
-                    },
-                ) {
-                    Text("Start fresh", color = colors.accentBlue, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showStartFreshConfirmation = false }) {
-                    Text("Cancel", color = colors.textSecondary)
-                }
-            },
+            onDismiss = { showStartFreshConfirmation = false },
         )
     }
 }

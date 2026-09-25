@@ -36,7 +36,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -45,7 +44,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,6 +83,7 @@ import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.overlay.bubble.DhdBubblePreview
 import com.phonecontrol.assistant.overlay.composer.DhdComposerPreview
+import com.phonecontrol.assistant.ui.components.FullAccessConfirmDialog
 import com.phonecontrol.assistant.ui.displays.TaskPointerOverlay
 import com.phonecontrol.assistant.ui.displays.liveDisplayCornerShape
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
@@ -428,37 +427,13 @@ private fun AllowedAppsOnboardingPage(
     }
 
     if (showFullAccessConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showFullAccessConfirmDialog = false },
-            containerColor = colors.surfaceCard,
-            titleContentColor = colors.textPrimary,
-            textContentColor = colors.textSecondary,
-            shape = RoundedCornerShape(20.dp),
-            title = { Text("Enable Full Access?", fontWeight = FontWeight.SemiBold) },
-            text = {
-                Text(
-                    "Full Access allows DHD to open, inspect, and operate any application installed on this device.\n\n" +
-                        "This bypasses the per-app allowlist and lets DHD carry out tasks across all your apps.",
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                )
+        FullAccessConfirmDialog(
+            onConfirm = {
+                showFullAccessConfirmDialog = false
+                permissions.setFullAccessEnabled(true)
+                isFullAccess = true
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showFullAccessConfirmDialog = false
-                        permissions.setFullAccessEnabled(true)
-                        isFullAccess = true
-                    },
-                ) {
-                    Text("Enable", color = colors.accentBlue, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showFullAccessConfirmDialog = false }) {
-                    Text("Cancel", color = colors.textSecondary)
-                }
-            },
+            onDismiss = { showFullAccessConfirmDialog = false },
         )
     }
 }

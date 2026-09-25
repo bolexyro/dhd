@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -52,6 +51,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.phonecontrol.assistant.R
+import com.phonecontrol.assistant.ui.components.DhdConfirmDialog
+import com.phonecontrol.assistant.ui.components.DhdDialog
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlinx.coroutines.delay
 
@@ -194,36 +195,17 @@ fun TaskDisplaysSheet(
     }
 
     endCandidate?.let { record ->
-        AlertDialog(
-            onDismissRequest = { endCandidate = null },
-            containerColor = colors.surfaceCard,
-            titleContentColor = colors.textPrimary,
-            textContentColor = colors.textSecondary,
-            shape = RoundedCornerShape(20.dp),
-            title = { Text("End task display?", fontWeight = FontWeight.SemiBold) },
-            text = {
-                Text(
-                    "This closes the ${record.appLabel ?: record.packageName ?: "app"} display. " +
-                            "An active task will be stopped before the display is released.",
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                )
+        DhdConfirmDialog(
+            title = "End task display?",
+            message = "This closes the ${record.appLabel ?: record.packageName ?: "app"} display. " +
+                    "An active task will be stopped before the display is released.",
+            confirmLabel = "End display",
+            confirmColor = colors.errorRed,
+            onConfirm = {
+                endCandidate = null
+                onEnd(record)
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        endCandidate = null
-                        onEnd(record)
-                    },
-                ) {
-                    Text("End display", color = colors.errorRed, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { endCandidate = null }) {
-                    Text("Cancel", color = colors.textSecondary)
-                }
-            },
+            onDismiss = { endCandidate = null },
         )
     }
 }
@@ -345,12 +327,8 @@ private fun TaskDisplayActionsDialog(
             record.lifecycle != TaskDisplayLifecycle.EXPIRED
     val canEnd = canView
 
-    AlertDialog(
+    DhdDialog(
         onDismissRequest = onDismiss,
-        containerColor = colors.surfaceCard,
-        titleContentColor = colors.textPrimary,
-        textContentColor = colors.textSecondary,
-        shape = RoundedCornerShape(20.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TaskDisplayAppIcon(

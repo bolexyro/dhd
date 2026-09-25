@@ -27,7 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -62,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
+import com.phonecontrol.assistant.ui.components.FullAccessConfirmDialog
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.assistantSwitchColors
 
@@ -375,37 +375,13 @@ fun ApprovedAppsScreen(
     }
 
     if (showFullAccessConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showFullAccessConfirmDialog = false },
-            containerColor = colors.surfaceCard,
-            titleContentColor = colors.textPrimary,
-            textContentColor = colors.textSecondary,
-            shape = RoundedCornerShape(20.dp),
-            title = { Text("Enable Full Access?", fontWeight = FontWeight.SemiBold) },
-            text = {
-                Text(
-                    "Full Access allows DHD to open, inspect, and operate any application installed on this device.\n\n" +
-                            "This bypasses the per-app allowlist and lets DHD carry out tasks across all your apps.",
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                )
+        FullAccessConfirmDialog(
+            onConfirm = {
+                showFullAccessConfirmDialog = false
+                permissions.setFullAccessEnabled(true)
+                isFullAccess = true
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showFullAccessConfirmDialog = false
-                        permissions.setFullAccessEnabled(true)
-                        isFullAccess = true
-                    },
-                ) {
-                    Text("Enable", color = colors.accentBlue, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showFullAccessConfirmDialog = false }) {
-                    Text("Cancel", color = colors.textSecondary)
-                }
-            },
+            onDismiss = { showFullAccessConfirmDialog = false },
         )
     }
 }
