@@ -5,6 +5,7 @@ import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.bridge.handlers.AppCatalogHandlers
 import com.phonecontrol.assistant.bridge.handlers.DisplayHandlers
+import com.phonecontrol.assistant.bridge.handlers.ObservationHandlers
 import com.phonecontrol.assistant.bridge.handlers.SessionHandlers
 import com.phonecontrol.assistant.bridge.handlers.SteerHandlers
 import com.phonecontrol.assistant.bridge.pairing.PairingProtocol
@@ -211,6 +212,14 @@ class DevBridgeServer internal constructor(
     private val captures = CaptureService(coordinator, observationProvider, taskDisplayRequiredProvider)
     private val displayTargets = DisplayTargetResolver(taskDisplayBackend, coordinator, taskDisplayRequiredProvider, clock, platform)
     private val displays = DisplayHandlers(taskDisplayBackend, coordinator, displayTargets, platform)
+    private val observations = ObservationHandlers(
+        coordinator,
+        observationProvider,
+        taskDisplayRequiredProvider,
+        displayTargets,
+        captures,
+        bridgeJson,
+    )
 
     val companionConnected: StateFlow<Boolean>
         get() = presence.companionConnected
@@ -359,13 +368,13 @@ class DevBridgeServer internal constructor(
                 "list_displays" -> displays.listDisplays(requestId, reply)
                 "close_display" -> displays.closeDisplay(requestId, json, reply)
                 "foreground_app" -> toolCalls.withDhdTool(json, ToolNames.FOREGROUND_APP) {
-                    foregroundApp(requestId, json, reply)
+                    observations.foregroundApp(requestId, json, reply)
                 }
                 "observe" -> toolCalls.withDhdTool(
                     json = json,
                     fallbackToolName = ToolNames.OBSERVE,
                 ) {
-                    observe(requestId, json, reply)
+                    observations.observe(requestId, json, reply)
                 }
                 "execute_action" -> toolCalls.withDhdTool(
                     json = json,
@@ -476,119 +485,6 @@ class DevBridgeServer internal constructor(
                 }
                 reply.write(response)
             }
-        }
-    }
-
-    private suspend fun observe(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val purpose = json.optString("purpose").trim().take(MAX_TEXT_CHARS)
-            .ifBlank { "Observing current screen" }
-        coordinator.recordPurpose(
-            purpose = purpose,
-            targetDescription = json.optString("targetDescription").trim().take(MAX_TEXT_CHARS).ifBlank { null },
-            toolName = ToolNames.OBSERVE,
-        )
-        if (!coordinator.awaitPhoneAccessForTool()) {
-            reply.write(
-                errorResponse(requestId, "Phone access is no longer available; DHD could not observe the phone.")
-                    .put("code", BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE),
-            )
-            return
-        }
-        val requestedDisplayRef = optionalDisplayRef(json)
-        val target = if (taskDisplayRequiredProvider() || requestedDisplayRef != null) {
-            when (val resolution = displayTargets.resolve(
-                displayRef = requestedDisplayRef,
-            )) {
-                is TaskDisplayResolution.Ready -> resolution.target
-                is TaskDisplayResolution.Unavailable -> {
-                    reply.write(errorResponse(requestId, resolution.message).put("code", resolution.code))
-                    return
-                }
-            }
-        } else {
-            null
-        }
-        when (val captured = captures.captureWithRetry(
-            expectedPackageName = null,
-            guardRegions = emptyList(),
-            taskSessionKey = target?.session?.sessionKey ?: coordinator.activeSessionId(),
-            displayId = target?.session?.displayId,
-            expectedDisplayRef = target?.displayRef,
-        )) {
-            is ObservationCaptureResult.Failed -> reply.write(
-                errorResponse(requestId, captured.message).put("code", captured.code),
-            )
-            is ObservationCaptureResult.Succeeded -> {
-                captures.remember(captured.snapshot)
-                reply.write(bridgeJson.observationResponse(requestId, captured.snapshot, captured.screenshot))
-            }
-        }
-    }
-
-    private suspend fun foregroundApp(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        coordinator.recordPurpose(
-            purpose = "Checking foreground app",
-            toolName = ToolNames.FOREGROUND_APP,
-        )
-        if (!coordinator.awaitPhoneAccessForTool()) {
-            reply.write(
-                errorResponse(requestId, "Phone access is no longer available; DHD could not check the phone.")
-                    .put("code", BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE),
-            )
-            return
-        }
-        val requestedDisplayRef = optionalDisplayRef(json)
-        val target = if (taskDisplayRequiredProvider() || requestedDisplayRef != null) {
-            when (val resolution = displayTargets.resolve(
-                displayRef = requestedDisplayRef,
-            )) {
-                is TaskDisplayResolution.Ready -> resolution.target
-                is TaskDisplayResolution.Unavailable -> {
-                    reply.write(errorResponse(requestId, resolution.message).put("code", resolution.code))
-                    return
-                }
-            }
-        } else {
-            null
-        }
-        when (val result = observationProvider.getForegroundApp(
-            taskSessionKey = target?.session?.sessionKey ?: coordinator.activeSessionId(),
-            displayId = target?.session?.displayId,
-            expectedDisplayRef = target?.displayRef,
-        )) {
-            is ForegroundAppResult.Failed -> reply.write(
-                errorResponse(requestId, result.message).put("code", result.code),
-            )
-
-            is ForegroundAppResult.Succeeded -> reply.write(
-                JSONObject()
-                    .put("type", "foreground_app")
-                    .put("requestId", requestId)
-                    .put("ok", true)
-                    .put("packageName", result.app.packageName)
-                    .put("activityName", result.app.activityName)
-                    .put("rotation", result.app.rotation)
-                    .put("width", result.app.width)
-                    .put("height", result.app.height)
-                    .put(
-                        "screenProtection",
-                        JSONObject()
-                            .put("status", result.app.screenProtection.status.name.lowercase())
-                            .put("requiresUserAttention", result.app.screenProtection.requiresUserAttention)
-                            .put("signals", JSONArray(result.app.screenProtection.signals))
-                            .put("reason", result.app.screenProtection.reason ?: JSONObject.NULL),
-                    )
-                    .put("message", "The current foreground app is ${result.app.packageName}.")
-                    .also { response -> target?.displayRef?.let { response.put("displayRef", it) } },
-            )
         }
     }
 
