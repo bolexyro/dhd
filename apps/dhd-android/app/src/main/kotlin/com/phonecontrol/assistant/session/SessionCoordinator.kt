@@ -83,9 +83,8 @@ class SessionCoordinator(
     private val toolCallLog = ToolCallLog()
     private var sessionJob: Job? = null
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var claimedRequestSessionId: String? = null
-    private val pendingSteers = mutableListOf<PendingSteer>()
-    private val claimedSteers = mutableMapOf<String, PendingSteer>()
+    private val handoff = CompanionHandoff(conversationStore)
+    private val steers = SteerQueue()
     private var pendingAttention: PendingAttention? = null
     private val completedAttentions = mutableMapOf<String, AttentionResolution>()
 
@@ -120,7 +119,7 @@ class SessionCoordinator(
         completedAttentions.clear()
         _pointerEvent.value = null
         val startedRun = conversationStore?.startRun(sessionId, request, conversationId)
-        claimedRequestSessionId = null
+        handoff.release()
         toolCallLog.clear()
         _state.value = SessionState.Running(
             sessionId = sessionId,
@@ -174,29 +173,21 @@ class SessionCoordinator(
      */
     fun pendingRequest(): PendingRequest? = synchronized(lock) {
         val running = _state.value as? SessionState.Running ?: return@synchronized null
-        if (claimedRequestSessionId == running.sessionId) return@synchronized null
-        pendingRequestFor(running)
+        if (handoff.isClaimed(running.sessionId)) return@synchronized null
+        handoff.requestFor(running)
     }
 
     /** Queue a user instruction for the desktop companion's active Codex turn. */
     fun enqueueSteer(text: String): PendingSteer? = synchronized(lock) {
         val running = _state.value as? SessionState.Running ?: return@synchronized null
-        val safeText = text.trim().take(MAX_STEER_CHARS).ifBlank { return@synchronized null }
-        if (pendingSteers.size >= MAX_PENDING_STEERS) return@synchronized null
-
-        val steer = PendingSteer(
-            steerId = UUID.randomUUID().toString(),
-            sessionId = running.sessionId,
-            text = safeText,
-        )
-        pendingSteers += steer
+        val steer = steers.enqueue(running.sessionId, text) ?: return@synchronized null
         _state.value = running.copy(
             currentPurpose = "Steer queued",
             currentToolMetadataPurpose = null,
         )
         conversationStore?.setCurrentPurpose(running.sessionId, "Steer queued")
         taskDisplayBackend?.updatePurposeForRun(running.sessionId, "Steer queued")
-        conversationStore?.recordSteer(steer.steerId, running.sessionId, safeText)
+        conversationStore?.recordSteer(steer.steerId, running.sessionId, steer.text)
         appendEvent(
             ActivityEventKind.SYSTEM,
             "Steer instruction queued for Codex.",
@@ -211,7 +202,7 @@ class SessionCoordinator(
         if (expectedSessionId != null && expectedSessionId != running.sessionId) {
             return@synchronized null
         }
-        pendingSteers.firstOrNull { it.sessionId == running.sessionId }
+        steers.next(running.sessionId)
     }
 
     /** Atomically claim a steer so multiple desktop pollers cannot deliver it twice. */
@@ -221,31 +212,18 @@ class SessionCoordinator(
     ): PendingSteer? = synchronized(lock) {
         val running = _state.value as? SessionState.Running ?: return@synchronized null
         if (expectedSessionId != running.sessionId) return@synchronized null
-        val index = pendingSteers.indexOfFirst {
-            it.sessionId == running.sessionId && it.steerId == expectedSteerId
-        }
-        if (index < 0) return@synchronized null
-        val claimed = pendingSteers.removeAt(index)
-        claimedSteers[claimed.steerId] = claimed
-        claimed
+        steers.claim(running.sessionId, expectedSteerId)
     }
 
     /** Put a steer back at the front after a transient desktop delivery failure. */
     fun releaseSteer(expectedSessionId: String, steerId: String): Boolean = synchronized(lock) {
-        val steer = claimedSteers[steerId] ?: return@synchronized false
-        if (steer.sessionId != expectedSessionId) return@synchronized false
         val running = _state.value as? SessionState.Running
-        if (running?.sessionId != steer.sessionId) return@synchronized false
-        claimedSteers.remove(steerId)
-        if (pendingSteers.none { it.steerId == steer.steerId }) pendingSteers.add(0, steer)
-        true
+        steers.release(expectedSessionId, steerId, running?.sessionId)
     }
 
     /** Acknowledge that the active Codex client accepted a steer. */
     fun completeSteer(expectedSessionId: String, steerId: String): Boolean = synchronized(lock) {
-        val steer = claimedSteers[steerId] ?: return@synchronized false
-        if (steer.sessionId != expectedSessionId) return@synchronized false
-        claimedSteers.remove(steerId) != null
+        steers.complete(expectedSessionId, steerId)
     }
 
     /**
@@ -257,8 +235,8 @@ class SessionCoordinator(
         if (expectedSessionId != null && expectedSessionId != running.sessionId) {
             return@synchronized null
         }
-        if (claimedRequestSessionId == running.sessionId) return@synchronized null
-        claimedRequestSessionId = running.sessionId
+        if (handoff.isClaimed(running.sessionId)) return@synchronized null
+        handoff.claim(running.sessionId)
         _state.value = running.copy(
             currentPurpose = CoordinatorCopy.DHD_PLANNING,
             currentToolMetadataPurpose = null,
@@ -269,18 +247,18 @@ class SessionCoordinator(
             "Desktop Codex companion claimed the request.",
             sessionId = running.sessionId,
         )
-        pendingRequestFor(running)
+        handoff.requestFor(running)
     }
 
     /** Release a claim after a desktop-side failure so the user can retry. */
     fun releaseRequest(sessionId: String): Boolean = synchronized(lock) {
-        if (claimedRequestSessionId != sessionId) return@synchronized false
+        if (!handoff.isClaimed(sessionId)) return@synchronized false
         val activeSessionId = _state.value.sessionIdOrNull
         if (activeSessionId != sessionId) {
-            claimedRequestSessionId = null
+            handoff.release()
             return@synchronized false
         }
-        claimedRequestSessionId = null
+        handoff.release()
         if (_state.value is SessionState.Running) {
             val running = _state.value as SessionState.Running
             _state.value = running.copy(
@@ -366,7 +344,7 @@ class SessionCoordinator(
         )
         completedAttentions.clear()
         _pointerEvent.value = null
-        claimedRequestSessionId = null
+        handoff.release()
         _state.value = SessionState.Running(
             sessionId = sessionId,
             request = stopped.request,
@@ -401,8 +379,8 @@ class SessionCoordinator(
         cleanupScope.launch {
             transport.retainSessionForRun(sessionId, TaskDisplayStatus.STOPPED, reason)
         }
-        claimedRequestSessionId = null
-        clearSteers(sessionId)
+        handoff.release()
+        steers.clear(sessionId)
         val conversationId = current.conversationIdOrNull
         val continuationSettings = current.continuationSettings()
         _state.value = SessionState.Stopped(
@@ -433,12 +411,11 @@ class SessionCoordinator(
         sessionJob = null
         if (sessionId != null) {
             transport.cancelSessionForRun(sessionId)
-            clearSteers(sessionId)
+            steers.clear(sessionId)
             conversationStore?.completeRun(sessionId, RunStatus.STOPPED)
         }
-        pendingSteers.clear()
-        claimedSteers.clear()
-        claimedRequestSessionId = null
+        steers.clearAll()
+        handoff.release()
         _pointerEvent.value = null
         toolCallLog.clear()
         activityLog.clear()
@@ -462,8 +439,8 @@ class SessionCoordinator(
         sessionJob?.cancel()
         sessionJob = null
         transport.cancelSessionForRun(sessionId)
-        claimedRequestSessionId = null
-        clearSteers(sessionId)
+        handoff.release()
+        steers.clear(sessionId)
         val safeReason = reason.trim().take(MAX_AGENT_FEEDBACK_CHARS)
             .ifBlank { "The desktop Codex turn failed." }
         cleanupScope.launch {
@@ -520,9 +497,9 @@ class SessionCoordinator(
         cleanupScope.launch {
             transport.retainSessionForRun(sessionId, TaskDisplayStatus.COMPLETED)
         }
-        claimedRequestSessionId = null
+        handoff.release()
         val conversationId = current.conversationIdOrNull
-        current.sessionIdOrNull?.let(::clearSteers)
+        current.sessionIdOrNull?.let(steers::clear)
         _state.value = SessionState.Completed(
             sessionId = sessionId,
             message = displayMessage,
@@ -1089,29 +1066,13 @@ class SessionCoordinator(
         synchronized(lock) {
             cancelPendingAttentionLocked()
             completedAttentions.clear()
-            pendingSteers.clear()
-            claimedSteers.clear()
+            steers.clearAll()
         }
-    }
-
-    private fun clearSteers(sessionId: String) {
-        pendingSteers.removeAll { it.sessionId == sessionId }
-        claimedSteers.entries.removeIf { it.value.sessionId == sessionId }
     }
 
     private fun sessionStillActive(sessionId: String): Boolean = synchronized(lock) {
         _state.value.sessionIdOrNull == sessionId && _state.value.isActive
     }
-
-    private fun pendingRequestFor(running: SessionState.Running): PendingRequest = PendingRequest(
-        sessionId = running.sessionId,
-        request = running.request,
-        conversationId = running.conversationId,
-        codexThreadId = conversationStore?.codexThreadId(running.conversationId),
-        reasoningEffort = running.reasoningEffort,
-        fastMode = running.fastMode,
-        isContinuation = running.isContinuation,
-    )
 
     private fun appendEvent(
         kind: ActivityEventKind,
@@ -1138,8 +1099,6 @@ class SessionCoordinator(
     private companion object {
         const val MAX_TEXT_CHARS = 240
         const val MAX_AGENT_FEEDBACK_CHARS = 4_000
-        const val MAX_STEER_CHARS = 4_000
-        const val MAX_PENDING_STEERS = 8
         const val MAX_PHONE_ACCESS_RECOVERY_ATTEMPTS = 3
         const val PHONE_ACCESS_STATUS_POLL_INTERVAL_MS = 500L
         const val DEFAULT_ATTENTION_ACTION_LABEL = "Done"
