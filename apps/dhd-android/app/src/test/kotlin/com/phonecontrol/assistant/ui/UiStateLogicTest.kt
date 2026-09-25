@@ -47,7 +47,7 @@ class UiStateLogicTest {
         assertEquals(ThemeMode.DARK, ThemeMode.fromStorage("unknown"))
         assertEquals(ThemeMode.SYSTEM, ThemeMode.fromStorage("system"))
         assertEquals(
-            listOf("system" to "System (Default)", "light" to "Light", "dark" to "Dark"),
+            listOf("system" to "System", "light" to "Light", "dark" to "Dark (Default)"),
             ThemeMode.entries.map { it.storageValue to it.label },
         )
     }

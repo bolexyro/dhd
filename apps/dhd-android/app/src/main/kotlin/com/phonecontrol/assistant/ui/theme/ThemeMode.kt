@@ -1,9 +1,9 @@
 package com.phonecontrol.assistant.ui.theme
 
 enum class ThemeMode(val storageValue: String, val label: String) {
-    SYSTEM("system", "System (Default)"),
+    SYSTEM("system", "System"),
     LIGHT("light", "Light"),
-    DARK("dark", "Dark");
+    DARK("dark", "Dark (Default)");
 
     fun isDark(systemDark: Boolean): Boolean = when (this) {
         SYSTEM -> systemDark
