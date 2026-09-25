@@ -12,6 +12,8 @@ export interface TurnResult {
   phoneToolFailures: PhoneToolFailure[];
 }
 
+function ignoreRejectionBeforeRunTurnAwaits(): void {}
+
 export class TurnCompletion {
   readonly result: Promise<TurnResult>;
   readonly agentMessages = new Map<string, AgentMessageState>();
@@ -27,6 +29,7 @@ export class TurnCompletion {
       this.resolve = resolve;
       this.reject = reject;
     });
+    this.result.catch(ignoreRejectionBeforeRunTurnAwaits);
   }
 
   completedResult(params: unknown, threadId: string): TurnResult {

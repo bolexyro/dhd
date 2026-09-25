@@ -526,3 +526,57 @@ describe("App Server turn control", () => {
     );
   });
 });
+
+describe("turn completion rejections", () => {
+  async function unhandledRejectionsDuring(run: () => Promise<void>): Promise<unknown[]> {
+    const reasons: unknown[] = [];
+    const record = (reason: unknown) => reasons.push(reason);
+    process.on("unhandledRejection", record);
+    try {
+      await run();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      process.off("unhandledRejection", record);
+    }
+    return reasons;
+  }
+
+  it("observes the completion when turn/start fails", async () => {
+    server.handle("turn/start", () => new JsonRpcFailure({ message: "turn rejected" }));
+
+    const reasons = await unhandledRejectionsDuring(async () => {
+      await expect(client.runTurn("open the store")).rejects.toThrow("turn rejected");
+    });
+
+    expect(reasons).toEqual([]);
+  });
+
+  it("observes the completion when Stop arrives before turn/start", async () => {
+    server.handle("thread/start", () => undefined);
+    const reasons = await unhandledRejectionsDuring(async () => {
+      const turn = client.runTurn("open the store");
+      const threadStart = await server.nextRequest("thread/start");
+      await client.interrupt();
+      server.writeLine({ id: threadStart.id, result: { thread: { id: "thread-1" } } });
+      await expect(turn).rejects.toThrow("Codex App Server turn was interrupted.");
+    });
+
+    expect(reasons).toEqual([]);
+    expect(server.requests("turn/start")).toEqual([]);
+  });
+
+  it("observes the completion when the App Server exits during turn/start", async () => {
+    server.handle("turn/start", () => {
+      server.exit(1);
+      return undefined;
+    });
+
+    const reasons = await unhandledRejectionsDuring(async () => {
+      await expect(client.runTurn("open the store")).rejects.toThrow(
+        "Codex App Server exited before completing the turn (code=1, signal=?).",
+      );
+    });
+
+    expect(reasons).toEqual([]);
+  });
+});
