@@ -49,6 +49,7 @@ import com.phonecontrol.assistant.overlay.composer.GlyphButton
 import com.phonecontrol.assistant.overlay.effects.ComposerPerimeterGlow
 import com.phonecontrol.assistant.session.DhdToolCall
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -117,7 +118,7 @@ fun OverlayPanel(
     val visibleReasoningEfforts = remember(
         preferences.getString(UiPreferencesRepository.KEY_VISIBLE_REASONING_EFFORTS, null),
     ) {
-        reasoningEffortsFromStorage(
+        visibleReasoningEffortsFromStorage(
             preferences.getString(UiPreferencesRepository.KEY_VISIBLE_REASONING_EFFORTS, null),
         )
     }
@@ -527,18 +528,6 @@ private fun PanelHeader(
             onClick = onCollapse,
         )
     }
-}
-
-private fun reasoningEffortsFromStorage(value: String?): List<ReasoningEffort> {
-    val stored = value
-        ?.split(",")
-        ?.map(String::trim)
-        ?.filter(String::isNotEmpty)
-        ?.toSet()
-        .orEmpty()
-    return ReasoningEffort.entries
-        .filter { it.storageValue in stored }
-        .ifEmpty { ReasoningEffort.entries }
 }
 
 internal fun SessionState.attentionReasonOrNull(): String? = when (this) {
