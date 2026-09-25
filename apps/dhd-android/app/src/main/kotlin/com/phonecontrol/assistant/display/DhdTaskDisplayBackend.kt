@@ -27,7 +27,6 @@ import com.phonecontrol.assistant.execution.terminalized
 import com.phonecontrol.assistant.execution.withFullSizeAppLayout
 import java.io.IOException
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -116,11 +115,7 @@ class DhdTaskDisplayBackend internal constructor(
 
     private val stateLock = Mutex()
     private val sessions = LinkedHashMap<String, BoundSession>()
-    /** Coordinator run key -> native display owner keys claimed by that run. */
-    private val runBindings = mutableMapOf<String, MutableSet<String>>()
-    private val bindingsLock = Any()
-    private val cancelledKeys = ConcurrentHashMap.newKeySet<String>()
-    private val operationLocks = ConcurrentHashMap<String, Mutex>()
+    private val bindings = RunBindingRegistry()
     private val appOpenMutex = Mutex()
     private val liveHandles = mutableMapOf<String, LiveHandle>()
     private val previewStateJobs = mutableMapOf<String, Job>()
@@ -164,10 +159,10 @@ class DhdTaskDisplayBackend internal constructor(
         packageName: String,
         spec: TaskDisplaySpec,
     ): TaskDisplaySession {
-        val operationLock = operationLocks.getOrPut(sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(sessionKey)
         return operationLock.withLock {
             reconciliationJob.join()
-            if (cancelledKeys.contains(sessionKey)) {
+            if (bindings.isCancelled(sessionKey)) {
                 throw TaskDisplayException("The task display session was stopped before creation.")
             }
             stateLock.withLock {
@@ -204,12 +199,12 @@ class DhdTaskDisplayBackend internal constructor(
                     ?: CoordinatorCopy.PREPARING_REQUEST,
             )
             val shouldClose = stateLock.withLock {
-                synchronized(bindingsLock) {
-                    if (cancelledKeys.contains(sessionKey) || cancelledKeys.contains(runSessionKey)) {
+                bindings.locked {
+                    if (bindings.isCancelled(sessionKey) || bindings.isCancelled(runSessionKey)) {
                         true
                     } else {
                         sessions[sessionKey] = bound
-                        bindRunKey(runSessionKey, sessionKey)
+                        bindings.bind(runSessionKey, sessionKey)
                         _activeSession.value = taskSession
                         publishPreviewStateLocked(
                             sessionKey,
@@ -283,7 +278,7 @@ class DhdTaskDisplayBackend internal constructor(
     }
 
     override suspend fun markAppOpened(session: TaskDisplaySession, packageName: String) {
-        val operationLock = operationLocks.getOrPut(session.sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(session.sessionKey)
         operationLock.withLock {
             val stillCurrent = stateLock.withLock {
                 sessions[session.sessionKey]?.taskSession == session
@@ -304,18 +299,13 @@ class DhdTaskDisplayBackend internal constructor(
         spec: TaskDisplaySpec,
     ): TaskDisplaySession {
         val ownerKey = newOwnerKey()
-        synchronized(bindingsLock) {
-            if (cancelledKeys.contains(runSessionKey)) {
-                throw TaskDisplayException("The task display run was stopped before creation.")
-            }
-            // Register before native creation so Stop can tombstone this exact
-            // owner even if the daemon has not returned a display yet.
-            runBindings.getOrPut(runSessionKey) { linkedSetOf() }.add(ownerKey)
+        if (!bindings.reserveOwner(runSessionKey, ownerKey)) {
+            throw TaskDisplayException("The task display run was stopped before creation.")
         }
         return try {
             createOwned(ownerKey, runSessionKey, packageName, spec)
         } catch (error: Throwable) {
-            unbindOwner(ownerKey)
+            bindings.unbind(ownerKey)
             throw error
         }
     }
@@ -330,10 +320,7 @@ class DhdTaskDisplayBackend internal constructor(
         return boundSessions.mapNotNull { bound ->
             val session = bound.taskSession
             val record = records.find(session.sessionKey) ?: return@mapNotNull null
-            val (alreadyBoundToRun, ownerCancelled) = synchronized(bindingsLock) {
-                (runBindings[runSessionKey]?.contains(session.sessionKey) == true) to
-                    cancelledKeys.contains(session.sessionKey)
-            }
+            val (alreadyBoundToRun, ownerCancelled) = bindings.claimState(runSessionKey, session.sessionKey)
             if (record.packageName != packageName ||
                 !DisplayClaimPolicy.isReusable(record, now) ||
                 isTaskDisplayOwnedByAnotherRun(
@@ -361,17 +348,14 @@ class DhdTaskDisplayBackend internal constructor(
             // rejects it for agent actions after [cancel] has installed the
             // tombstone.
             sessions[sessionKey]?.taskSession
-                ?: synchronized(bindingsLock) {
-                    // A retained display keeps its native owner key when a
-                    // later coordinator run claims it. Resolve the logical
-                    // run key back to that owner so subsequent observe,
-                    // execute, and foreground calls stay on the same display.
-                    runBindings[sessionKey]
-                        .orEmpty()
-                        .asSequence()
-                        .mapNotNull { ownerKey -> sessions[ownerKey]?.taskSession }
-                        .lastOrNull()
-                }
+                // A retained display keeps its native owner key when a
+                // later coordinator run claims it. Resolve the logical
+                // run key back to that owner so subsequent observe,
+                // execute, and foreground calls stay on the same display.
+                ?: bindings.boundOwnerKeys(sessionKey)
+                    .asSequence()
+                    .mapNotNull { ownerKey -> sessions[ownerKey]?.taskSession }
+                    .lastOrNull()
         }
     }
 
@@ -389,9 +373,7 @@ class DhdTaskDisplayBackend internal constructor(
                 ?.taskSession
                 ?.sessionKey
         } ?: return false
-        return synchronized(bindingsLock) {
-            runBindings[runSessionKey]?.contains(ownerKey) == true
-        }
+        return bindings.isBound(runSessionKey, ownerKey)
     }
 
     override suspend fun resolveDisplay(
@@ -478,13 +460,10 @@ class DhdTaskDisplayBackend internal constructor(
         runSessionKey: String,
     ): TaskDisplayResolution {
         val ownerKey = target.session.sessionKey
-        val operationLock = operationLocks.getOrPut(ownerKey) { Mutex() }
+        val operationLock = bindings.operationLock(ownerKey)
         return operationLock.withLock {
             val currentRecord = records.find(ownerKey) ?: target.record
-            val (alreadyBoundToRun, ownerCancelled) = synchronized(bindingsLock) {
-                (runBindings[runSessionKey]?.contains(ownerKey) == true) to
-                    cancelledKeys.contains(ownerKey)
-            }
+            val (alreadyBoundToRun, ownerCancelled) = bindings.claimState(runSessionKey, ownerKey)
             DisplayClaimPolicy.claimRejection(
                 record = currentRecord,
                 ownerKey = ownerKey,
@@ -493,8 +472,8 @@ class DhdTaskDisplayBackend internal constructor(
                 ownerCancelled = ownerCancelled,
                 nowEpochMs = nowEpochMs(),
             )?.let { return@withLock it }
-            cancelledKeys.remove(ownerKey)
-            bindRunKey(runSessionKey, ownerKey)
+            bindings.clearCancelled(ownerKey)
+            bindings.bind(runSessionKey, ownerKey)
             if (currentRecord.status.isTerminal) {
                 expiryJobs.remove(ownerKey)?.cancel()
                 records.publish(DisplayClaimPolicy.revived(currentRecord))
@@ -551,9 +530,9 @@ class DhdTaskDisplayBackend internal constructor(
         session: TaskDisplaySession,
         block: suspend () -> T,
     ): T {
-        val operationLock = operationLocks.getOrPut(session.sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(session.sessionKey)
         return operationLock.withLock {
-            if (cancelledKeys.contains(session.sessionKey)) {
+            if (bindings.isCancelled(session.sessionKey)) {
                 throw TaskDisplayException("The task display session was stopped.")
             }
             stateLock.withLock {
@@ -668,14 +647,14 @@ class DhdTaskDisplayBackend internal constructor(
     }
 
     override suspend fun touch(sessionKey: String) {
-        val operationLock = operationLocks.getOrPut(sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(sessionKey)
         operationLock.withLock {
             refreshRetainedExpiry(sessionKey)
         }
     }
 
     override fun cancel(sessionKey: String) {
-        cancelledKeys += sessionKey
+        bindings.markCancelled(sessionKey)
         // Tombstone both layers synchronously. This closes the race where an
         // action/create has crossed into the daemon but cleanup has not yet
         // acquired its per-key operation lease. The display itself remains
@@ -689,15 +668,7 @@ class DhdTaskDisplayBackend internal constructor(
         // keeping its original native owner key. Invalidate every owner bound
         // to this run so an in-flight action cannot outlive the run that
         // authorized it.
-        val ownerKeys = synchronized(bindingsLock) {
-            ownerKeysForRunLocked(sessionKey).also { keys ->
-                // Mark the tombstones while holding the same lock used by
-                // claimDisplayForRun. A continuation either observes this
-                // cancellation and reclaims the display, or observes that a
-                // different run already claimed it and leaves it alone.
-                keys.forEach { ownerKey -> cancelledKeys.add(ownerKey) }
-            }
-        }
+        val ownerKeys = bindings.cancelRun(sessionKey)
         ownerKeys.forEach(nativeManager::cancel)
     }
 
@@ -779,7 +750,7 @@ class DhdTaskDisplayBackend internal constructor(
         error: String?,
     ) {
         require(status.isTerminal) { "Only terminal statuses may retain a task display." }
-        val operationLock = operationLocks.getOrPut(sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(sessionKey)
         operationLock.withLock {
             retainLocked(sessionKey, status, error)
         }
@@ -814,12 +785,10 @@ class DhdTaskDisplayBackend internal constructor(
         status: TaskDisplayStatus,
         error: String?,
     ) {
-        boundOwnerKeysForRun(sessionKey).forEach { ownerKey ->
-            val operationLock = operationLocks.getOrPut(ownerKey) { Mutex() }
+        bindings.boundOwnerKeys(sessionKey).forEach { ownerKey ->
+            val operationLock = bindings.operationLock(ownerKey)
             operationLock.withLock {
-                val stillBoundToRun = synchronized(bindingsLock) {
-                    runBindings[sessionKey]?.contains(ownerKey) == true
-                }
+                val stillBoundToRun = bindings.isBound(sessionKey, ownerKey)
                 if (stillBoundToRun) retainLocked(ownerKey, status, error)
             }
         }
@@ -830,7 +799,7 @@ class DhdTaskDisplayBackend internal constructor(
         status: TaskDisplayStatus,
         error: String?,
     ) {
-        val operationLock = operationLocks.getOrPut(sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(sessionKey)
         operationLock.withLock {
             updateStatusLocked(sessionKey, status, error)
         }
@@ -856,12 +825,10 @@ class DhdTaskDisplayBackend internal constructor(
         status: TaskDisplayStatus,
         error: String?,
     ) {
-        boundOwnerKeysForRun(sessionKey).forEach { ownerKey ->
-            val operationLock = operationLocks.getOrPut(ownerKey) { Mutex() }
+        bindings.boundOwnerKeys(sessionKey).forEach { ownerKey ->
+            val operationLock = bindings.operationLock(ownerKey)
             operationLock.withLock {
-                val stillBoundToRun = synchronized(bindingsLock) {
-                    runBindings[sessionKey]?.contains(ownerKey) == true
-                }
+                val stillBoundToRun = bindings.isBound(sessionKey, ownerKey)
                 if (stillBoundToRun) updateStatusLocked(ownerKey, status, error)
             }
         }
@@ -874,7 +841,7 @@ class DhdTaskDisplayBackend internal constructor(
     }
 
     override fun updatePurposeForRun(sessionKey: String, purpose: String) {
-        boundOwnerKeysForRun(sessionKey).forEach { ownerKey ->
+        bindings.boundOwnerKeys(sessionKey).forEach { ownerKey ->
             updatePurpose(ownerKey, purpose)
         }
     }
@@ -888,7 +855,7 @@ class DhdTaskDisplayBackend internal constructor(
     }
 
     private suspend fun close(sessionKey: String, expected: TaskDisplaySession?) {
-        val operationLock = operationLocks.getOrPut(sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(sessionKey)
         operationLock.withLock {
             var endedSession: TaskDisplaySession? = null
             val shouldClose = stateLock.withLock {
@@ -915,7 +882,7 @@ class DhdTaskDisplayBackend internal constructor(
                 }
             }
             if (!shouldClose && expected != null) return@withLock
-            unbindOwner(sessionKey)
+            bindings.unbind(sessionKey)
             expiryJobs.remove(sessionKey)?.cancel()
             val existing = records.find(sessionKey)
             if (existing != null) {
@@ -979,7 +946,7 @@ class DhdTaskDisplayBackend internal constructor(
         allKeys.addAll(records.sessionKeys())
 
         allKeys.forEach { key ->
-            cancelledKeys.add(key)
+            bindings.markCancelled(key)
             nativeManager.cancel(key)
         }
 
@@ -1001,9 +968,7 @@ class DhdTaskDisplayBackend internal constructor(
             _previewState.value = TaskPreviewState.Detached
         }
 
-        synchronized(bindingsLock) {
-            runBindings.clear()
-        }
+        bindings.clear()
 
         allKeys.forEach { key ->
             expiryJobs.remove(key)?.cancel()
@@ -1023,7 +988,7 @@ class DhdTaskDisplayBackend internal constructor(
         session: TaskDisplaySession,
         block: suspend () -> T,
     ): T {
-        val operationLock = operationLocks.getOrPut(session.sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(session.sessionKey)
         return operationLock.withLock {
             stateLock.withLock {
                 if (sessions[session.sessionKey]?.taskSession != session) {
@@ -1061,7 +1026,7 @@ class DhdTaskDisplayBackend internal constructor(
         val native = nativeManager.reconcile(expectedKeys, force = force)
         val now = nowEpochMs()
         persisted.forEach { persistedRecord ->
-            val operationLock = operationLocks.getOrPut(persistedRecord.sessionKey) { Mutex() }
+            val operationLock = bindings.operationLock(persistedRecord.sessionKey)
             operationLock.withLock {
                 // Reconciliation can wait on the native daemon while a
                 // continuation claims a retained display. Re-read the local
@@ -1116,19 +1081,19 @@ class DhdTaskDisplayBackend internal constructor(
                 }
 
                 stateLock.withLock {
-                    val claimedByDifferentRun = isOwnerBoundToDifferentRun(record.sessionKey)
+                    val claimedByDifferentRun = bindings.isOwnerBoundToDifferentRun(record.sessionKey)
                     sessions[record.sessionKey] = BoundSession(nativeSession, taskSession)
                     // A forced reconciliation can happen while a
                     // continuation is already using this native owner. Keep
                     // that logical binding instead of silently moving it back
                     // to the stopped owner's key.
-                    ensureOwnerBinding(record.sessionKey)
+                    bindings.ensureOwnerBinding(record.sessionKey)
                     // Keep the terminal action tombstone, and keep any
                     // in-memory stop tombstone until a continuation explicitly
                     // reclaims the display. A live record is not enough to
                     // prove that the stopped run is still active.
                     if (record.status.isTerminal && !claimedByDifferentRun) {
-                        cancelledKeys += record.sessionKey
+                        bindings.markCancelled(record.sessionKey)
                     }
                 }
                 // Older records only knew the first package launched on this
@@ -1208,7 +1173,7 @@ class DhdTaskDisplayBackend internal constructor(
             }
         }
         staleHandle?.close()
-        if (removed) unbindOwner(sessionKey)
+        if (removed) bindings.unbind(sessionKey)
     }
 
     private fun markReconciliationUnavailable(message: String) {
@@ -1256,14 +1221,14 @@ class DhdTaskDisplayBackend internal constructor(
         finalPurpose: String? = null,
         finalError: String? = null,
     ) {
-        val operationLock = operationLocks.getOrPut(sessionKey) { Mutex() }
+        val operationLock = bindings.operationLock(sessionKey)
         operationLock.withLock {
             if (expectedExpiry != null &&
                 !DisplayClaimPolicy.canCloseExpired(records.find(sessionKey), expectedExpiry, nowEpochMs())
             ) {
                 return@withLock
             }
-            cancelledKeys += sessionKey
+            bindings.markCancelled(sessionKey)
             var endedSession: TaskDisplaySession? = null
             stateLock.withLock {
                 endedSession = sessions.remove(sessionKey)?.taskSession
@@ -1286,7 +1251,7 @@ class DhdTaskDisplayBackend internal constructor(
                     )
                 }
             }
-            unbindOwner(sessionKey)
+            bindings.unbind(sessionKey)
             runCatching { nativeManager.close(sessionKey) }
             expiryJobs.remove(sessionKey)?.cancel()
             records.find(sessionKey)?.let { existing ->
@@ -1300,61 +1265,6 @@ class DhdTaskDisplayBackend internal constructor(
                     ),
                 )
             }
-        }
-    }
-
-    /** Keep one native owner associated with at most one logical run. */
-    private fun bindRunKey(runKey: String, ownerKey: String) {
-        synchronized(bindingsLock) {
-            runBindings.forEach { (boundRunKey, owners) ->
-                if (boundRunKey != runKey) owners.remove(ownerKey)
-            }
-            runBindings.values.removeAll { it.isEmpty() }
-            runBindings.getOrPut(runKey) { linkedSetOf() }.add(ownerKey)
-        }
-    }
-
-    private fun ownerKeysForRun(runKey: String): List<String> = synchronized(bindingsLock) {
-        ownerKeysForRunLocked(runKey)
-    }
-
-    private fun ownerKeysForRunLocked(runKey: String): List<String> {
-        val owners = runBindings[runKey].orEmpty()
-        return if (owners.isNotEmpty()) {
-            owners.toList()
-        } else if (runBindings.any { (otherRunKey, boundOwners) ->
-                otherRunKey != runKey && runKey in boundOwners
-            }
-        ) {
-            // This key is the native owner of a display that has already been
-            // claimed by another run. A late stop from the old run must not
-            // cancel the new run's display.
-            emptyList()
-        } else {
-            // Preserve the create-before-bind cancellation race: a run that
-            // has not published a display still needs a tombstone by its own
-            // key so a late native create is closed safely.
-            listOf(runKey)
-        }
-    }
-
-    private fun ensureOwnerBinding(ownerKey: String) {
-        if (runBindings.values.any { ownerKey in it }) return
-        runBindings.getOrPut(ownerKey) { linkedSetOf() }.add(ownerKey)
-    }
-
-    private fun isOwnerBoundToDifferentRun(ownerKey: String): Boolean = synchronized(bindingsLock) {
-        runBindings.any { (runKey, owners) -> runKey != ownerKey && ownerKey in owners }
-    }
-
-    private fun boundOwnerKeysForRun(runKey: String): List<String> = synchronized(bindingsLock) {
-        runBindings[runKey]?.toList().orEmpty()
-    }
-
-    private fun unbindOwner(ownerKey: String) {
-        synchronized(bindingsLock) {
-            runBindings.values.forEach { it.remove(ownerKey) }
-            runBindings.values.removeAll { it.isEmpty() }
         }
     }
 
