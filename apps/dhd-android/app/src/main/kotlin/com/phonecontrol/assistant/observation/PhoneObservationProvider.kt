@@ -362,11 +362,6 @@ class PhoneObservationProvider(
         screenshots[snapshot.id]?.copyOf()
     }
 
-    private suspend fun readFocusedWindow(): FocusedComponent? = when (val result = readFocusedWindowResult()) {
-        is FocusedWindowReadResult.Found -> result.window
-        is FocusedWindowReadResult.Failed -> null
-    }
-
     private suspend fun readFocusedWindowResult(): FocusedWindowReadResult {
         // One UI's `dumpsys window windows` omits the focus summary. The
         // top-level `window` dump includes mCurrentFocus/mFocusedApp while

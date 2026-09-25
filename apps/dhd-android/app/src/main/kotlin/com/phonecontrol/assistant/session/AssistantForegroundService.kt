@@ -288,12 +288,6 @@ class AssistantForegroundService : Service() {
         internal const val ATTENTION_NOTIFICATION_ID = 4206
         private const val MAX_NOTIFICATION_TEXT_CHARS = 240
 
-        /** Remove the in-progress notification when a bridge-owned run ends. */
-        fun removeSessionNotification(context: Context) {
-            context.getSystemService(NotificationManager::class.java)
-                .cancel(NOTIFICATION_ID)
-        }
-
         /** Keep the foreground service only for an active task. The idle overlay host stays started normally. */
         fun reconcileLifetime(context: Context) {
             val appContext = context.applicationContext

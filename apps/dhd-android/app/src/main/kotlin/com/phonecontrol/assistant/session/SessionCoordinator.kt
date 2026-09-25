@@ -22,7 +22,6 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,7 +55,6 @@ class SessionCoordinator(
     private val activityLog = ActivityLog(conversationStore)
     private val pointerFeedback = PointerFeedback()
     private val toolCallLog = ToolCallLog()
-    private var sessionJob: Job? = null
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val handoff = CompanionHandoff(conversationStore)
     private val steers = SteerQueue()
@@ -291,12 +289,6 @@ class SessionCoordinator(
 
     fun resume(): Boolean = synchronized(lock) {
         transition(SessionEvent.Resume(System.currentTimeMillis()))
-    }
-
-    fun togglePause(): Boolean = when (_state.value) {
-        is SessionState.Running -> pause()
-        is SessionState.Paused -> resume()
-        else -> false
     }
 
     /** Start a hidden continuation turn in the stopped run's persisted conversation. */
@@ -538,8 +530,6 @@ class SessionCoordinator(
     }
 
     fun close() {
-        sessionJob?.cancel()
-        sessionJob = null
         val sessionId = synchronized(lock) { _state.value.sessionIdOrNull }
         if (sessionId != null) {
             transport.cancelSessionForRun(sessionId)
@@ -569,14 +559,6 @@ class SessionCoordinator(
                 SessionEffect.ClearEvents -> activityLog.clear()
                 is SessionEffect.ClearSteers -> steers.clear(effect.sessionId)
                 SessionEffect.ClearAllSteers -> steers.clearAll()
-                SessionEffect.RestartSessionJob -> {
-                    sessionJob?.cancel()
-                    sessionJob = SupervisorJob()
-                }
-                SessionEffect.CancelSessionJob -> {
-                    sessionJob?.cancel()
-                    sessionJob = null
-                }
                 is SessionEffect.CancelTransport -> transport.cancelSessionForRun(effect.sessionId)
                 is SessionEffect.RetainDisplay -> cleanupScope.launch {
                     transport.retainSessionForRun(effect.sessionId, effect.status, effect.error)

@@ -38,7 +38,6 @@ class SessionStateMachineTest {
                 SessionEffect.ReleaseClaim,
                 SessionEffect.ClearToolCalls,
                 SessionEffect.CommitState,
-                SessionEffect.RestartSessionJob,
                 SessionEffect.AppendEvent(
                     ActivityEventKind.SESSION_STARTED,
                     "Request accepted. Waiting for the desktop Codex bridge.",
@@ -82,7 +81,6 @@ class SessionStateMachineTest {
         assertEquals(
             listOf(
                 SessionEffect.SettleAttention("run-1"),
-                SessionEffect.CancelSessionJob,
                 SessionEffect.CancelTransport("run-1"),
                 SessionEffect.RetainDisplay("run-1", TaskDisplayStatus.STOPPED, "Stopped by the user."),
                 SessionEffect.ReleaseClaim,
@@ -131,7 +129,6 @@ class SessionStateMachineTest {
         assertEquals(
             listOf(
                 SessionEffect.CancelAllAttention,
-                SessionEffect.CancelSessionJob,
                 SessionEffect.ClearAllSteers,
                 SessionEffect.ReleaseClaim,
                 SessionEffect.ClearPointer,

@@ -50,8 +50,6 @@ internal sealed interface SessionEffect {
     data object ClearEvents : SessionEffect
     data class ClearSteers(val sessionId: String) : SessionEffect
     data object ClearAllSteers : SessionEffect
-    data object RestartSessionJob : SessionEffect
-    data object CancelSessionJob : SessionEffect
     data class CancelTransport(val sessionId: String) : SessionEffect
     data class RetainDisplay(
         val sessionId: String,
@@ -164,7 +162,6 @@ internal object SessionStateMachine {
                 SessionEffect.ReleaseClaim,
                 SessionEffect.ClearToolCalls,
                 SessionEffect.CommitState,
-                SessionEffect.RestartSessionJob,
                 SessionEffect.AppendEvent(
                     ActivityEventKind.SESSION_STARTED,
                     "Request accepted. Waiting for the desktop Codex bridge.",
@@ -250,7 +247,6 @@ internal object SessionStateMachine {
                 SessionEffect.ClearPointer,
                 SessionEffect.ReleaseClaim,
                 SessionEffect.CommitState,
-                SessionEffect.RestartSessionJob,
                 SessionEffect.AppendEvent(
                     ActivityEventKind.SESSION_STARTED,
                     "Continuation accepted. Waiting for the desktop Codex bridge.",
@@ -275,7 +271,6 @@ internal object SessionStateMachine {
             ),
             effects = listOf(
                 SessionEffect.SettleAttention(sessionId),
-                SessionEffect.CancelSessionJob,
                 SessionEffect.CancelTransport(sessionId),
                 SessionEffect.RetainDisplay(sessionId, TaskDisplayStatus.STOPPED, event.reason),
                 SessionEffect.ReleaseClaim,
@@ -294,7 +289,6 @@ internal object SessionStateMachine {
             state = SessionState.Idle,
             effects = buildList {
                 add(SessionEffect.CancelAllAttention)
-                add(SessionEffect.CancelSessionJob)
                 if (sessionId != null) {
                     add(SessionEffect.CancelTransport(sessionId))
                     add(SessionEffect.ClearSteers(sessionId))
@@ -328,7 +322,6 @@ internal object SessionStateMachine {
             ),
             effects = listOf(
                 SessionEffect.SettleAttention(sessionId),
-                SessionEffect.CancelSessionJob,
                 SessionEffect.CancelTransport(sessionId),
                 SessionEffect.ReleaseClaim,
                 SessionEffect.ClearSteers(sessionId),
@@ -365,7 +358,6 @@ internal object SessionStateMachine {
             ),
             effects = buildList {
                 add(SessionEffect.SettleAttention(sessionId))
-                add(SessionEffect.CancelSessionJob)
                 add(SessionEffect.CancelTransport(sessionId))
                 add(SessionEffect.RetainDisplay(sessionId, TaskDisplayStatus.COMPLETED, error = null))
                 add(SessionEffect.ReleaseClaim)
