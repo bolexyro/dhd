@@ -4,6 +4,7 @@ import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.bridge.handlers.AppCatalogHandlers
+import com.phonecontrol.assistant.bridge.handlers.DisplayHandlers
 import com.phonecontrol.assistant.bridge.handlers.SessionHandlers
 import com.phonecontrol.assistant.bridge.handlers.SteerHandlers
 import com.phonecontrol.assistant.bridge.pairing.PairingProtocol
@@ -209,6 +210,7 @@ class DevBridgeServer internal constructor(
     private val bridgeJson = BridgeJson(base64)
     private val captures = CaptureService(coordinator, observationProvider, taskDisplayRequiredProvider)
     private val displayTargets = DisplayTargetResolver(taskDisplayBackend, coordinator, taskDisplayRequiredProvider, clock, platform)
+    private val displays = DisplayHandlers(taskDisplayBackend, coordinator, displayTargets, platform)
 
     val companionConnected: StateFlow<Boolean>
         get() = presence.companionConnected
@@ -354,8 +356,8 @@ class DevBridgeServer internal constructor(
                 "set_app_display_layout" -> toolCalls.withDhdTool(json, ToolNames.SET_APP_DISPLAY_LAYOUT) {
                     appCatalog.setAppDisplayLayout(requestId, json, reply)
                 }
-                "list_displays" -> listDisplays(requestId, reply)
-                "close_display" -> closeDisplay(requestId, json, reply)
+                "list_displays" -> displays.listDisplays(requestId, reply)
+                "close_display" -> displays.closeDisplay(requestId, json, reply)
                 "foreground_app" -> toolCalls.withDhdTool(json, ToolNames.FOREGROUND_APP) {
                     foregroundApp(requestId, json, reply)
                 }
@@ -474,91 +476,6 @@ class DevBridgeServer internal constructor(
                 }
                 reply.write(response)
             }
-        }
-    }
-
-    private suspend fun listDisplays(
-        requestId: String,
-        reply: BridgeReply,
-    ) {
-        val backend = taskDisplayBackend
-        if (backend == null) {
-            reply.write(
-                errorResponse(requestId, "The task display registry is unavailable.")
-                    .put("code", BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE),
-            )
-            return
-        }
-        val displays = displayTargets.currentDisplayJson(backend)
-        reply.write(
-            JSONObject()
-                .put("type", "displays")
-                .put("requestId", requestId)
-                .put("ok", true)
-                .put("displays", JSONArray(displays))
-                .put("count", displays.size)
-                .put("message", if (displays.isEmpty()) "No task displays are available." else "Returned active and retained task displays."),
-        )
-    }
-
-    private suspend fun closeDisplay(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val backend = taskDisplayBackend
-        if (backend == null) {
-            reply.write(
-                errorResponse(requestId, "The task display registry is unavailable.")
-                    .put("code", BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE),
-            )
-            return
-        }
-        val displayRef = try {
-            optionalDisplayRef(json)
-        } catch (error: IllegalArgumentException) {
-            reply.write(errorResponse(requestId, error.message ?: "displayRef is invalid.").put("code", BridgeErrorCodes.INVALID_DISPLAY_REF))
-            return
-        }
-        if (displayRef == null) {
-            reply.write(
-                errorResponse(requestId, "displayRef is required to close a display safely. Call dhd_list_displays first and use the matching displayRef.")
-                    .put("code", BridgeErrorCodes.DISPLAY_REFERENCE_REQUIRED),
-            )
-            return
-        }
-        backend.activeDisplaySessions()
-        val record = backend.displayRecords.value.firstOrNull { it.displayRef == displayRef }
-        if (record == null) {
-            reply.write(
-                errorResponse(requestId, "No task display matches the supplied displayRef. Call dhd_list_displays to see the available displays.")
-                    .put("code", BridgeErrorCodes.DISPLAY_NOT_FOUND),
-            )
-            return
-        }
-        val activeRunKey = coordinator.activeSessionId()
-        if (activeRunKey != null && backend.isDisplayClaimedByRun(record.displayId, activeRunKey)) {
-            reply.write(
-                errorResponse(requestId, "The selected task display is being used by an active DHD run. Stop the active run first, then close the display.")
-                    .put("code", BridgeErrorCodes.DISPLAY_IN_USE),
-            )
-            return
-        }
-        when (val result = backend.closeTaskDisplay(record.displayId, displayRef)) {
-            is TaskDisplayCloseResult.Rejected -> reply.write(
-                errorResponse(requestId, result.message).put("code", result.code),
-            )
-
-            is TaskDisplayCloseResult.Closed -> reply.write(
-                JSONObject()
-                    .put("type", "display_closed")
-                    .put("requestId", requestId)
-                    .put("ok", true)
-                    .put("displayRef", result.record.displayRef)
-                    .put("appLabel", platform.appLabel(result.record.packageName))
-                    .put("status", result.record.status.name.lowercase())
-                    .put("message", "The selected task display was ended."),
-            )
         }
     }
 
