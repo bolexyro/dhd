@@ -37,9 +37,9 @@ class ActionResultMappingTest {
     }
 
     @Test
-    fun `sequence steps report policy rejections generically`() {
+    fun `sequence steps report the same specific policy code as execute action`() {
         assertEquals(
-            listOf("ACTION_FAILED", "STALE_OBSERVATION", "UNSUPPORTED_ACTION", "POLICY_REJECTED", "SESSION_NOT_RUNNING"),
+            listOf("ACTION_FAILED", "STALE_OBSERVATION", "UNSUPPORTED_ACTION", "SECURE_SCREEN_REQUIRES_USER", "SESSION_NOT_RUNNING"),
             all.map { it.sequenceStepFailureCode() },
         )
     }

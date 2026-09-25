@@ -52,7 +52,7 @@ internal fun ActionExecutionResult.sequenceStepFailureCode(): String = when (thi
         is TransportResult.Unsupported -> BridgeErrorCodes.UNSUPPORTED_ACTION
         is TransportResult.Succeeded -> BridgeErrorCodes.ACTION_FAILED
     }
-    is ActionExecutionResult.PolicyRejected -> BridgeErrorCodes.POLICY_REJECTED
+    is ActionExecutionResult.PolicyRejected -> code
     ActionExecutionResult.SessionNotRunning -> BridgeErrorCodes.SESSION_NOT_RUNNING
 }
 

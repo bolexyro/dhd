@@ -278,6 +278,31 @@ class BridgeActionWireGoldenTest {
     }
 
     @Test
+    fun `sequence step on a secure screen reports the specific policy code`() = runTest {
+        val harness = taskHarnessWithObservation(
+            snapshot(
+                "obs-1",
+                taskSessionKey = TASK_RUN_KEY,
+                displayId = TASK_DISPLAY_ID,
+                screenProtection = ScreenProtection(
+                    status = ScreenProtectionStatus.SECURE,
+                    requiresUserAttention = true,
+                    signals = listOf("FLAG_SECURE"),
+                    reason = "The payment screen is protected.",
+                ),
+            ),
+        )
+        val responses = harness.exchange(
+            "execute_sequence.secure_screen_requires_user",
+            sequenceRequest(tapStep(), typeStep()),
+        )
+        assertEquals(
+            "SECURE_SCREEN_REQUIRES_USER",
+            responses.last().getJSONArray("steps").getJSONObject(0).getString("code"),
+        )
+    }
+
+    @Test
     fun `sequence stops when a post step observation fails`() = runTest {
         val harness = taskHarnessWithObservation()
         harness.observations.fallbackCapture = ObservationCaptureResult.Failed("screencap failed")
