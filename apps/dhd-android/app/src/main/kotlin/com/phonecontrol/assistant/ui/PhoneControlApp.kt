@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -48,6 +49,7 @@ import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.PREFS_N
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.chat.ChatScreen
+import com.phonecontrol.assistant.ui.chat.ChatViewModel
 import com.phonecontrol.assistant.ui.chat.ConversationExpiryDialog
 import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
 import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
@@ -291,8 +293,7 @@ fun PhoneControlApp(
                 ) {
                     composable(AppRoutes.MAIN) {
                         ChatScreen(
-                            store = conversationStore,
-                            coordinator = coordinator,
+                            viewModel = viewModel(factory = ChatViewModel.factory(container)),
                             initialConversationId = initialConversationId,
                             onRunRequest = onRunRequest,
                             reasoningEffort = reasoningEffort,

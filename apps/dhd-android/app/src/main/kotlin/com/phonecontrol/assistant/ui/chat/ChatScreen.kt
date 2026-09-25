@@ -54,11 +54,9 @@ import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.core.sessionIdOrNull
-import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.DhdToolCallStatus
-import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.chat.composer.PendingSteerDraft
 import com.phonecontrol.assistant.ui.chat.composer.RequestComposer
@@ -86,8 +84,7 @@ import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable
 fun ChatScreen(
-    store: ConversationStore,
-    coordinator: SessionCoordinator,
+    viewModel: ChatViewModel,
     @Suppress("UNUSED_PARAMETER") initialConversationId: String?,
     onRunRequest: (String, String?, String?, Boolean) -> Unit,
     reasoningEffort: ReasoningEffort,
@@ -113,9 +110,9 @@ fun ChatScreen(
     expandedPreviewSessionKey: String? = null,
 ) {
     val colors = LocalAssistantColors.current
-    val state by coordinator.state.collectAsState()
-    val toolCalls by coordinator.toolCalls.collectAsState()
-    val timeline by store.timeline(DHD_CONVERSATION_ID).collectAsState()
+    val state by viewModel.sessionState.collectAsState()
+    val toolCalls by viewModel.toolCalls.collectAsState()
+    val timeline by viewModel.timeline.collectAsState()
     val active = state.isActive
     val combinePhoneAndCompanionRecovery = shouldCombineRecoveryBanners(
         state = state,
@@ -480,7 +477,7 @@ fun ChatScreen(
                 steerDraftSessionId = null
                 carrySteerDraftsToNextRun = false
                 composerEditText = null
-                coordinator.reset()
+                viewModel.startFresh()
                 onStartFresh()
             },
             onDismiss = { showStartFreshConfirmation = false },
