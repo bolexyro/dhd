@@ -1,7 +1,6 @@
 package com.phonecontrol.assistant.bridge.auth
 
 import com.phonecontrol.assistant.bridge.BridgePlatform
-import java.net.InetAddress
 import java.security.MessageDigest
 import java.util.UUID
 import org.json.JSONObject
@@ -23,11 +22,7 @@ internal class BridgeCredentials(
             platform.storeString(KEY_DEVICE_ID, id)
         }
 
-    fun isAuthorized(peerAddress: InetAddress, json: JSONObject): Boolean {
-        // adb forward presents the desktop peer as loopback. Keep this local
-        // development path compatible without requiring a token, while every
-        // actual LAN peer must prove possession of the paired token.
-        if (peerAddress.isLoopbackAddress) return true
+    fun isAuthorized(json: JSONObject): Boolean {
         val candidate = json.optString("authToken").trim().toByteArray(Charsets.UTF_8)
         val expected = authenticationToken.toByteArray(Charsets.UTF_8)
         return MessageDigest.isEqual(candidate, expected)

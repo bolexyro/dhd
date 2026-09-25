@@ -102,8 +102,8 @@ class AppContainer(context: Context) {
     val installedAppsRepository = InstalledAppsRepository(context)
 
     // The bridge accepts paired LAN connections for the development
-    // companion. adb forwarding remains compatible because forwarded
-    // clients arrive as loopback and bypass the LAN token check.
+    // companion. adb forwarding remains compatible when the forwarded
+    // client sends the same pairing token.
     val companionBridgeServer = CompanionBridgeServer(
         platform = AndroidBridgePlatform(
             context = context,

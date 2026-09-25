@@ -8,7 +8,6 @@ import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_REQUEST_CHARS
 import com.phonecontrol.assistant.bridge.protocol.errorResponse
 import com.phonecontrol.assistant.bridge.transport.BridgeReply
-import java.net.InetAddress
 import java.util.UUID
 import org.json.JSONException
 import org.json.JSONObject
@@ -26,7 +25,6 @@ internal class BridgeRouter(
 ) {
     suspend fun handleRequestLine(
         line: String?,
-        peerAddress: InetAddress,
         reply: BridgeReply,
     ) {
         if (line == null) {
@@ -48,7 +46,7 @@ internal class BridgeRouter(
         }
         val requestId = json.optString("requestId").ifBlank { newUuid().toString() }
 
-        if (!credentials.isAuthorized(peerAddress, json)) {
+        if (!credentials.isAuthorized(json)) {
             reply.write(
                 errorResponse(requestId, "The phone bridge rejected this network connection. Pair the desktop companion in DHD settings.")
                     .put("code", BridgeErrorCodes.AUTH_REQUIRED),

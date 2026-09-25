@@ -35,7 +35,6 @@ import com.phonecontrol.assistant.observation.PhoneObservationSource
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
 import java.io.BufferedWriter
 import java.net.Inet4Address
-import java.net.InetAddress
 import java.net.NetworkInterface
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -213,10 +212,9 @@ class CompanionBridgeServer internal constructor(
 
     internal suspend fun handleRequestLine(
         line: String?,
-        peerAddress: InetAddress,
         writer: BufferedWriter,
     ) {
-        router.handleRequestLine(line, peerAddress, NdjsonWriter(writer))
+        router.handleRequestLine(line, NdjsonWriter(writer))
     }
 
     private fun requestHandlers(): Map<String, BridgeHandler> = mapOf(

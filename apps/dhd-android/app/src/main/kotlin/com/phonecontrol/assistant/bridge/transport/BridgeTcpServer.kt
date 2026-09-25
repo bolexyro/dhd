@@ -18,7 +18,7 @@ internal class BridgeTcpServer(
     private val bindHost: String,
     private val scope: CoroutineScope,
     private val platform: BridgePlatform,
-    private val onRequestLine: suspend (line: String?, peerAddress: InetAddress, reply: BridgeReply) -> Unit,
+    private val onRequestLine: suspend (line: String?, reply: BridgeReply) -> Unit,
 ) {
     @Volatile private var serverSocket: ServerSocket? = null
 
@@ -52,7 +52,7 @@ internal class BridgeTcpServer(
         client.use { socket ->
             val reader = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.UTF_8))
             val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), Charsets.UTF_8))
-            onRequestLine(reader.readLine(), socket.inetAddress, NdjsonWriter(writer))
+            onRequestLine(reader.readLine(), NdjsonWriter(writer))
         }
     }
 }

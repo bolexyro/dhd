@@ -398,13 +398,13 @@ internal class BridgeHarness(
         return sessionId
     }
 
-    suspend fun send(request: JSONObject, peer: InetAddress = LOOPBACK_PEER): List<JSONObject> =
-        sendLine(resolvePlaceholders(request.toString()), peer).map(::JSONObject)
+    suspend fun send(request: JSONObject): List<JSONObject> =
+        sendLine(resolvePlaceholders(request.toString())).map(::JSONObject)
 
-    suspend fun sendLine(line: String?, peer: InetAddress = LOOPBACK_PEER): List<String> {
+    suspend fun sendLine(line: String?, authToken: String? = FIXTURE_TOKEN): List<String> {
         val output = StringWriter()
         val writer = BufferedWriter(output)
-        server.handleRequestLine(line, peer, writer)
+        server.handleRequestLine(line?.let { withAuthToken(it, authToken) }, writer)
         writer.flush()
         aliasCurrentSession()
         val text = output.toString()
@@ -413,6 +413,13 @@ internal class BridgeHarness(
         return text.split(separator).filter(String::isNotEmpty).onEach { line ->
             assertFalse("Response lines must not contain raw newlines", line.contains('\n'))
         }
+    }
+
+    private fun withAuthToken(line: String, authToken: String?): String {
+        if (authToken == null) return line
+        val json = runCatching { JSONObject(line) }.getOrNull() ?: return line
+        if (json.has("authToken")) return line
+        return json.put("authToken", authToken).toString()
     }
 
     fun normalize(line: String): String = aliases.entries.fold(line) { text, (actual, placeholder) ->
@@ -427,9 +434,10 @@ internal class BridgeHarness(
         name: String,
         request: JSONObject,
         peer: InetAddress = LOOPBACK_PEER,
+        authToken: String? = FIXTURE_TOKEN,
         normalizeResponse: (JSONObject) -> Unit = {},
     ): List<JSONObject> {
-        val lines = sendLine(resolvePlaceholders(request.toString()), peer)
+        val lines = sendLine(resolvePlaceholders(request.toString()), authToken)
         val responses = lines.map { JSONObject(normalize(it)) }.onEach(normalizeResponse)
         val fixture = JSONObject()
             .put("peer", peerName(peer))
@@ -445,7 +453,7 @@ internal class BridgeHarness(
         description: JSONObject,
         peer: InetAddress = LOOPBACK_PEER,
     ): List<JSONObject> {
-        val lines = sendLine(line, peer)
+        val lines = sendLine(line)
         val fixture = JSONObject()
             .put("peer", peerName(peer))
             .put("rawRequest", description)

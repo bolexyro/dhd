@@ -36,7 +36,12 @@ class BridgeSessionWireGoldenTest {
 
     @Test
     fun `lan peer without the pairing token is rejected`() = runTest {
-        BridgeHarness().exchange("error.auth_required", request("status"), peer = LAN_PEER)
+        BridgeHarness().exchange("error.auth_required", request("status"), peer = LAN_PEER, authToken = null)
+    }
+
+    @Test
+    fun `loopback peer without the pairing token is rejected`() = runTest {
+        BridgeHarness().exchange("error.auth_required_loopback", request("status"), authToken = null)
     }
 
     @Test
