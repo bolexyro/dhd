@@ -65,7 +65,6 @@ import com.phonecontrol.assistant.ui.theme.ThemeMode
 
 @Composable
 fun PhoneControlApp(
-    initialConversationId: String? = null,
     initialRoute: String? = null,
     onRunRequest: (String, String?, String?, Boolean) -> Unit,
     onStopSession: () -> Unit,
@@ -90,7 +89,6 @@ fun PhoneControlApp(
     overlayPermissionGranted: Boolean = false,
     onSetOverlayEnabled: (Boolean) -> Unit = {},
     permissionSetupStep: PermissionSetupStep? = null,
-    notificationsAllowed: Boolean = true,
     onPermissionSetupPrimaryAction: () -> Unit = {},
     onShowOverlayPermissionSetup: () -> Unit = {},
     onPermissionSetupBack: () -> Unit = {},
@@ -250,7 +248,6 @@ fun PhoneControlApp(
                     composable(AppRoutes.MAIN) {
                         ChatScreen(
                             viewModel = viewModel(factory = ChatViewModel.factory(container)),
-                            initialConversationId = initialConversationId,
                             onRunRequest = onRunRequest,
                             reasoningEffort = reasoningEffort,
                             visibleReasoningEfforts = visibleReasoningEfforts,
@@ -289,25 +286,9 @@ fun PhoneControlApp(
                             onOpenPairing = { navController.navigate(AppRoutes.PAIRING) },
                             onOpenApprovedApps = { navController.navigate(AppRoutes.APPROVED_APPS) },
                             onOpenCompanion = { navController.navigate(AppRoutes.COMPANION) },
-                            onOpenTaskDisplays = openTaskDisplays,
                             overlayEnabled = overlayEnabled,
                             overlayPermissionGranted = overlayPermissionGranted,
                             onSetOverlayEnabled = onSetOverlayEnabled,
-                            onBack = { navController.popBackStack() },
-                        )
-                    }
-
-                    // Keep the route for state restoration and older callers;
-                    // the screen itself is a bottom sheet rather than a full
-                    // page, so it retains the same presentation everywhere.
-                    composable(AppRoutes.TASK_DISPLAYS) {
-                        TaskDisplaysSheet(
-                            records = visibleDisplayRecords,
-                            onView = { record ->
-                                viewerSessionKey = record.sessionKey
-                                navController.popBackStack()
-                            },
-                            onEnd = onEndTaskDisplay,
                             onBack = { navController.popBackStack() },
                         )
                     }
@@ -331,17 +312,6 @@ fun PhoneControlApp(
                                 onBack = { navController.popBackStack() },
                             )
                         }
-                    }
-
-                    composable(AppRoutes.PERMISSION_SETUP) {
-                        PermissionOnboardingScreen(
-                            step = permissionSetupStep ?: PermissionSetupStep.COMPLETE,
-                            apps = apps,
-                            permissions = permissions,
-                            onPrimaryAction = onPermissionSetupPrimaryAction,
-                            onShowOverlayStep = onShowOverlayPermissionSetup,
-                            onBack = onPermissionSetupBack,
-                        )
                     }
 
                     composable(AppRoutes.APPROVED_APPS) {

@@ -78,9 +78,11 @@ class UiStateLogicTest {
 
     @Test
     fun `only known routes are opened from an intent`() {
-        listOf("settings", "task_displays", "pairing", "approved_apps", "companion", "permission_setup").forEach {
+        listOf("settings", "pairing", "approved_apps", "companion").forEach {
             assertEquals(it, supportedInitialRoute(it))
         }
+        assertNull(supportedInitialRoute("task_displays"))
+        assertNull(supportedInitialRoute("permission_setup"))
         assertNull(supportedInitialRoute("main"))
         assertNull(supportedInitialRoute("unknown"))
         assertNull(supportedInitialRoute(null))

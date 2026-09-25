@@ -90,7 +90,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         refreshOverlayState()
         maybeStartFirstRunPermissionSetup()
-        val initialConversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
         val app = (application as PhoneControlApplication).container
         val appPackageManager = packageManager
         setContent {
@@ -101,7 +100,6 @@ class MainActivity : ComponentActivity() {
             )
             val displayForRun = displayUi.displayForRun
             PhoneControlApp(
-                initialConversationId = initialConversationId,
                 initialRoute = intent.getStringExtra(EXTRA_OPEN_ROUTE),
                 onRunRequest = ::startSession,
                 onStopSession = ::stopSession,
@@ -136,7 +134,6 @@ class MainActivity : ComponentActivity() {
                 overlayPermissionGranted = overlayPermissionGranted,
                 onSetOverlayEnabled = ::handleOverlayToggle,
                 permissionSetupStep = permissionSetupStep,
-                notificationsAllowed = hasNotificationPermission(),
                 onPermissionSetupPrimaryAction = ::handlePermissionSetupPrimaryAction,
                 onShowOverlayPermissionSetup = ::showOverlayPermissionSetup,
                 onPermissionSetupBack = ::navigateBackInPermissionSetup,

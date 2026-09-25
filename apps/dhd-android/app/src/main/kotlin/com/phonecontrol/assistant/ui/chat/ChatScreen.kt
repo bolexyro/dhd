@@ -85,7 +85,6 @@ import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel,
-    @Suppress("UNUSED_PARAMETER") initialConversationId: String?,
     onRunRequest: (String, String?, String?, Boolean) -> Unit,
     reasoningEffort: ReasoningEffort,
     visibleReasoningEfforts: List<ReasoningEffort>,

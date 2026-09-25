@@ -73,7 +73,6 @@ fun SettingsScreen(
     overlayPermissionGranted: Boolean,
     onSetOverlayEnabled: (Boolean) -> Unit,
     onBack: () -> Unit,
-    onOpenTaskDisplays: () -> Unit = {},
 ) {
     val colors = LocalAssistantColors.current
     val isFullAccess = remember(permissions.isFullAccessEnabled()) { permissions.isFullAccessEnabled() }
