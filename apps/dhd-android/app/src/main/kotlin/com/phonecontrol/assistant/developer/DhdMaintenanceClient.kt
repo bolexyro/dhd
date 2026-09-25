@@ -109,7 +109,7 @@ internal class DhdMaintenanceClient(
 
     fun isCompatible(): Boolean = checkCompatibility().compatible
 
-    private fun parseCapabilities(value: String): Capabilities? {
+    internal fun parseCapabilities(value: String): Capabilities? {
         val tokens = value.trim().split(Regex("\\s+"))
         val version = tokens.firstOrNull()
             ?.removePrefix("DHD-MAINTENANCE/")

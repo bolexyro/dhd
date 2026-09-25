@@ -70,7 +70,7 @@ public final class DhdMaintenanceDaemon {
         }
     }
 
-    private static void handleClient(
+    static void handleClient(
             Socket client,
             String expectedToken,
             DhdNativeDisplayService displayService
@@ -101,7 +101,7 @@ public final class DhdMaintenanceDaemon {
         output.flush();
     }
 
-    private static CommandResult execute(
+    static CommandResult execute(
             List<String> command,
             boolean binaryOutput,
             DhdNativeDisplayService displayService
@@ -223,7 +223,7 @@ public final class DhdMaintenanceDaemon {
         }
     }
 
-    private static final class CommandResult {
+    static final class CommandResult {
         final int exitCode;
         final boolean timedOut;
         final byte[] stdout;
