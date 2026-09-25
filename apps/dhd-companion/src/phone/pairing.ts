@@ -86,6 +86,17 @@ function broadcastAddresses(): string[] {
   return [...addresses];
 }
 
+function isValidPort(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 65_535;
+}
+
+function ipv4Addresses(sourceAddress: string, advertised: unknown): string[] {
+  const advertisedAddresses = Array.isArray(advertised)
+    ? advertised.filter((address): address is string => typeof address === "string" && net.isIP(address) === 4)
+    : [];
+  return [...new Set([sourceAddress, ...advertisedAddresses].filter((address) => net.isIP(address) === 4))];
+}
+
 function parsePhoneDiscoveryOffer(
   value: unknown,
   requestId: string,
@@ -98,12 +109,9 @@ function parsePhoneDiscoveryOffer(
   if (typeof message.deviceId !== "string" || !message.deviceId.trim()) return null;
   if (typeof message.deviceName !== "string" || !message.deviceName.trim()) return null;
   if (typeof message.pairingNonce !== "string" || !message.pairingNonce.trim()) return null;
-  if (typeof message.port !== "number" || !Number.isInteger(message.port) || message.port < 1 || message.port > 65_535) return null;
+  if (!isValidPort(message.port)) return null;
 
-  const advertisedAddresses = Array.isArray(message.addresses)
-    ? message.addresses.filter((address): address is string => typeof address === "string" && net.isIP(address) === 4)
-    : [];
-  const addresses = [...new Set([sourceAddress, ...advertisedAddresses].filter((address) => net.isIP(address) === 4))];
+  const addresses = ipv4Addresses(sourceAddress, message.addresses);
   if (addresses.length === 0) return null;
 
   const model = typeof message.model === "string" && message.model.trim()
@@ -141,12 +149,9 @@ function parsePairingApprovalResponse(
   }
   if (message.type !== "dhd_pair_approval_offer") return null;
   if (typeof message.token !== "string" || !message.token.trim()) return null;
-  if (typeof message.port !== "number" || !Number.isInteger(message.port) || message.port < 1 || message.port > 65_535) return null;
+  if (!isValidPort(message.port)) return null;
 
-  const advertisedAddresses = Array.isArray(message.addresses)
-    ? message.addresses.filter((address): address is string => typeof address === "string" && net.isIP(address) === 4)
-    : [];
-  const addresses = [...new Set([sourceAddress, ...advertisedAddresses].filter((address) => net.isIP(address) === 4))];
+  const addresses = ipv4Addresses(sourceAddress, message.addresses);
   if (addresses.length === 0) return null;
 
   return {
@@ -158,31 +163,28 @@ function parsePairingApprovalResponse(
   };
 }
 
-/**
- * Find every DHD phone that answers on the current LAN. Discovery intentionally
- * returns metadata only; it never places an authentication token on the wire.
- */
-export function discoverPhones(
-  options: PairingDiscoveryOptions = {}
-): Promise<DiscoveredPhone[]> {
-  const requestId = randomUUID();
-  const discoveryPort = options.discoveryPort ?? PAIRING_DISCOVERY_PORT;
-  const timeoutMs = options.timeoutMs ?? DEFAULT_PHONE_DISCOVERY_TIMEOUT_MS;
-  const payload = Buffer.from(JSON.stringify({
-    type: "dhd_discover_request",
-    version: PAIRING_PROTOCOL_VERSION,
-    requestId
-  }), "utf8");
+type ExchangeOutcome<T> = { value: T } | { error: Error };
 
+interface DatagramExchange<T> {
+  payload: Buffer;
+  port: number;
+  destinations: () => string[];
+  timeoutMs: number;
+  enableBroadcast: boolean;
+  failurePrefix: string;
+  onMessage: (message: unknown, sourceAddress: string) => ExchangeOutcome<T> | undefined;
+  onTimeout: () => ExchangeOutcome<T>;
+}
+
+function exchangeDatagrams<T>(exchange: DatagramExchange<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     const socket = dgram.createSocket("udp4");
-    const offers = new Map<string, DiscoveredPhone>();
     let settled = false;
     let bound = false;
     let timer: NodeJS.Timeout | undefined;
     let retryTimer: NodeJS.Timeout | undefined;
 
-    const finish = (error?: Error) => {
+    const finish = (outcome: ExchangeOutcome<T>) => {
       if (settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
@@ -192,15 +194,12 @@ export function discoverPhones(
       } catch {
         // The socket may not have finished binding yet.
       }
-      if (error) {
-        reject(error);
-      } else {
-        resolve([...offers.values()]);
-      }
+      if ("error" in outcome) reject(outcome.error);
+      else resolve(outcome.value);
     };
 
     socket.on("error", (error) => {
-      if (!bound) finish(new Error(`Phone discovery failed: ${error.message}`));
+      if (!bound) finish({ error: new Error(`${exchange.failurePrefix}: ${error.message}`) });
       // Once bound, one unavailable adapter should not discard offers from
       // the other interfaces. The bounded timer completes the scan.
     });
@@ -211,8 +210,66 @@ export function discoverPhones(
       } catch {
         return;
       }
-      const offer = parsePhoneDiscoveryOffer(parsed, requestId, remote.address);
-      if (!offer) return;
+      const outcome = exchange.onMessage(parsed, remote.address);
+      if (outcome) finish(outcome);
+    });
+    timer = setTimeout(() => finish(exchange.onTimeout()), exchange.timeoutMs);
+
+    socket.bind(0, "0.0.0.0", () => {
+      bound = true;
+      if (exchange.enableBroadcast) {
+        try {
+          socket.setBroadcast(true);
+        } catch {
+          // Some platforms still allow directed UDP sends without this flag.
+        }
+      }
+
+      const destinations = exchange.destinations();
+      let sendAttempt = 0;
+      const sendRequest = () => {
+        if (settled) return;
+        sendAttempt += 1;
+        for (const address of destinations) {
+          try {
+            socket.send(exchange.payload, exchange.port, address, () => {});
+          } catch {
+            // A later retry or the bounded timeout provides the useful error.
+          }
+        }
+        if (sendAttempt < PAIRING_SEND_ATTEMPTS && !settled) {
+          retryTimer = setTimeout(sendRequest, PAIRING_RETRY_DELAY_MS);
+        }
+      };
+      sendRequest();
+    });
+  });
+}
+
+/**
+ * Find every DHD phone that answers on the current LAN. Discovery intentionally
+ * returns metadata only; it never places an authentication token on the wire.
+ */
+export function discoverPhones(
+  options: PairingDiscoveryOptions = {}
+): Promise<DiscoveredPhone[]> {
+  const requestId = randomUUID();
+  const offers = new Map<string, DiscoveredPhone>();
+  return exchangeDatagrams<DiscoveredPhone[]>({
+    payload: Buffer.from(JSON.stringify({
+      type: "dhd_discover_request",
+      version: PAIRING_PROTOCOL_VERSION,
+      requestId
+    }), "utf8"),
+    port: options.discoveryPort ?? PAIRING_DISCOVERY_PORT,
+    destinations: () => [...new Set(options.broadcastAddresses ?? broadcastAddresses())]
+      .filter((address) => net.isIP(address) === 4),
+    timeoutMs: options.timeoutMs ?? DEFAULT_PHONE_DISCOVERY_TIMEOUT_MS,
+    enableBroadcast: true,
+    failurePrefix: "Phone discovery failed",
+    onMessage: (message, sourceAddress) => {
+      const offer = parsePhoneDiscoveryOffer(message, requestId, sourceAddress);
+      if (!offer) return undefined;
       const existing = offers.get(offer.deviceId);
       const addresses = [...new Set([...(existing?.addresses ?? []), ...offer.addresses])];
       offers.set(offer.deviceId, {
@@ -224,36 +281,9 @@ export function discoverPhones(
         port: offer.port,
         pairingNonce: offer.pairingNonce
       });
-    });
-    timer = setTimeout(() => finish(), timeoutMs);
-
-    socket.bind(0, "0.0.0.0", () => {
-      bound = true;
-      try {
-        socket.setBroadcast(true);
-      } catch {
-        // Some platforms still allow directed UDP sends without this flag.
-      }
-
-      const destinations = [...new Set(options.broadcastAddresses ?? broadcastAddresses())]
-        .filter((address) => net.isIP(address) === 4);
-      let sendAttempt = 0;
-      const sendRequest = () => {
-        if (settled) return;
-        sendAttempt += 1;
-        for (const address of destinations) {
-          try {
-            socket.send(payload, discoveryPort, address, () => {});
-          } catch {
-            // Retry the remaining interfaces below.
-          }
-        }
-        if (sendAttempt < PAIRING_SEND_ATTEMPTS && !settled) {
-          retryTimer = setTimeout(sendRequest, PAIRING_RETRY_DELAY_MS);
-        }
-      };
-      sendRequest();
-    });
+      return undefined;
+    },
+    onTimeout: () => ({ value: [...offers.values()] }),
   });
 }
 
@@ -267,79 +297,30 @@ export function requestPairingApproval(
   options: PairingApprovalOptions = {}
 ): Promise<ResolvedPairing> {
   const requestId = randomUUID();
-  const discoveryPort = options.discoveryPort ?? PAIRING_DISCOVERY_PORT;
-  const timeoutMs = options.timeoutMs ?? DEFAULT_PAIRING_APPROVAL_TIMEOUT_MS;
   const destinations = [...new Set([phone.host, ...phone.addresses])]
     .filter((address) => net.isIP(address) === 4);
   if (destinations.length === 0) {
     return Promise.reject(new Error("The selected phone did not advertise a usable local address."));
   }
-  const payload = Buffer.from(JSON.stringify({
-    type: "dhd_pair_approval_request",
-    version: PAIRING_PROTOCOL_VERSION,
-    requestId,
-    deviceId: phone.deviceId,
-    pairingNonce: phone.pairingNonce,
-    desktopName: (options.desktopName?.trim() || hostname() || "DHD Companion").slice(0, 80)
-  }), "utf8");
-
-  return new Promise((resolve, reject) => {
-    const socket = dgram.createSocket("udp4");
-    let settled = false;
-    let bound = false;
-    let timer: NodeJS.Timeout | undefined;
-    let retryTimer: NodeJS.Timeout | undefined;
-
-    const finish = (error?: Error, pairing?: ResolvedPairing) => {
-      if (settled) return;
-      settled = true;
-      if (timer) clearTimeout(timer);
-      if (retryTimer) clearTimeout(retryTimer);
-      try {
-        socket.close();
-      } catch {
-        // The socket may not have finished binding yet.
-      }
-      if (error) reject(error);
-      else resolve(pairing!);
-    };
-
-    socket.on("error", (error) => {
-      if (!bound) finish(new Error(`Phone pairing request failed: ${error.message}`));
-    });
-    socket.on("message", (message, remote) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(message.toString("utf8"));
-      } catch {
-        return;
-      }
-      const response = parsePairingApprovalResponse(parsed, requestId, phone.deviceId, remote.address);
-      if (response instanceof Error) finish(response);
-      else if (response) finish(undefined, response);
-    });
-    timer = setTimeout(() => {
-      finish(new Error("Timed out waiting for approval on the selected phone."));
-    }, timeoutMs);
-
-    socket.bind(0, "0.0.0.0", () => {
-      bound = true;
-      let sendAttempt = 0;
-      const sendRequest = () => {
-        if (settled) return;
-        sendAttempt += 1;
-        for (const address of destinations) {
-          try {
-            socket.send(payload, discoveryPort, address, () => {});
-          } catch {
-            // A later retry or the bounded timeout provides the useful error.
-          }
-        }
-        if (sendAttempt < PAIRING_SEND_ATTEMPTS && !settled) {
-          retryTimer = setTimeout(sendRequest, PAIRING_RETRY_DELAY_MS);
-        }
-      };
-      sendRequest();
-    });
+  return exchangeDatagrams<ResolvedPairing>({
+    payload: Buffer.from(JSON.stringify({
+      type: "dhd_pair_approval_request",
+      version: PAIRING_PROTOCOL_VERSION,
+      requestId,
+      deviceId: phone.deviceId,
+      pairingNonce: phone.pairingNonce,
+      desktopName: (options.desktopName?.trim() || hostname() || "DHD Companion").slice(0, 80)
+    }), "utf8"),
+    port: options.discoveryPort ?? PAIRING_DISCOVERY_PORT,
+    destinations: () => destinations,
+    timeoutMs: options.timeoutMs ?? DEFAULT_PAIRING_APPROVAL_TIMEOUT_MS,
+    enableBroadcast: false,
+    failurePrefix: "Phone pairing request failed",
+    onMessage: (message, sourceAddress) => {
+      const response = parsePairingApprovalResponse(message, requestId, phone.deviceId, sourceAddress);
+      if (response instanceof Error) return { error: response };
+      return response ? { value: response } : undefined;
+    },
+    onTimeout: () => ({ error: new Error("Timed out waiting for approval on the selected phone.") }),
   });
 }
