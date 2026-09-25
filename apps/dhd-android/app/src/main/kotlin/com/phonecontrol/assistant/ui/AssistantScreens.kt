@@ -321,50 +321,34 @@ fun AssistantScreen(
         it.sessionId == activeSessionId && it.status == DhdToolCallStatus.RUNNING
     }
     LaunchedEffect(activeSessionId) {
-        if (steerDraftSessionId != activeSessionId) {
-            if (carrySteerDraftsToNextRun && activeSessionId != null && steerDrafts.isNotEmpty()) {
-                // Keep the remaining queue attached to the auto-started run.
-                carrySteerDraftsToNextRun = false
-            } else {
-                steerDrafts = emptyList()
-                carrySteerDraftsToNextRun = false
-            }
-            steerDraftSessionId = activeSessionId
-        }
+        val next = SteerDraftQueue(steerDrafts, steerDraftSessionId, carrySteerDraftsToNextRun)
+            .forActiveSession(activeSessionId)
+        steerDrafts = next.drafts
+        steerDraftSessionId = next.sessionId
+        carrySteerDraftsToNextRun = next.carryToNextRun
     }
     LaunchedEffect(state) {
         val completed = state as? SessionState.Completed ?: return@LaunchedEffect
-        val queuedDrafts = steerDrafts
-        if (queuedDrafts.isEmpty() || steerDraftSessionId != completed.sessionId) {
-            return@LaunchedEffect
-        }
-
-        // Promote only the oldest held draft. Keep the rest in FIFO order for
-        // later follow-up runs.
-        val nextDraft = queuedDrafts.first()
-        steerDrafts = queuedDrafts.drop(1)
-        carrySteerDraftsToNextRun = steerDrafts.isNotEmpty()
+        val promotion = SteerDraftQueue(steerDrafts, steerDraftSessionId, carrySteerDraftsToNextRun)
+            .promoteAfterCompletion(completed.sessionId)
+            ?: return@LaunchedEffect
+        steerDrafts = promotion.queue.drafts
+        carrySteerDraftsToNextRun = promotion.queue.carryToNextRun
         onRunRequest(
-            nextDraft.text.trim(),
+            promotion.draft.text.trim(),
             DHD_CONVERSATION_ID,
-            nextDraft.reasoningEffort,
-            nextDraft.fastMode,
+            promotion.draft.reasoningEffort,
+            promotion.draft.fastMode,
         )
     }
-    val recentCutoff = System.currentTimeMillis() - RECENT_HISTORY_WINDOW_MS
     val continuationRunId = state.continuationSessionIdOrNullForUi()
-    val activeTaskRunIds = if (active && activeSessionId != null) {
-        groupTimeline(timeline, continuationRunId)
-            .firstOrNull { activeSessionId in it.runIds }
-            ?.runIds
-            ?: setOf(activeSessionId)
-    } else {
-        emptySet()
-    }
-    val recentTimeline = timeline.filter { item ->
-        item.timestampEpochMs >= recentCutoff ||
-                (active && item.belongsTo(activeTaskRunIds))
-    }
+    val activeTaskRunIds = activeTaskRunIds(timeline, active, activeSessionId, continuationRunId)
+    val recentTimeline = recentTimelineItems(
+        timeline = timeline,
+        nowEpochMs = System.currentTimeMillis(),
+        active = active,
+        activeTaskRunIds = activeTaskRunIds,
+    )
 
     Scaffold(
         containerColor = colors.background,
@@ -2641,13 +2625,45 @@ internal fun toolActivityColor(
     }
 }
 
-private data class PendingSteerDraft(
+internal data class PendingSteerDraft(
     val text: String,
     val reasoningEffort: String,
     val fastMode: Boolean,
 )
 
-private val steerDraftsSaver = listSaver<List<PendingSteerDraft>, String>(
+internal data class SteerDraftQueue(
+    val drafts: List<PendingSteerDraft>,
+    val sessionId: String?,
+    val carryToNextRun: Boolean,
+)
+
+internal data class SteerDraftPromotion(
+    val draft: PendingSteerDraft,
+    val queue: SteerDraftQueue,
+)
+
+internal fun SteerDraftQueue.forActiveSession(activeSessionId: String?): SteerDraftQueue {
+    if (sessionId == activeSessionId) return this
+    return if (carryToNextRun && activeSessionId != null && drafts.isNotEmpty()) {
+        // Keep the remaining queue attached to the auto-started run.
+        copy(sessionId = activeSessionId, carryToNextRun = false)
+    } else {
+        SteerDraftQueue(drafts = emptyList(), sessionId = activeSessionId, carryToNextRun = false)
+    }
+}
+
+internal fun SteerDraftQueue.promoteAfterCompletion(completedSessionId: String): SteerDraftPromotion? {
+    if (drafts.isEmpty() || sessionId != completedSessionId) return null
+    // Promote only the oldest held draft. Keep the rest in FIFO order for
+    // later follow-up runs.
+    val remaining = drafts.drop(1)
+    return SteerDraftPromotion(
+        draft = drafts.first(),
+        queue = copy(drafts = remaining, carryToNextRun = remaining.isNotEmpty()),
+    )
+}
+
+internal val steerDraftsSaver = listSaver<List<PendingSteerDraft>, String>(
     save = { drafts ->
         drafts.flatMap { draft ->
             listOf(draft.text, draft.reasoningEffort, draft.fastMode.toString())
@@ -3243,6 +3259,32 @@ private fun ReasoningEffortOverlay(
     }
 }
 
+internal fun reasoningTrackEfforts(visibleEfforts: List<ReasoningEffort>): List<ReasoningEffort> =
+    visibleEfforts.distinct().sortedBy(ReasoningEffort::ordinal)
+        .ifEmpty { listOf(ReasoningEffort.default) }
+
+internal fun reasoningTrackPosition(orderedEfforts: List<ReasoningEffort>, selectedEffort: ReasoningEffort): Float {
+    val selectedIndex = orderedEfforts.indexOf(selectedEffort).coerceAtLeast(0)
+    return if (orderedEfforts.size == 1) {
+        1.0f
+    } else {
+        selectedIndex.toFloat() / orderedEfforts.lastIndex.toFloat()
+    }
+}
+
+internal fun reasoningTrackFraction(x: Float, width: Float, innerMargin: Float, thumbRadius: Float): Float {
+    val startX = innerMargin + thumbRadius
+    val endX = width - innerMargin - thumbRadius
+    val usableWidth = (endX - startX).coerceAtLeast(1f)
+    return ((x - startX) / usableWidth).coerceIn(0f, 1f)
+}
+
+internal fun reasoningEffortAtFraction(fraction: Float, orderedEfforts: List<ReasoningEffort>): ReasoningEffort {
+    val nearestIndex = (fraction * orderedEfforts.lastIndex).roundToInt()
+        .coerceIn(0, orderedEfforts.lastIndex)
+    return orderedEfforts[nearestIndex]
+}
+
 @Composable
 internal fun ReasoningEffortTrack(
     selectedEffort: ReasoningEffort,
@@ -3251,17 +3293,11 @@ internal fun ReasoningEffortTrack(
 ) {
     val colors = LocalAssistantColors.current
     val density = LocalDensity.current
-    val orderedEfforts = visibleEfforts.distinct().sortedBy(ReasoningEffort::ordinal)
-        .ifEmpty { listOf(ReasoningEffort.default) }
-    val selectedIndex = orderedEfforts.indexOf(selectedEffort).coerceAtLeast(0)
+    val orderedEfforts = reasoningTrackEfforts(visibleEfforts)
     val trackShape = CircleShape
     val innerMargin = with(density) { 6.dp.toPx() }
     val thumbRadius = with(density) { 23.dp.toPx() }
-    val targetPosition = if (orderedEfforts.size == 1) {
-        1.0f
-    } else {
-        selectedIndex.toFloat() / orderedEfforts.lastIndex.toFloat()
-    }
+    val targetPosition = reasoningTrackPosition(orderedEfforts, selectedEffort)
 
     var isDragging by remember { mutableStateOf(false) }
     var dragFraction by remember { mutableFloatStateOf(0f) }
@@ -3293,14 +3329,9 @@ internal fun ReasoningEffortTrack(
         ) {
             val updateFractionAndEffort: (Float, Float) -> Unit = { x, width ->
                 if (orderedEfforts.size > 1) {
-                    val startX = innerMargin + thumbRadius
-                    val endX = width - innerMargin - thumbRadius
-                    val usableWidth = (endX - startX).coerceAtLeast(1f)
-                    val fraction = ((x - startX) / usableWidth).coerceIn(0f, 1f)
+                    val fraction = reasoningTrackFraction(x, width, innerMargin, thumbRadius)
                     dragFraction = fraction
-                    val nearestIndex = (fraction * orderedEfforts.lastIndex).roundToInt()
-                        .coerceIn(0, orderedEfforts.lastIndex)
-                    onSelect(orderedEfforts[nearestIndex])
+                    onSelect(reasoningEffortAtFraction(fraction, orderedEfforts))
                 }
             }
 
@@ -4069,20 +4100,8 @@ fun TaskDisplaysScreen(
         }
     }
 
-    // Ended records remain in the backend for lifecycle/history purposes, but
-    // the manager is for displays the user can still inspect or retain.
-    val visibleRecords = remember(records) {
-        records.filter {
-            it.lifecycle != TaskDisplayLifecycle.ENDED &&
-                    it.lifecycle != TaskDisplayLifecycle.EXPIRED
-        }
-    }
-    val sortedRecords = remember(visibleRecords) {
-        visibleRecords.sortedWith(
-            compareByDescending<TaskDisplayUiRecord> { it.lifecycle.isLive() }
-                .thenByDescending { it.createdAtEpochMs },
-        )
-    }
+    val visibleRecords = remember(records) { inspectableTaskDisplayRecords(records) }
+    val sortedRecords = remember(visibleRecords) { sortTaskDisplayRecords(visibleRecords) }
 
     ModalBottomSheet(
         onDismissRequest = onBack,
@@ -4525,6 +4544,20 @@ private fun TaskDisplayManagerCard(
 }
 
 private const val TASK_DISPLAY_MANAGER_REFRESH_MS = 30_000L
+
+internal fun inspectableTaskDisplayRecords(records: List<TaskDisplayUiRecord>): List<TaskDisplayUiRecord> =
+    // Ended records remain in the backend for lifecycle/history purposes, but
+    // the manager is for displays the user can still inspect or retain.
+    records.filter {
+        it.lifecycle != TaskDisplayLifecycle.ENDED &&
+                it.lifecycle != TaskDisplayLifecycle.EXPIRED
+    }
+
+internal fun sortTaskDisplayRecords(records: List<TaskDisplayUiRecord>): List<TaskDisplayUiRecord> =
+    records.sortedWith(
+        compareByDescending<TaskDisplayUiRecord> { it.lifecycle.isLive() }
+            .thenByDescending { it.createdAtEpochMs },
+    )
 
 private fun TaskDisplayLifecycle.isLive(): Boolean = when (this) {
     TaskDisplayLifecycle.RUNNING,
@@ -5418,6 +5451,33 @@ private fun SessionState.sessionIdOrNullForUi(): String? = when (this) {
     is SessionState.Paused -> sessionId
     is SessionState.Stopped -> sessionId
     is SessionState.Completed -> sessionId
+}
+
+internal fun activeTaskRunIds(
+    timeline: List<TimelineItem>,
+    active: Boolean,
+    activeSessionId: String?,
+    continuationRunId: String?,
+): Set<String> = if (active && activeSessionId != null) {
+    groupTimeline(timeline, continuationRunId)
+        .firstOrNull { activeSessionId in it.runIds }
+        ?.runIds
+        ?: setOf(activeSessionId)
+} else {
+    emptySet()
+}
+
+internal fun recentTimelineItems(
+    timeline: List<TimelineItem>,
+    nowEpochMs: Long,
+    active: Boolean,
+    activeTaskRunIds: Set<String>,
+): List<TimelineItem> {
+    val recentCutoff = nowEpochMs - RECENT_HISTORY_WINDOW_MS
+    return timeline.filter { item ->
+        item.timestampEpochMs >= recentCutoff ||
+                (active && item.belongsTo(activeTaskRunIds))
+    }
 }
 
 private fun TimelineItem.belongsTo(runIds: Set<String>): Boolean = when (this) {

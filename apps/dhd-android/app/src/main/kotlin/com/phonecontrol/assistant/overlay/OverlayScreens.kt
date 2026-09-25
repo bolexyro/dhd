@@ -930,13 +930,7 @@ fun OverlayPanel(
     )
     val hasRecovery = state.needsAttention() || recoveryKind != null
 
-    // An explicit collapse request wins over the session state. The perimeter glow is separate.
-    val effectiveMode = when {
-        mode == OverlayPanelMode.BUBBLE -> OverlayPanelMode.BUBBLE
-        active && hasRecovery -> OverlayPanelMode.ATTENTION
-        active -> OverlayPanelMode.WORKING
-        else -> mode
-    }
+    val effectiveMode = effectiveOverlayPanelMode(mode, active, hasRecovery)
 
     val focusManager = LocalFocusManager.current
     LaunchedEffect(effectiveMode) {
@@ -2316,30 +2310,12 @@ private fun WorkingRow(
     onShowPreview: (() -> Unit)? = null,
 ) {
     val colors = LocalAssistantColors.current
-    val sessionCalls = calls.filter {
-        it.sessionId == state.sessionIdOrNull() &&
-            !it.toolName.equals("dhd_close_display", ignoreCase = true) &&
-            !it.toolName.equals("close_display", ignoreCase = true)
-    }
-    val runningCall = sessionCalls.lastOrNull { it.status == DhdToolCallStatus.RUNNING }
+    val sessionCalls = workingRowSessionCalls(state, calls)
     val attention = state.needsAttention() || recoveryKind != null
-    val attentionReason = state.attentionReasonOrNull()
     val preToolStatus = rememberPreToolStatus(
         enabled = sessionCalls.isEmpty() && !attention && state is SessionState.Running,
     )
-    val rawTask = when {
-        state is SessionState.Paused -> "Paused"
-        runningCall != null -> runningCall.purpose
-        sessionCalls.lastOrNull() != null -> sessionCalls.last().purpose
-        else -> preToolStatus
-    }
-
-    val activeTask = when {
-        state.needsAttention() -> attentionReason ?: "Needs your attention"
-        recoveryKind == OverlayRecoveryKind.COMPANION -> "Desktop companion not connected"
-        recoveryKind == OverlayRecoveryKind.DEVELOPER -> "Phone access needed"
-        else -> rawTask
-    }
+    val activeTask = workingRowTask(state, sessionCalls, recoveryKind, preToolStatus)
 
     Box(
         modifier = Modifier
@@ -2670,6 +2646,49 @@ private fun GlyphButton(
                 else -> Unit
             }
         }
+    }
+}
+
+internal fun effectiveOverlayPanelMode(
+    mode: OverlayPanelMode,
+    active: Boolean,
+    hasRecovery: Boolean,
+): OverlayPanelMode =
+    // An explicit collapse request wins over the session state. The perimeter glow is separate.
+    when {
+        mode == OverlayPanelMode.BUBBLE -> OverlayPanelMode.BUBBLE
+        active && hasRecovery -> OverlayPanelMode.ATTENTION
+        active -> OverlayPanelMode.WORKING
+        else -> mode
+    }
+
+internal fun workingRowSessionCalls(state: SessionState, calls: List<DhdToolCall>): List<DhdToolCall> =
+    calls.filter {
+        it.sessionId == state.sessionIdOrNull() &&
+            !it.toolName.equals("dhd_close_display", ignoreCase = true) &&
+            !it.toolName.equals("close_display", ignoreCase = true)
+    }
+
+internal fun workingRowTask(
+    state: SessionState,
+    sessionCalls: List<DhdToolCall>,
+    recoveryKind: OverlayRecoveryKind?,
+    preToolStatus: String,
+): String {
+    val runningCall = sessionCalls.lastOrNull { it.status == DhdToolCallStatus.RUNNING }
+    val attentionReason = state.attentionReasonOrNull()
+    val rawTask = when {
+        state is SessionState.Paused -> "Paused"
+        runningCall != null -> runningCall.purpose
+        sessionCalls.lastOrNull() != null -> sessionCalls.last().purpose
+        else -> preToolStatus
+    }
+
+    return when {
+        state.needsAttention() -> attentionReason ?: "Needs your attention"
+        recoveryKind == OverlayRecoveryKind.COMPANION -> "Desktop companion not connected"
+        recoveryKind == OverlayRecoveryKind.DEVELOPER -> "Phone access needed"
+        else -> rawTask
     }
 }
 

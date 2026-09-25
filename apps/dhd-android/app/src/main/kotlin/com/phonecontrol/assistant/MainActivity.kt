@@ -19,6 +19,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.produceState
 import androidx.lifecycle.lifecycleScope
 import com.phonecontrol.assistant.developer.TaskPreviewState
+import com.phonecontrol.assistant.domain.ActivityEvent
+import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplayRecord
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
@@ -104,13 +106,7 @@ class MainActivity : ComponentActivity() {
             val sessionState by app.sessionCoordinator.state.collectAsState()
             val events by app.sessionCoordinator.events.collectAsState()
             val pointerEvent by app.sessionCoordinator.pointerEvent.collectAsState()
-            val purpose = when (val state = sessionState) {
-                is com.phonecontrol.assistant.session.SessionState.Running -> state.currentPurpose
-                is com.phonecontrol.assistant.session.SessionState.Paused -> state.currentPurpose
-                is com.phonecontrol.assistant.session.SessionState.Stopped -> state.reason
-                is com.phonecontrol.assistant.session.SessionState.Completed -> "Task complete"
-                com.phonecontrol.assistant.session.SessionState.Idle -> null
-            }
+            val purpose = sessionState.displayPurpose()
             val coordinatorSessionKey = sessionState.sessionKeyOrNull()
             // A new coordinator run can claim a retained display whose native
             // owner key belongs to the previous run. Resolve that binding for
@@ -128,55 +124,25 @@ class MainActivity : ComponentActivity() {
             ) {
                 value = coordinatorSessionKey?.let { app.taskDisplayBackend.current(it) }
             }
-            val displayForRun = resolvedDisplayForRun
-                ?: display?.takeIf { it.sessionKey == coordinatorSessionKey }
-                // Continue creates a fresh coordinator run before the first
-                // tool has a chance to claim the retained display. Keep the
-                // previous backend session rendered during that handoff;
-                // this callback only attaches the read-only preview surface.
-                ?: display?.takeIf {
-                    (sessionState as? SessionState.Running)?.isContinuation == true
-                }
+            val displayForRun = selectDisplayForRun(
+                resolvedDisplayForRun = resolvedDisplayForRun,
+                activeDisplay = display,
+                coordinatorSessionKey = coordinatorSessionKey,
+                sessionState = sessionState,
+            )
             val activeDisplayOwnerKey = displayForRun?.sessionKey
-            val currentToolName = coordinatorSessionKey?.let { sessionKey ->
-                events.asReversed()
-                    .firstOrNull { event ->
-                        event.sessionId == sessionKey && !event.toolName.isNullOrBlank() && !event.toolName.equals("dhd_close_display", ignoreCase = true) && !event.toolName.equals("close_display", ignoreCase = true)
-                    }
-                    ?.toolName
-            }
+            val currentToolName = latestToolNameForRun(events, coordinatorSessionKey)
             val preview = displayForRun?.let { session ->
-                // The global preview state is retained for the legacy single
-                // viewer. Once a displayRef selects a retained display, use
-                // its per-session state so another display's decoder cannot
-                // make this preview appear stuck in Connecting.
-                val playbackForSession = previewStates[session.sessionKey]
-                    ?: playback.forSession(session.sessionKey)
-                val error = playbackForSession as? TaskPreviewState.Error
-                val ended = playbackForSession as? TaskPreviewState.Ended
-                val currentPackage = backendDisplayRecords
-                    .firstOrNull { it.sessionKey == session.sessionKey }
-                    ?.packageName ?: session.packageName
-                val appLabel = currentPackage.applicationLabel(appPackageManager)
-                LiveDisplayPreviewState(
-                    status = when {
-                        error?.sessionKey == session.sessionKey -> LiveDisplayPreviewStatus.ERROR
-                        ended?.session?.sessionKey == session.sessionKey -> LiveDisplayPreviewStatus.UNAVAILABLE
-                        (playbackForSession as? TaskPreviewState.Attached)?.session == session ->
-                            LiveDisplayPreviewStatus.LIVE
-                        else -> LiveDisplayPreviewStatus.CONNECTING
-                    },
-                    message = error?.takeIf { it.sessionKey == session.sessionKey }?.message
-                        ?: ended?.takeIf { it.session.sessionKey == session.sessionKey }?.message,
-                    aspectRatio = session.geometry.width.toFloat() / session.geometry.height,
-                    appLabel = appLabel,
-                    sessionKey = session.sessionKey,
-                    runSessionKey = coordinatorSessionKey,
-                    pointerEvent = pointerEvent?.takeIf {
-                        it.sessionId == coordinatorSessionKey || it.sessionId == session.sessionKey
-                    },
+                livePreviewForRun(
+                    session = session,
+                    previewStates = previewStates,
+                    playback = playback,
+                    records = backendDisplayRecords,
+                    coordinatorSessionKey = coordinatorSessionKey,
+                    pointerEvent = pointerEvent,
                     purpose = purpose,
                     currentToolName = currentToolName,
+                    appLabelFor = { packageName -> packageName.applicationLabel(appPackageManager) },
                 )
             }
             val mappedRecords = backendDisplayRecords.map { record ->
@@ -185,52 +151,29 @@ class MainActivity : ComponentActivity() {
                     packageManager = appPackageManager,
                     currentToolName = currentToolName.takeIf { record.sessionKey == activeDisplayOwnerKey },
                 )
-            }.toMutableList()
+            }
             // A newly created session may be visible through activeSession a
             // frame before its durable registry record is published. Keep the
             // manager populated during that small handoff window.
-            displayForRun?.let { session ->
-                val currentPackage = backendDisplayRecords
-                    .firstOrNull { it.sessionKey == session.sessionKey }
-                    ?.packageName ?: session.packageName
-                val activeRecord = TaskDisplayUiRecord(
-                    sessionKey = session.sessionKey,
-                    taskId = session.taskId,
-                    packageName = currentPackage,
-                    appLabel = currentPackage.applicationLabel(appPackageManager),
-                    displayId = session.displayId,
-                    displayRef = taskDisplayReference(session.sessionKey, session.displayId),
-                    geometry = session.geometry,
-                    lifecycle = sessionState.toUiDisplayLifecycle(),
-                    currentPurpose = purpose,
-                    createdAtEpochMs = sessionState.startedAtEpochMsOrZero(),
+            val displayRecordsForUi = displayForRun?.let { session ->
+                val currentPackage = currentPackageForSession(session, backendDisplayRecords)
+                mergeActiveDisplayRecord(
+                    records = mappedRecords,
+                    activeRecord = activeDisplayUiRecord(
+                        session = session,
+                        currentPackage = currentPackage,
+                        appLabel = currentPackage.applicationLabel(appPackageManager),
+                        sessionState = sessionState,
+                        purpose = purpose,
+                        currentToolName = currentToolName,
+                        preview = preview,
+                    ),
+                    runIsActive = sessionState is SessionState.Running || sessionState is SessionState.Paused,
+                    purpose = purpose,
                     currentToolName = currentToolName,
-                    previewState = preview,
+                    preview = preview,
                 )
-                val index = mappedRecords.indexOfFirst { it.sessionKey == session.sessionKey }
-                if (index >= 0) {
-                    val persisted = mappedRecords[index]
-                    // The coordinator is authoritative while this run is
-                    // active. Once it reaches a terminal state, retain the
-                    // backend's precise completed/failed/stopped status and
-                    // purpose instead of replacing it with a generic state
-                    // from the UI process.
-                    val runIsActive = sessionState is com.phonecontrol.assistant.session.SessionState.Running ||
-                        sessionState is com.phonecontrol.assistant.session.SessionState.Paused
-                    mappedRecords[index] = if (runIsActive) {
-                        persisted.copy(
-                            lifecycle = activeRecord.lifecycle,
-                            currentPurpose = purpose ?: persisted.currentPurpose,
-                            currentToolName = currentToolName ?: persisted.currentToolName,
-                            previewState = preview ?: persisted.previewState,
-                        )
-                    } else {
-                        persisted.copy(previewState = preview ?: persisted.previewState)
-                    }
-                } else {
-                    mappedRecords += activeRecord
-                }
-            }
+            } ?: mappedRecords
             PhoneControlApp(
                 initialConversationId = initialConversationId,
                 initialRoute = intent.getStringExtra(EXTRA_OPEN_ROUTE),
@@ -244,7 +187,7 @@ class MainActivity : ComponentActivity() {
                     app.notificationVisibility.updateUi(mainConversationVisible, attentionVisible)
                 },
                 previewState = preview,
-                displayRecords = mappedRecords,
+                displayRecords = displayRecordsForUi,
                 onPreviewSurfaceAvailable = { surface ->
                     displayForRun?.let { app.attachTaskPreview(it, surface) }
                 },
@@ -581,6 +524,144 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+internal fun SessionState.displayPurpose(): String? = when (this) {
+    is SessionState.Running -> currentPurpose
+    is SessionState.Paused -> currentPurpose
+    is SessionState.Stopped -> reason
+    is SessionState.Completed -> "Task complete"
+    SessionState.Idle -> null
+}
+
+internal fun selectDisplayForRun(
+    resolvedDisplayForRun: TaskDisplaySession?,
+    activeDisplay: TaskDisplaySession?,
+    coordinatorSessionKey: String?,
+    sessionState: SessionState,
+): TaskDisplaySession? = resolvedDisplayForRun
+    ?: activeDisplay?.takeIf { it.sessionKey == coordinatorSessionKey }
+    // Continue creates a fresh coordinator run before the first
+    // tool has a chance to claim the retained display. Keep the
+    // previous backend session rendered during that handoff;
+    // this callback only attaches the read-only preview surface.
+    ?: activeDisplay?.takeIf {
+        (sessionState as? SessionState.Running)?.isContinuation == true
+    }
+
+internal fun latestToolNameForRun(events: List<ActivityEvent>, sessionKey: String?): String? =
+    sessionKey?.let {
+        events.asReversed()
+            .firstOrNull { event ->
+                event.sessionId == sessionKey && !event.toolName.isNullOrBlank() && !event.toolName.equals("dhd_close_display", ignoreCase = true) && !event.toolName.equals("close_display", ignoreCase = true)
+            }
+            ?.toolName
+    }
+
+internal fun currentPackageForSession(
+    session: TaskDisplaySession,
+    records: List<TaskDisplayRecord>,
+): String = records
+    .firstOrNull { it.sessionKey == session.sessionKey }
+    ?.packageName ?: session.packageName
+
+internal fun livePreviewForRun(
+    session: TaskDisplaySession,
+    previewStates: Map<String, TaskPreviewState>,
+    playback: TaskPreviewState,
+    records: List<TaskDisplayRecord>,
+    coordinatorSessionKey: String?,
+    pointerEvent: TaskPointerEvent?,
+    purpose: String?,
+    currentToolName: String?,
+    appLabelFor: (String) -> String?,
+): LiveDisplayPreviewState {
+    // The global preview state is retained for the legacy single
+    // viewer. Once a displayRef selects a retained display, use
+    // its per-session state so another display's decoder cannot
+    // make this preview appear stuck in Connecting.
+    val playbackForSession = previewStates[session.sessionKey]
+        ?: playback.forSession(session.sessionKey)
+    val error = playbackForSession as? TaskPreviewState.Error
+    val ended = playbackForSession as? TaskPreviewState.Ended
+    val currentPackage = currentPackageForSession(session, records)
+    val appLabel = appLabelFor(currentPackage)
+    return LiveDisplayPreviewState(
+        status = when {
+            error?.sessionKey == session.sessionKey -> LiveDisplayPreviewStatus.ERROR
+            ended?.session?.sessionKey == session.sessionKey -> LiveDisplayPreviewStatus.UNAVAILABLE
+            (playbackForSession as? TaskPreviewState.Attached)?.session == session ->
+                LiveDisplayPreviewStatus.LIVE
+            else -> LiveDisplayPreviewStatus.CONNECTING
+        },
+        message = error?.takeIf { it.sessionKey == session.sessionKey }?.message
+            ?: ended?.takeIf { it.session.sessionKey == session.sessionKey }?.message,
+        aspectRatio = session.geometry.width.toFloat() / session.geometry.height,
+        appLabel = appLabel,
+        sessionKey = session.sessionKey,
+        runSessionKey = coordinatorSessionKey,
+        pointerEvent = pointerEvent?.takeIf {
+            it.sessionId == coordinatorSessionKey || it.sessionId == session.sessionKey
+        },
+        purpose = purpose,
+        currentToolName = currentToolName,
+    )
+}
+
+internal fun activeDisplayUiRecord(
+    session: TaskDisplaySession,
+    currentPackage: String,
+    appLabel: String?,
+    sessionState: SessionState,
+    purpose: String?,
+    currentToolName: String?,
+    preview: LiveDisplayPreviewState?,
+): TaskDisplayUiRecord = TaskDisplayUiRecord(
+    sessionKey = session.sessionKey,
+    taskId = session.taskId,
+    packageName = currentPackage,
+    appLabel = appLabel,
+    displayId = session.displayId,
+    displayRef = taskDisplayReference(session.sessionKey, session.displayId),
+    geometry = session.geometry,
+    lifecycle = sessionState.toUiDisplayLifecycle(),
+    currentPurpose = purpose,
+    createdAtEpochMs = sessionState.startedAtEpochMsOrZero(),
+    currentToolName = currentToolName,
+    previewState = preview,
+)
+
+internal fun mergeActiveDisplayRecord(
+    records: List<TaskDisplayUiRecord>,
+    activeRecord: TaskDisplayUiRecord,
+    runIsActive: Boolean,
+    purpose: String?,
+    currentToolName: String?,
+    preview: LiveDisplayPreviewState?,
+): List<TaskDisplayUiRecord> {
+    val merged = records.toMutableList()
+    val index = merged.indexOfFirst { it.sessionKey == activeRecord.sessionKey }
+    if (index >= 0) {
+        val persisted = merged[index]
+        // The coordinator is authoritative while this run is
+        // active. Once it reaches a terminal state, retain the
+        // backend's precise completed/failed/stopped status and
+        // purpose instead of replacing it with a generic state
+        // from the UI process.
+        merged[index] = if (runIsActive) {
+            persisted.copy(
+                lifecycle = activeRecord.lifecycle,
+                currentPurpose = purpose ?: persisted.currentPurpose,
+                currentToolName = currentToolName ?: persisted.currentToolName,
+                previewState = preview ?: persisted.previewState,
+            )
+        } else {
+            persisted.copy(previewState = preview ?: persisted.previewState)
+        }
+    } else {
+        merged += activeRecord
+    }
+    return merged
+}
+
 private fun TaskDisplayRecord.toUiRecord(
     preview: TaskPreviewState?,
     packageManager: PackageManager,
@@ -609,7 +690,7 @@ private fun TaskDisplayRecord.toUiRecord(
     ),
 )
 
-private fun TaskPreviewState?.toUiPreview(
+internal fun TaskPreviewState?.toUiPreview(
     geometry: com.phonecontrol.assistant.execution.TaskDisplayGeometry,
     sessionKey: String,
     appLabel: String?,
@@ -658,7 +739,7 @@ private fun String.applicationLabel(packageManager: PackageManager): String? {
     }.getOrNull()
 }
 
-private fun TaskDisplayStatus.toUiLifecycle(): TaskDisplayLifecycle = when (this) {
+internal fun TaskDisplayStatus.toUiLifecycle(): TaskDisplayLifecycle = when (this) {
     TaskDisplayStatus.RUNNING -> TaskDisplayLifecycle.RUNNING
     TaskDisplayStatus.PAUSED -> TaskDisplayLifecycle.PAUSED
     TaskDisplayStatus.COMPLETED -> TaskDisplayLifecycle.COMPLETED
@@ -669,7 +750,7 @@ private fun TaskDisplayStatus.toUiLifecycle(): TaskDisplayLifecycle = when (this
     TaskDisplayStatus.EXPIRED -> TaskDisplayLifecycle.EXPIRED
 }
 
-private fun SessionState.toUiDisplayLifecycle(): TaskDisplayLifecycle = when (this) {
+internal fun SessionState.toUiDisplayLifecycle(): TaskDisplayLifecycle = when (this) {
     is SessionState.Running -> if (attentionReason != null) {
         TaskDisplayLifecycle.PAUSED
     } else {
@@ -681,13 +762,13 @@ private fun SessionState.toUiDisplayLifecycle(): TaskDisplayLifecycle = when (th
     SessionState.Idle -> TaskDisplayLifecycle.UNAVAILABLE
 }
 
-private fun SessionState.startedAtEpochMsOrZero(): Long = when (this) {
+internal fun SessionState.startedAtEpochMsOrZero(): Long = when (this) {
     is SessionState.Running -> startedAtEpochMs
     is SessionState.Paused -> startedAtEpochMs
     else -> 0L
 }
 
-private fun TaskPreviewState.forSession(sessionKey: String): TaskPreviewState? = when (this) {
+internal fun TaskPreviewState.forSession(sessionKey: String): TaskPreviewState? = when (this) {
     TaskPreviewState.Detached -> null
     is TaskPreviewState.Connecting -> takeIf { session.sessionKey == sessionKey }
     is TaskPreviewState.Attached -> takeIf { session.sessionKey == sessionKey }

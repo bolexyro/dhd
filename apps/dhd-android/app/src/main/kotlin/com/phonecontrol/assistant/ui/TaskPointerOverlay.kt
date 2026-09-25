@@ -269,7 +269,7 @@ private fun mapDisplayPoint(
     displayHeight: Int,
 ): Offset = normalizedPoint(x, y, displayWidth, displayHeight)
 
-private fun normalizedPoint(x: Int, y: Int, width: Int, height: Int): Offset = Offset(
+internal fun normalizedPoint(x: Int, y: Int, width: Int, height: Int): Offset = Offset(
     x = x.coerceIn(0, width - 1).toFloat() / width,
     y = y.coerceIn(0, height - 1).toFloat() / height,
 )

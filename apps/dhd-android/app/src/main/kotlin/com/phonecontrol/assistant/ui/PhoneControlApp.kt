@@ -150,7 +150,7 @@ enum class ThemeMode(val storageValue: String, val label: String) {
     }
 }
 
-private fun visibleReasoningEffortsFromStorage(value: String?): List<ReasoningEffort> {
+internal fun visibleReasoningEffortsFromStorage(value: String?): List<ReasoningEffort> {
     val storedValues = value
         ?.split(",")
         ?.map(String::trim)
@@ -160,6 +160,65 @@ private fun visibleReasoningEffortsFromStorage(value: String?): List<ReasoningEf
     val configured = ReasoningEffort.entries.filter { it.storageValue in storedValues }
     return configured.ifEmpty { ReasoningEffort.entries }
 }
+
+internal fun effectiveReasoningEffort(
+    storedValue: String?,
+    visibleEfforts: List<ReasoningEffort>,
+): ReasoningEffort = ReasoningEffort.fromStorage(storedValue).takeIf { it in visibleEfforts }
+    ?: visibleEfforts.first()
+
+internal fun supportedInitialRoute(initialRoute: String?): String? = when (initialRoute) {
+    AppRoutes.SETTINGS,
+    AppRoutes.TASK_DISPLAYS,
+    AppRoutes.PAIRING,
+    AppRoutes.APPROVED_APPS,
+    AppRoutes.COMPANION,
+    AppRoutes.PERMISSION_SETUP,
+    -> initialRoute
+    else -> null
+}
+
+internal fun displayRecordsWithPreviewFallback(
+    displayRecords: List<TaskDisplayUiRecord>,
+    previewState: LiveDisplayPreviewState?,
+): List<TaskDisplayUiRecord> =
+    // Until the backend exposes its registry, the active preview remains a
+    // valid single-record manager model. MainActivity can pass persisted and
+    // retained records later without changing the viewer contract.
+    displayRecords.ifEmpty {
+        previewState?.sessionKey?.let { key ->
+            listOf(
+                TaskDisplayUiRecord(
+                    sessionKey = key,
+                    lifecycle = TaskDisplayLifecycle.RUNNING,
+                    appLabel = previewState.appLabel,
+                    currentPurpose = previewState.purpose,
+                    currentToolName = previewState.currentToolName,
+                    previewState = previewState,
+                ),
+            )
+        }.orEmpty()
+    }
+
+internal fun viewerPreviewState(
+    viewerRecord: TaskDisplayUiRecord?,
+    previewState: LiveDisplayPreviewState?,
+): LiveDisplayPreviewState? = viewerRecord?.previewState
+    ?: previewState?.takeIf { it.sessionKey == viewerRecord?.sessionKey }
+    ?: viewerRecord?.let { record ->
+        val ratio = record.geometry?.let { geometry ->
+            geometry.width.toFloat() / geometry.height.toFloat()
+        } ?: DEFAULT_LIVE_DISPLAY_PREVIEW_ASPECT_RATIO
+        LiveDisplayPreviewState.unavailable(
+            message = record.error,
+            aspectRatio = ratio,
+            sessionKey = record.sessionKey,
+        ).copy(
+            appLabel = record.appLabel,
+            purpose = record.currentPurpose,
+            currentToolName = record.currentToolName,
+        )
+    }
 
 object AppRoutes {
     const val MAIN = "main"
@@ -241,9 +300,7 @@ fun PhoneControlApp(
     val visibleReasoningEfforts = visibleReasoningEffortsFromStorage(
         visibleReasoningEffortValues.joinToString(","),
     )
-    val storedReasoningEffort = ReasoningEffort.fromStorage(reasoningEffortValue)
-    val reasoningEffort = storedReasoningEffort.takeIf { it in visibleReasoningEfforts }
-        ?: visibleReasoningEfforts.first()
+    val reasoningEffort = effectiveReasoningEffort(reasoningEffortValue, visibleReasoningEfforts)
     LaunchedEffect(visibleReasoningEfforts, reasoningEffortValue) {
         if (reasoningEffortValue != reasoningEffort.storageValue) {
             reasoningEffortValue = reasoningEffort.storageValue
@@ -303,16 +360,7 @@ fun PhoneControlApp(
     DisposableEffect(Unit) {
         onDispose { onNotificationVisibilityChanged(false, false) }
     }
-    val initialNavigationRoute = when (initialRoute) {
-        AppRoutes.SETTINGS,
-        AppRoutes.TASK_DISPLAYS,
-        AppRoutes.PAIRING,
-        AppRoutes.APPROVED_APPS,
-        AppRoutes.COMPANION,
-        AppRoutes.PERMISSION_SETUP,
-        -> initialRoute
-        else -> null
-    }
+    val initialNavigationRoute = supportedInitialRoute(initialRoute)
     var viewerSessionKey by rememberSaveable { mutableStateOf<String?>(null) }
     var taskDisplaysSheetVisible by rememberSaveable { mutableStateOf(false) }
     val openTaskDisplays: () -> Unit = { taskDisplaysSheetVisible = true }
@@ -326,42 +374,11 @@ fun PhoneControlApp(
         }
     }
 
-    // Until the backend exposes its registry, the active preview remains a
-    // valid single-record manager model. MainActivity can pass persisted and
-    // retained records later without changing the viewer contract.
-    val visibleDisplayRecords = displayRecords.ifEmpty {
-        previewState?.sessionKey?.let { key ->
-            listOf(
-                TaskDisplayUiRecord(
-                    sessionKey = key,
-                    lifecycle = TaskDisplayLifecycle.RUNNING,
-                    appLabel = previewState.appLabel,
-                    currentPurpose = previewState.purpose,
-                    currentToolName = previewState.currentToolName,
-                    previewState = previewState,
-                ),
-            )
-        }.orEmpty()
-    }
+    val visibleDisplayRecords = displayRecordsWithPreviewFallback(displayRecords, previewState)
     val viewerRecord = viewerSessionKey?.let { key ->
         visibleDisplayRecords.firstOrNull { it.sessionKey == key }
     }
-    val viewerState = viewerRecord?.previewState
-        ?: previewState?.takeIf { it.sessionKey == viewerRecord?.sessionKey }
-        ?: viewerRecord?.let { record ->
-            val ratio = record.geometry?.let { geometry ->
-                geometry.width.toFloat() / geometry.height.toFloat()
-            } ?: DEFAULT_LIVE_DISPLAY_PREVIEW_ASPECT_RATIO
-            LiveDisplayPreviewState.unavailable(
-                message = record.error,
-                aspectRatio = ratio,
-                sessionKey = record.sessionKey,
-            ).copy(
-                appLabel = record.appLabel,
-                purpose = record.currentPurpose,
-                currentToolName = record.currentToolName,
-            )
-        }
+    val viewerState = viewerPreviewState(viewerRecord, previewState)
 
     val assistantColors = if (isDarkMode) DarkAssistantColors else LightAssistantColors
     val materialColors = if (isDarkMode) {
