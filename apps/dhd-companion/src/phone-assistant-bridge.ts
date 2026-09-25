@@ -1,4 +1,5 @@
 import net from "node:net";
+import { bridgeHostSetting, bridgePortSetting, bridgeTokenSetting } from "./config/env.js";
 
 export const DEFAULT_BRIDGE_HOST = "127.0.0.1";
 export const DEFAULT_BRIDGE_PORT = 8765;
@@ -30,9 +31,9 @@ export interface BridgeRequestOptions {
   token?: string;
 }
 
-export const bridgeHost = process.env.PHONE_ASSISTANT_BRIDGE_HOST?.trim() || DEFAULT_BRIDGE_HOST;
-export const bridgePort = parsePort(process.env.PHONE_ASSISTANT_BRIDGE_PORT ?? `${DEFAULT_BRIDGE_PORT}`);
-export const bridgeToken = process.env.PHONE_ASSISTANT_BRIDGE_TOKEN?.trim() || undefined;
+export const bridgeHost = bridgeHostSetting() ?? DEFAULT_BRIDGE_HOST;
+export const bridgePort = parsePort(bridgePortSetting() ?? `${DEFAULT_BRIDGE_PORT}`);
+export const bridgeToken = bridgeTokenSetting();
 
 const TERMINAL_MESSAGE_TYPES = new Set([
   "error",

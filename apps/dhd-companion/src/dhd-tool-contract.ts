@@ -3,8 +3,7 @@ import {
   STALE_OBSERVATION_GUIDANCE,
 } from "@dhd/screenshot-markers";
 
-export const GUARD_REGIONS_FEATURE_FLAG =
-  "PHONE_ASSISTANT_ENABLE_GUARD_REGIONS";
+export { GUARD_REGIONS_FEATURE_FLAG, isGuardRegionsEnabled } from "./config/env.js";
 
 export const DHD_MAX_SEQUENCE_ACTIONS = 16;
 export const DHD_MAX_TEXT_CHARS = 240;
@@ -22,16 +21,6 @@ export const DHD_ACTION_TYPES = {
   wait: "wait",
 } as const;
 export const DHD_KEYPRESS_KEYS = ["BACK", "HOME", "ENTER", "DELETE"] as const;
-
-const ENABLED_FEATURE_VALUES = new Set(["1", "true", "yes", "on"]);
-
-export function isGuardRegionsEnabled(
-  environment: NodeJS.ProcessEnv = process.env,
-): boolean {
-  return ENABLED_FEATURE_VALUES.has(
-    (environment[GUARD_REGIONS_FEATURE_FLAG] ?? "").trim().toLowerCase(),
-  );
-}
 
 export const DHD_TOOL_NAMES = [
   "dhd_list_allowed_apps",

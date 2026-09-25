@@ -5,8 +5,7 @@ import {
 } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import * as readline from "node:readline";
 
@@ -48,6 +47,17 @@ import {
 import { errorMessage, toError } from "./shared/errors.js";
 import { asRecord } from "./shared/guards.js";
 import { isMainModule } from "./shared/is-main-module.js";
+import {
+  codexBinSetting,
+  codexHomeDirectory,
+  codexModelSetting,
+  codexReasoningEffortSetting,
+  codexRuntimeDirectory,
+  isCodeModeHostDisabled,
+  isDebugTimingEnabled,
+  pollIntervalSetting,
+  windowsLocalAppDataDirectory,
+} from "./config/env.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -58,8 +68,6 @@ const STREAM_BRIDGE_TIMEOUT_MS = 5_000;
 const MAX_AGENT_FEEDBACK_CHARS = 4_000;
 const MAX_STEER_CHARS = 4_000;
 const DEFAULT_COMPLETION_MESSAGE = "Your DHD task is ready to review.";
-const DEFAULT_CODEX_HOME = join(homedir(), ".dhd", "codex-home");
-const DEFAULT_CODEX_RUNTIME_CWD = join(homedir(), ".dhd", "codex-runtime");
 const MINIMAL_CODEX_CONFIG_OVERRIDES = [
   "mcp_servers={}",
   "features.apps=false",
@@ -139,12 +147,6 @@ function logCompanionPhase(phase: string, details?: string): void {
   );
 }
 
-function debugTimingEnabled(): boolean {
-  return ["1", "true", "yes", "on"].includes(
-    (process.env.PHONE_ASSISTANT_DEBUG_TIMING ?? "").trim().toLowerCase(),
-  );
-}
-
 export interface DynamicToolCallResponse {
   contentItems: Array<
     | { type: "inputText"; text: string }
@@ -203,8 +205,8 @@ export class CodexAppServerClient {
   private startPromise: Promise<void> | null = null;
   private initialized = false;
   private loadedThreadIds = new Set<string>();
-  private readonly codexHome = resolveCodexHome();
-  private readonly runtimeCwd = resolveCodexRuntimeCwd();
+  private readonly codexHome = codexHomeDirectory();
+  private readonly runtimeCwd = codexRuntimeDirectory();
   private turnCompletion: {
     resolve: (result: TurnResult) => void;
     reject: (error: Error) => void;
@@ -529,10 +531,7 @@ export class CodexAppServerClient {
     // fail closed with `code-mode host is disabled`. An explicit `false` is
     // still useful for diagnostics or environments that provide their own
     // tool-routing policy.
-    if (
-      process.env.PHONE_ASSISTANT_ENABLE_CODE_MODE_HOST?.trim().toLowerCase() ===
-      "false"
-    ) {
+    if (isCodeModeHostDisabled()) {
       args.push("--disable", "code_mode_host");
     } else {
       args.push("--enable", "code_mode_host");
@@ -1614,7 +1613,7 @@ async function maintainCompanionHeartbeat(
 export async function runAssistantCompanion(
   codexClient = new CodexAppServerClient(),
 ): Promise<void> {
-  const pollIntervalMs = parsePollInterval(process.env.PHONE_ASSISTANT_POLL_MS);
+  const pollIntervalMs = parsePollInterval(pollIntervalSetting());
   let stopping = false;
   let pendingRun: Promise<void> | null = null;
   const stop = () => {
@@ -1675,14 +1674,14 @@ export async function runAssistantCompanion(
     scheduleCodexWarmup("codex-prewarm");
     while (!stopping) {
       const pollStartedAt = performance.now();
-      if (debugTimingEnabled()) logCompanionPhase("poll:start");
+      if (isDebugTimingEnabled()) logCompanionPhase("poll:start");
       try {
         if (!pendingRun && !activeCodexTurn) {
           const pending = await requestBridge(
             { type: "pending_request", requestId: randomUUID() },
             { timeoutMs: BRIDGE_POLL_TIMEOUT_MS },
           );
-          if (debugTimingEnabled()) {
+          if (isDebugTimingEnabled()) {
             logCompanionPhase(
               "poll:complete",
               `durationMs=${Math.round(performance.now() - pollStartedAt)} available=${pending.available === true}`,
@@ -2284,11 +2283,10 @@ export function extractTurnError(value: unknown): string {
 }
 
 export function resolveCodexBin(): string {
-  const configured = process.env.PHONE_ASSISTANT_CODEX_BIN?.trim();
+  const configured = codexBinSetting();
   if (configured) return configured;
   if (process.platform === "win32") {
-    const localAppData = process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local");
-    const binDirectory = join(localAppData, "OpenAI", "Codex", "bin");
+    const binDirectory = join(windowsLocalAppDataDirectory(), "OpenAI", "Codex", "bin");
     try {
       const installed = readdirSync(binDirectory, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
@@ -2354,16 +2352,6 @@ export function extractCompanionPlanUpdatedEvent(
   };
 }
 
-function resolveCodexHome(): string {
-  const configured = process.env.PHONE_ASSISTANT_CODEX_HOME?.trim();
-  return configured ? resolve(configured) : DEFAULT_CODEX_HOME;
-}
-
-function resolveCodexRuntimeCwd(): string {
-  const configured = process.env.PHONE_ASSISTANT_CODEX_CWD?.trim();
-  return configured ? resolve(configured) : DEFAULT_CODEX_RUNTIME_CWD;
-}
-
 /**
  * Codex merges table-valued `-c` overrides with the selected home config.
  * Explicitly disable each MCP server configured in that same home as well as
@@ -2399,13 +2387,11 @@ export function parsePollInterval(value: string | undefined): number {
 }
 
 function resolveCodexModel(): string {
-  return process.env.PHONE_ASSISTANT_CODEX_MODEL?.trim() || DEFAULT_CODEX_MODEL;
+  return codexModelSetting() ?? DEFAULT_CODEX_MODEL;
 }
 
 function resolveCodexEffort(): string {
-  return normalizeCodexEffort(
-    process.env.PHONE_ASSISTANT_CODEX_REASONING_EFFORT,
-  );
+  return normalizeCodexEffort(codexReasoningEffortSetting());
 }
 
 export function normalizeCodexEffort(value: string | undefined): string {

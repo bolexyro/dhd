@@ -2,6 +2,7 @@ import net from "node:net";
 import { randomUUID } from "node:crypto";
 import { errorMessage } from "./shared/errors.js";
 import { isMainModule } from "./shared/is-main-module.js";
+import { bridgeTokenSetting } from "./config/env.js";
 
 interface DemoOptions {
   host: string;
@@ -118,7 +119,7 @@ function parseOptions(argv: readonly string[]): DemoOptions {
 
   const host = values.get("host") ?? "127.0.0.1";
   const port = parseInteger(values.get("port") ?? "8765", "port");
-  const token = values.get("token")?.trim() || process.env.PHONE_ASSISTANT_BRIDGE_TOKEN?.trim() || undefined;
+  const token = values.get("token")?.trim() || bridgeTokenSetting();
   const packageName = values.get("package") ?? "com.phonecontrol.coordinatebenchmark";
   if (!/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+$/.test(packageName)) {
     throw new Error(`Invalid Android package name: ${packageName}.`);

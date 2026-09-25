@@ -3,8 +3,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, watch } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import http from "node:http";
-import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
@@ -48,6 +47,14 @@ import type {
 import { errorMessage, toError } from "../shared/errors.js";
 import { isPlainRecord, isRecord } from "../shared/guards.js";
 import { isMainModule } from "../shared/is-main-module.js";
+import {
+  bridgeHostSetting,
+  bridgePortSetting,
+  bridgeTokenSetting,
+  companionSettingsPath,
+  dashboardHostSetting,
+  dashboardPortSetting,
+} from "../config/env.js";
 
 export interface ConnectionConfig {
   host: string;
@@ -115,7 +122,7 @@ const sseClients = new Set<http.ServerResponse>();
 
 function readEnvPort(): number {
   try {
-    return parsePort(process.env.PHONE_ASSISTANT_BRIDGE_PORT ?? `${DEFAULT_BRIDGE_PORT}`);
+    return parsePort(bridgePortSetting() ?? `${DEFAULT_BRIDGE_PORT}`);
   } catch {
     return DEFAULT_BRIDGE_PORT;
   }
@@ -123,17 +130,13 @@ function readEnvPort(): number {
 
 function initialConnection(): ConnectionConfig {
   return {
-    host: process.env.PHONE_ASSISTANT_BRIDGE_HOST?.trim() || DEFAULT_BRIDGE_HOST,
+    host: bridgeHostSetting() ?? DEFAULT_BRIDGE_HOST,
     port: readEnvPort(),
-    token: process.env.PHONE_ASSISTANT_BRIDGE_TOKEN?.trim() || ""
+    token: bridgeTokenSetting() ?? ""
   };
 }
 
-function settingsPath(): string {
-  return join(homedir(), ".dhd", "companion-connection.json");
-}
-
-export async function loadConnection(path = settingsPath()): Promise<ConnectionConfig> {
+export async function loadConnection(path = companionSettingsPath()): Promise<ConnectionConfig> {
   const defaults = initialConnection();
   let stored: StoredConnectionSettings = {};
   try {
@@ -157,13 +160,13 @@ export async function loadConnection(path = settingsPath()): Promise<ConnectionC
     // or unpaired configurations.
     host: hasStoredPairing
       ? stored.host?.trim() || DEFAULT_BRIDGE_HOST
-      : process.env.PHONE_ASSISTANT_BRIDGE_HOST?.trim() || stored.host?.trim() || defaults.host,
+      : bridgeHostSetting() || stored.host?.trim() || defaults.host,
     port: hasStoredPairing
       ? port
-      : process.env.PHONE_ASSISTANT_BRIDGE_PORT ? defaults.port : port,
+      : bridgePortSetting() ? defaults.port : port,
     token: hasStoredPairing
       ? stored.token?.trim() || ""
-      : process.env.PHONE_ASSISTANT_BRIDGE_TOKEN?.trim() || stored.token?.trim() || "",
+      : bridgeTokenSetting() || stored.token?.trim() || "",
     ...(stored.deviceId ? { deviceId: stored.deviceId.trim() } : {})
   };
 }
@@ -175,8 +178,8 @@ async function saveConnection(): Promise<void> {
     token: connection.token,
     ...(connection.deviceId ? { deviceId: connection.deviceId } : {})
   };
-  await mkdir(dirname(settingsPath()), { recursive: true });
-  await writeFile(settingsPath(), `${JSON.stringify(stored, null, 2)}\n`, {
+  await mkdir(dirname(companionSettingsPath()), { recursive: true });
+  await writeFile(companionSettingsPath(), `${JSON.stringify(stored, null, 2)}\n`, {
     encoding: "utf8",
     mode: 0o600
   });
@@ -1495,8 +1498,8 @@ function shutdownDashboard(exitCode: number): void {
 }
 
 if (isMainModule("server")) {
-  const port = Number(process.env.COMPANION_PORT || DEFAULT_WEB_PORT);
-  const host = process.env.COMPANION_HOST || DEFAULT_WEB_HOST;
+  const port = Number(dashboardPortSetting() || DEFAULT_WEB_PORT);
+  const host = dashboardHostSetting() || DEFAULT_WEB_HOST;
   process.once("SIGINT", () => shutdownDashboard(0));
   process.once("SIGTERM", () => shutdownDashboard(0));
   startCompanionWebServer(port, host).catch((err) => {
