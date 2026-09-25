@@ -1,43 +1,37 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CodexAppServerClient } from "../src/assistant-companion.js";
+import { JsonRpcFailure, startFakeAppServer, type FakeAppServer } from "./support/fake-app-server.js";
+
+let server: FakeAppServer;
+let client: CodexAppServerClient;
+
+beforeEach(() => {
+  server = startFakeAppServer();
+  client = new CodexAppServerClient({ spawnAppServer: server.spawn });
+  server.handle("turn/start", () => {
+    queueMicrotask(() => server.notify("turn/completed", { turn: { status: "completed" } }));
+    return { turn: { id: "turn-fresh" } };
+  });
+});
+
+afterEach(async () => {
+  await client.close();
+  vi.unstubAllEnvs();
+});
 
 describe("DHD App Server thread contract", () => {
   it("resumes a stored thread on a new client", async () => {
-    const client = new CodexAppServerClient();
-    const internals = client as any;
-    const requests: Array<{ method: string; params?: Record<string, unknown> }> = [];
+    server.handle("thread/resume", () => ({ thread: { id: "legacy-thread" } }));
 
-    internals.startProcess = () => {
-      internals.child = { pid: 1234, stdin: { destroyed: false } };
-    };
-    internals.notify = () => undefined;
-    internals.request = async (method: string, params?: Record<string, unknown>) => {
-      requests.push({ method, params });
-      if (method === "initialize") return { result: {} };
-      if (method === "thread/resume") return { result: { thread: { id: "legacy-thread" } } };
-      if (method === "turn/start") {
-        queueMicrotask(() => {
-          internals.handleLine(JSON.stringify({
-            method: "turn/completed",
-            params: { turn: { status: "completed" } }
-          }));
-        });
-        return { result: { turn: { id: "turn-fresh" } } };
-      }
-      throw new Error(`Unexpected App Server request in test: ${method}`);
-    };
+    await expect(
+      client.runTurn("use the phone", "legacy-thread", undefined, undefined, "xhigh", true),
+    ).resolves.toMatchObject({ threadId: "legacy-thread" });
 
-    await expect(client.runTurn("use the phone", "legacy-thread", undefined, undefined, "xhigh", true)).resolves.toMatchObject({
-      threadId: "legacy-thread"
-    });
-
-    expect(requests.map(({ method }) => method)).toEqual([
-      "initialize",
-      "thread/resume",
-      "turn/start"
-    ]);
-    const dynamicTools = requests[1]?.params?.dynamicTools as Array<Record<string, unknown>>;
+    expect(server.methods()).toEqual(["initialize", "thread/resume", "turn/start"]);
+    const resume = server.requests("thread/resume")[0].params ?? {};
+    expect(resume.threadId).toBe("legacy-thread");
+    const dynamicTools = resume.dynamicTools as Array<Record<string, unknown>>;
     expect(dynamicTools.map((tool) => tool.name)).toEqual([
       "dhd_list_allowed_apps",
       "dhd_browse_app",
@@ -51,36 +45,15 @@ describe("DHD App Server thread contract", () => {
       "dhd_execute_sequence",
       "dhd_request_attention"
     ]);
-    expect(requests.find(({ method }) => method === "turn/start")?.params?.effort).toBe("xhigh");
-    expect(requests.find(({ method }) => method === "turn/start")?.params?.serviceTier).toBe("priority");
+    const turnStart = server.requests("turn/start")[0].params ?? {};
+    expect(turnStart.effort).toBe("xhigh");
+    expect(turnStart.serviceTier).toBe("priority");
   });
 
   it("starts a fresh thread only after stored-thread resume fails", async () => {
-    const client = new CodexAppServerClient();
-    const internals = client as any;
-    const requests: string[] = [];
-
-    internals.startProcess = () => {
-      internals.child = { pid: 1234, stdin: { destroyed: false } };
-    };
-    internals.notify = () => undefined;
+    server.handle("thread/resume", () => new JsonRpcFailure({ message: "thread was deleted" }));
+    server.handle("thread/start", () => ({ thread: { id: "fresh-thread" } }));
     const readyThreadIds: string[] = [];
-    internals.request = async (method: string) => {
-      requests.push(method);
-      if (method === "initialize") return { result: {} };
-      if (method === "thread/resume") throw new Error("thread was deleted");
-      if (method === "thread/start") return { result: { thread: { id: "fresh-thread" } } };
-      if (method === "turn/start") {
-        queueMicrotask(() => {
-          internals.handleLine(JSON.stringify({
-            method: "turn/completed",
-            params: { turn: { status: "completed" } }
-          }));
-        });
-        return { result: { turn: { id: "turn-fresh" } } };
-      }
-      throw new Error(`Unexpected App Server request in test: ${method}`);
-    };
 
     await expect(
       client.runTurn(
@@ -99,7 +72,7 @@ describe("DHD App Server thread contract", () => {
       threadId: "fresh-thread",
     });
 
-    expect(requests).toEqual([
+    expect(server.methods()).toEqual([
       "initialize",
       "thread/resume",
       "thread/start",
@@ -109,29 +82,7 @@ describe("DHD App Server thread contract", () => {
   });
 
   it("starts a continuation turn with hidden continue input", async () => {
-    const client = new CodexAppServerClient();
-    const internals = client as any;
-    const requests: Array<{ method: string; params?: Record<string, unknown> }> = [];
-
-    internals.startProcess = () => {
-      internals.child = { pid: 1234, stdin: { destroyed: false } };
-    };
-    internals.notify = () => undefined;
-    internals.request = async (method: string, params?: Record<string, unknown>) => {
-      requests.push({ method, params });
-      if (method === "initialize") return { result: {} };
-      if (method === "thread/resume") return { result: { thread: { id: "stopped-thread" } } };
-      if (method === "turn/start") {
-        queueMicrotask(() => {
-          internals.handleLine(JSON.stringify({
-            method: "turn/completed",
-            params: { turn: { status: "completed" } }
-          }));
-        });
-        return { result: { turn: { id: "continuation-turn" } } };
-      }
-      throw new Error(`Unexpected App Server request in test: ${method}`);
-    };
+    server.handle("thread/resume", () => ({ thread: { id: "stopped-thread" } }));
 
     await expect(
       client.runTurn(
@@ -149,7 +100,7 @@ describe("DHD App Server thread contract", () => {
       threadId: "stopped-thread",
     });
 
-    expect(requests.find(({ method }) => method === "turn/start")?.params?.input).toEqual([
+    expect(server.requests("turn/start")[0].params?.input).toEqual([
       { type: "text", text: "continue" },
     ]);
   });

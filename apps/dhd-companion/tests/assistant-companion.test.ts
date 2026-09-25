@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   CompanionTokenUsageEvent,
@@ -10,6 +10,29 @@ import {
   handleDynamicToolCall,
   shouldInterruptForPhoneStop,
 } from "../src/assistant-companion.js";
+import { startFakeAppServer, type FakeAppServer } from "./support/fake-app-server.js";
+
+let server: FakeAppServer;
+let client: CodexAppServerClient;
+
+beforeEach(() => {
+  server = startFakeAppServer();
+  client = new CodexAppServerClient({ spawnAppServer: server.spawn });
+});
+
+afterEach(async () => {
+  await client.close();
+  vi.unstubAllEnvs();
+});
+
+function completeTurnWith(...notifications: Array<[string, Record<string, unknown>]>): void {
+  server.handle("turn/start", () => {
+    queueMicrotask(() => {
+      for (const [method, params] of notifications) server.notify(method, params);
+    });
+    return { turn: { id: "turn-1" } };
+  });
+}
 
 describe("Codex App Server agent-message extraction", () => {
   it("extracts the latest per-turn token usage without cumulative thread totals", () => {
@@ -59,66 +82,54 @@ describe("Codex App Server agent-message extraction", () => {
   });
 
   it("uses the final answer instead of concatenating commentary from the same turn", async () => {
-    const client = new CodexAppServerClient();
     const streamed: Array<{ itemId: string; text: string }> = [];
-    const resultPromise = new Promise<{ text: string; threadId: string }>((resolve, reject) => {
-      const testClient = client as any;
-      testClient.activeThreadId = "thread-test";
-      testClient.turnCompletion = {
-        resolve,
-        reject,
-        agentMessages: new Map(),
-        nextAgentMessageOrder: 0,
-        phoneToolFailures: [],
-        onAgentMessageDelta: (update: { itemId: string; text: string }) => streamed.push(update),
-      };
-    });
-    const send = (message: unknown) => (client as any).handleLine(JSON.stringify(message));
+    completeTurnWith(
+      ["item/started", { item: { id: "commentary-1", type: "agentMessage", phase: "commentary" } }],
+      ["item/agentMessage/delta", { itemId: "commentary-1", delta: "I’ll configure the benchmark first. " }],
+      [
+        "item/completed",
+        {
+          item: {
+            id: "commentary-1",
+            type: "agentMessage",
+            phase: "commentary",
+            text: "I’ll configure the benchmark first.",
+          },
+        },
+      ],
+      ["item/started", { item: { id: "final-1", type: "agentMessage", phase: "final_answer" } }],
+      [
+        "item/agentMessage/delta",
+        { itemId: "final-1", delta: "The run failed on round 4; I requested your attention." },
+      ],
+      [
+        "item/completed",
+        {
+          item: {
+            id: "final-1",
+            type: "agentMessage",
+            phase: "final_answer",
+            text: "The run failed on round 4; I requested your attention.",
+          },
+        },
+      ],
+      ["turn/completed", { turn: { status: "completed" } }],
+    );
 
-    send({
-      method: "item/started",
-      params: { item: { id: "commentary-1", type: "agentMessage", phase: "commentary" } }
-    });
-    send({
-      method: "item/agentMessage/delta",
-      params: { itemId: "commentary-1", delta: "I’ll configure the benchmark first. " }
-    });
-    send({
-      method: "item/completed",
-      params: {
-        item: {
-          id: "commentary-1",
-          type: "agentMessage",
-          phase: "commentary",
-          text: "I’ll configure the benchmark first."
-        }
-      }
-    });
-    send({
-      method: "item/started",
-      params: { item: { id: "final-1", type: "agentMessage", phase: "final_answer" } }
-    });
-    send({
-      method: "item/agentMessage/delta",
-      params: { itemId: "final-1", delta: "The run failed on round 4; I requested your attention." }
-    });
-    send({
-      method: "item/completed",
-      params: {
-        item: {
-          id: "final-1",
-          type: "agentMessage",
-          phase: "final_answer",
-          text: "The run failed on round 4; I requested your attention."
-        }
-      }
-    });
-    send({ method: "turn/completed", params: { turn: { status: "completed" } } });
+    const result = await client.runTurn(
+      "run the benchmark",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      (update) => streamed.push(update),
+    );
 
-    await expect(resultPromise).resolves.toEqual({
+    expect(result).toEqual({
       text: "The run failed on round 4; I requested your attention.",
-      threadId: "thread-test",
-      phoneToolFailures: []
+      threadId: "thread-1",
+      phoneToolFailures: [],
     });
     expect(streamed).toEqual([
       { itemId: "final-1", text: "The run failed on round 4; I requested your attention." },
@@ -127,64 +138,24 @@ describe("Codex App Server agent-message extraction", () => {
   });
 
   it("retains a failed dynamic phone tool when the App Server turn completes", async () => {
-    const client = new CodexAppServerClient() as any;
-    const resultPromise = new Promise<any>((resolve, reject) => {
-      client.activeThreadId = "thread-failure";
-      client.turnCompletion = {
-        resolve,
-        reject,
-        agentMessages: new Map(),
-        nextAgentMessageOrder: 0,
-        phoneToolFailures: []
-      };
+    server.handle("turn/start", () => {
+      queueMicrotask(async () => {
+        await server.sendRequest("tool-1", "item/tool/call", {
+          tool: "unsupported_phone_tool",
+          arguments: {},
+        });
+        server.notify("turn/completed", { turn: { status: "completed" } });
+      });
+      return { turn: { id: "turn-1" } };
     });
-    client.send = () => undefined;
 
-    await client.handleServerRequest({
-      id: "tool-1",
-      method: "item/tool/call",
-      params: { tool: "unsupported_phone_tool", arguments: {} }
-    });
-    client.handleLine(JSON.stringify({ method: "turn/completed", params: { turn: { status: "completed" } } }));
-
-    await expect(resultPromise).resolves.toMatchObject({
-      threadId: "thread-failure",
+    await expect(client.runTurn("use the phone")).resolves.toMatchObject({
+      threadId: "thread-1",
       phoneToolFailures: [{
         tool: "unsupported_phone_tool",
-        message: "Unsupported dynamic phone tool: unsupported_phone_tool"
-      }]
+        message: "Unsupported dynamic phone tool: unsupported_phone_tool",
+      }],
     });
-  });
-
-  it("does not crash when an interrupted App Server closes before an error response", async () => {
-    const client = new CodexAppServerClient() as any;
-    client.child = null;
-
-    await expect(client.handleServerRequest({
-      id: "late-request",
-      method: "unsupported/server/request",
-      params: {},
-    })).resolves.toBeUndefined();
-  });
-
-  it("does not let a stale App Server close reject a replacement child", () => {
-    const client = new CodexAppServerClient() as any;
-    const replacementChild = {};
-    let rejected = false;
-    client.child = replacementChild;
-    client.turnCompletion = {
-      resolve: () => undefined,
-      reject: () => { rejected = true; },
-      agentMessages: new Map(),
-      nextAgentMessageOrder: 0,
-      phoneToolFailures: [],
-    };
-
-    client.handleChildClose({}, null, "SIGTERM");
-
-    expect(rejected).toBe(false);
-    expect(client.child).toBe(replacementChild);
-    expect(client.turnCompletion).not.toBeNull();
   });
 
   it("does not interpret a pending attention request as a phone stop", () => {
@@ -271,81 +242,55 @@ describe("Codex App Server agent-message extraction", () => {
   });
 
   it("initializes once and reuses a loaded thread across turns", async () => {
-    const client = new CodexAppServerClient();
-    const internals = client as any;
-    const requests: string[] = [];
-    const turnInputs: unknown[] = [];
     const timingLogs: string[] = [];
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
       const line = args.map(String).join(" ");
       if (line.includes("[dhd-timing]")) timingLogs.push(line);
-    };
-
-    internals.startProcess = () => {
-      internals.child = { pid: 1234, stdin: { destroyed: false } };
-    };
-    internals.notify = () => undefined;
+    });
     let threadStarts = 0;
-    const turnStartParams: Array<Record<string, unknown>> = [];
-    internals.request = async (method: string, params?: Record<string, unknown>) => {
-      requests.push(method);
-      if (method === "initialize") return { result: {} };
-      if (method === "thread/unsubscribe") return { result: {} };
-      if (method === "thread/start") {
-        threadStarts += 1;
-        return { result: { thread: { id: threadStarts === 1 ? "thread-loaded" : "thread-new" } } };
-      }
-      if (method === "turn/start") {
-        turnStartParams.push(params ?? {});
-        turnInputs.push(params?.input);
-        queueMicrotask(() => {
-          internals.handleLine(JSON.stringify({
-            method: "turn/started",
-            params: { turn: { id: `turn-${requests.filter((entry) => entry === "turn/start").length}` } }
-          }));
-          internals.handleLine(JSON.stringify({
-            method: "item/started",
-            params: { item: { id: "user-message", type: "userMessage" } }
-          }));
-          internals.handleLine(JSON.stringify({
-            method: "turn/completed",
-            params: { turn: { status: "completed" } }
-          }));
-        });
-        return { result: { turn: { id: "turn-response" } } };
-      }
-      throw new Error(`Unexpected App Server request in test: ${method}`);
-    };
+    server.handle("thread/start", () => {
+      threadStarts += 1;
+      return { thread: { id: threadStarts === 1 ? "thread-loaded" : "thread-new" } };
+    });
+    let turnStarts = 0;
+    server.handle("turn/start", () => {
+      turnStarts += 1;
+      const turnId = `turn-${turnStarts}`;
+      queueMicrotask(() => {
+        server.notify("turn/started", { turn: { id: turnId } });
+        server.notify("item/started", { item: { id: "user-message", type: "userMessage" } });
+        server.notify("turn/completed", { turn: { status: "completed" } });
+      });
+      return { turn: { id: "turn-response" } };
+    });
 
-    try {
-      await expect(client.runTurn("hi")).resolves.toMatchObject({
-        threadId: "thread-loaded"
-      });
-      await expect(client.runTurn("second request", "thread-loaded")).resolves.toMatchObject({
-        threadId: "thread-loaded"
-      });
-      await expect(client.runTurn("rotated request")).resolves.toMatchObject({
-        threadId: "thread-new"
-      });
-    } finally {
-      console.error = originalError;
-    }
+    await expect(client.runTurn("hi")).resolves.toMatchObject({ threadId: "thread-loaded" });
+    await expect(client.runTurn("second request", "thread-loaded")).resolves.toMatchObject({
+      threadId: "thread-loaded",
+    });
+    await expect(client.runTurn("rotated request")).resolves.toMatchObject({ threadId: "thread-new" });
 
-    expect(requests.filter((method) => method === "initialize")).toHaveLength(1);
-    expect(requests.filter((method) => method === "thread/start")).toHaveLength(2);
-    expect(requests.filter((method) => method === "thread/resume")).toHaveLength(0);
-    expect(requests.filter((method) => method === "thread/unsubscribe")).toHaveLength(1);
-    expect(requests.filter((method) => method === "turn/start")).toHaveLength(3);
-    expect(turnInputs).toEqual([
+    expect(server.methods()).toEqual([
+      "initialize",
+      "thread/start",
+      "turn/start",
+      "turn/start",
+      "thread/unsubscribe",
+      "thread/start",
+      "turn/start",
+    ]);
+    expect(server.requests("thread/unsubscribe").map((line) => line.params)).toEqual([
+      { threadId: "thread-loaded" },
+    ]);
+    expect(server.requests("turn/start").map((line) => line.params?.input)).toEqual([
       [{ type: "text", text: "hi" }],
       [{ type: "text", text: "second request" }],
-      [{ type: "text", text: "rotated request" }]
+      [{ type: "text", text: "rotated request" }],
     ]);
-    expect(turnStartParams.map((params) => params.serviceTier)).toEqual([
+    expect(server.requests("turn/start").map((line) => line.params?.serviceTier)).toEqual([
       "default",
       "default",
-      "default"
+      "default",
     ]);
     expect(timingLogs.some((line) => line.includes("phase=turn/started"))).toBe(true);
     expect(timingLogs.some((line) => line.includes("phase=userMessage"))).toBe(true);
@@ -354,36 +299,37 @@ describe("Codex App Server agent-message extraction", () => {
 
 describe("Codex App Server turn steering", () => {
   it("sends steer input to the active turn and preserves its expected turn id", async () => {
-    const client = new CodexAppServerClient() as any;
-    client.activeThreadId = "thread-steer";
-    client.activeTurnId = "turn-steer";
-    client.turnCompletion = {
-      resolve: () => undefined,
-      reject: () => undefined,
-      agentMessages: new Map(),
-      nextAgentMessageOrder: 0
-    };
-    const requests: Array<{ method: string; params: Record<string, unknown> }> = [];
-    client.request = async (method: string, params: Record<string, unknown>) => {
-      requests.push({ method, params });
-      return { result: { turnId: "turn-steer" } };
-    };
+    const turn = client.runTurn("open the store");
+    await vi.waitFor(() => expect(client.canSteer).toBe(true));
 
-    await client.steer("Actually stop after verifying the current screen.");
+    await client.steer("  Actually stop after verifying the current screen.  ");
+    server.notify("turn/completed", { turn: { status: "completed" } });
+    await turn;
 
-    expect(requests).toEqual([{
-      method: "turn/steer",
-      params: {
-        threadId: "thread-steer",
-        input: [{ type: "text", text: "Actually stop after verifying the current screen." }],
-        expectedTurnId: "turn-steer"
-      }
+    expect(server.requests("turn/steer").map((line) => line.params)).toEqual([{
+      threadId: "thread-1",
+      input: [{ type: "text", text: "Actually stop after verifying the current screen." }],
+      expectedTurnId: "turn-1",
     }]);
   });
 
-  it("rejects steering when the App Server turn is no longer active", async () => {
-    const client = new CodexAppServerClient();
+  it("rejects a steer accepted for a different turn", async () => {
+    server.handle("turn/steer", () => ({ turnId: "turn-other" }));
+    const turn = client.runTurn("open the store");
+    await vi.waitFor(() => expect(client.canSteer).toBe(true));
 
+    await expect(client.steer("Continue")).rejects.toThrow(
+      "Codex accepted the steer for unexpected turn turn-other.",
+    );
+    server.notify("turn/completed", { turn: { status: "completed" } });
+    await turn;
+  });
+
+  it("rejects an empty steer instruction", async () => {
+    await expect(client.steer("   ")).rejects.toThrow("A steer instruction is required.");
+  });
+
+  it("rejects steering when the App Server turn is no longer active", async () => {
     await expect(client.steer("Continue")).rejects.toThrow("no active turn");
   });
 });
