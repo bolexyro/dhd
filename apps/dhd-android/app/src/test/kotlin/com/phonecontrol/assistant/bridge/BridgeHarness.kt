@@ -339,7 +339,7 @@ internal class BridgeHarness(
         phoneAccessReadyProvider = { phoneAccessAvailable },
     )
 
-    val server = DevBridgeServer(
+    val server = CompanionBridgeServer(
         platform = platform,
         coordinator = coordinator,
         observationProvider = observations,

@@ -341,8 +341,8 @@ fun PhoneControlApp(
     val permissions = container.appPermissionRepository
     val developerModeController = container.phoneAccessController
     val developerStatus by developerModeController.status.collectAsState()
-    val companionConnected by container.devBridgeServer.companionConnected.collectAsState()
-    val pendingCompanionPairing by container.devBridgeServer.pendingCompanionPairing.collectAsState()
+    val companionConnected by container.companionBridgeServer.companionConnected.collectAsState()
+    val pendingCompanionPairing by container.companionBridgeServer.pendingCompanionPairing.collectAsState()
     val apps = remember { InstalledAppsRepository(context).listLaunchableUserApps() }
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -556,7 +556,7 @@ fun PhoneControlApp(
 
                 CompanionPairingApprovalDialog(
                     pending = pendingCompanionPairing,
-                    bridgeServer = container.devBridgeServer,
+                    bridgeServer = container.companionBridgeServer,
                 )
 
                 LaunchedEffect(initialNavigationRoute) {

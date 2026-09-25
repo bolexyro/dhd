@@ -47,7 +47,7 @@ class AssistantForegroundService : Service() {
             coordinator = coordinator,
             visibilityGate = overlayVisibilityGate,
             developerStatus = container.phoneAccessController.status,
-            companionConnected = container.devBridgeServer.companionConnected,
+            companionConnected = container.companionBridgeServer.companionConnected,
             taskPreviewState = container.taskDisplayBackend.previewState,
             taskDisplaySession = container.taskDisplayBackend.activeSession,
             onTaskPreviewSurfaceAvailable = { session, surface ->

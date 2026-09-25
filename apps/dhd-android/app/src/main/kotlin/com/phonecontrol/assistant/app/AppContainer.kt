@@ -9,7 +9,7 @@ import com.phonecontrol.assistant.adb.PhoneAccessController
 import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledAppsRepository
 import com.phonecontrol.assistant.bridge.AndroidBridgePlatform
-import com.phonecontrol.assistant.bridge.DevBridgeServer
+import com.phonecontrol.assistant.bridge.CompanionBridgeServer
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.data.ConversationRepository
 import com.phonecontrol.assistant.data.ConversationStore
@@ -104,7 +104,7 @@ class AppContainer(context: Context) {
     // The bridge accepts paired LAN connections for the development
     // companion. adb forwarding remains compatible because forwarded
     // clients arrive as loopback and bypass the LAN token check.
-    val devBridgeServer = DevBridgeServer(
+    val companionBridgeServer = CompanionBridgeServer(
         platform = AndroidBridgePlatform(
             context = context,
             preferencesName = BridgeCredentials.PREFERENCES_NAME,

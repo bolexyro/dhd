@@ -55,7 +55,7 @@ import kotlinx.coroutines.flow.StateFlow
  * path. The bearer token is a development pairing boundary, not a substitute
  * for TLS or a production network protocol.
  */
-class DevBridgeServer internal constructor(
+class CompanionBridgeServer internal constructor(
     private val platform: BridgePlatform,
     private val coordinator: SessionCoordinator,
     private val observationProvider: PhoneObservationSource,

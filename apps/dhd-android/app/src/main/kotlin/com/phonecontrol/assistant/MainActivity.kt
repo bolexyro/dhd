@@ -245,7 +245,7 @@ class MainActivity : ComponentActivity() {
         }
         (application as? PhoneControlApplication)?.container?.let { app ->
             app.phoneAccessController.refresh()
-            app.devBridgeServer.requestCodexWarmup()
+            app.companionBridgeServer.requestCodexWarmup()
         }
     }
 

@@ -152,7 +152,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
-import com.phonecontrol.assistant.bridge.DevBridgeServer
+import com.phonecontrol.assistant.bridge.CompanionBridgeServer
 import com.phonecontrol.assistant.bridge.pairing.PendingCompanionPairing
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.core.ToolNames
@@ -4975,7 +4975,7 @@ fun CompanionInstructionsScreen(
 @Composable
 fun CompanionPairingApprovalDialog(
     pending: PendingCompanionPairing?,
-    bridgeServer: DevBridgeServer,
+    bridgeServer: CompanionBridgeServer,
 ) {
     val colors = LocalAssistantColors.current
     pending ?: return
