@@ -126,6 +126,12 @@ class DhdTaskDisplayBackend internal constructor(
     private val retention = RetentionScheduler(scope, nowEpochMs) { sessionKey, expiresAt ->
         expire(sessionKey, expiresAt)
     }
+    private val livenessMonitor = TaskLivenessMonitor(
+        processRunner = processRunner,
+        liveSessions = { stateLock.withLock { sessions.values.map { it.taskSession } } },
+        currentPackageName = { session -> records.find(session.sessionKey)?.packageName ?: session.packageName },
+        onTaskMissing = ::endMissingAppTask,
+    )
     private val reconciliationJob: Job
     private val taskLivenessJob: Job
 
@@ -134,7 +140,7 @@ class DhdTaskDisplayBackend internal constructor(
         reconciliationJob = scope.launch { reconcileNativeSessionsWithRetry() }
         taskLivenessJob = scope.launch {
             reconciliationJob.join()
-            monitorTaskLiveness()
+            livenessMonitor.run()
         }
     }
 
@@ -678,59 +684,6 @@ class DhdTaskDisplayBackend internal constructor(
     suspend fun reconcileNativeSessionsNow() {
         reconciliationJob.join()
         reconcileNativeSessionsWithRetry(force = true)
-    }
-
-    /**
-     * Keep the display lifecycle tied to the app task that was launched on it.
-     * The native display can outlive that task and continue producing an empty
-     * surface, so a decoder error alone is not enough to identify this case.
-     * Query failures are treated as unknown; three confirmed missing polls are
-     * required before ending a display to tolerate activity transitions.
-     */
-    private suspend fun monitorTaskLiveness() {
-        val missingPolls = mutableMapOf<String, Int>()
-        while (true) {
-            val candidates = stateLock.withLock {
-                sessions.values.map { it.taskSession }
-            }
-            if (candidates.isEmpty()) {
-                missingPolls.clear()
-                delay(TASK_LIVENESS_POLL_MS)
-                continue
-            }
-
-            val result = try {
-                processRunner.run(DUMPSYS_ACTIVITY_COMMAND)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Throwable) {
-                null
-            }
-            if (result?.exitCode == 0 && !result.timedOut) {
-                val output = result.stdout.toString(Charsets.UTF_8)
-                val currentKeys = candidates.mapTo(mutableSetOf()) { it.sessionKey }
-                missingPolls.keys.retainAll(currentKeys)
-                candidates.forEach { session ->
-                    val currentPackage = records.find(session.sessionKey)?.packageName ?: session.packageName
-                    when (ActivityDumpParser.displayTaskPresence(output, session.displayId, currentPackage)) {
-                        true -> missingPolls.remove(session.sessionKey)
-                        false -> {
-                            val count = (missingPolls[session.sessionKey] ?: 0) + 1
-                            if (count >= TASK_LIVENESS_MISSING_CONFIRMATIONS) {
-                                missingPolls.remove(session.sessionKey)
-                                endMissingAppTask(session)
-                            } else {
-                                missingPolls[session.sessionKey] = count
-                            }
-                        }
-                        null -> missingPolls.remove(session.sessionKey)
-                    }
-                }
-            } else {
-                missingPolls.clear()
-            }
-            delay(TASK_LIVENESS_POLL_MS)
-        }
     }
 
     private suspend fun endMissingAppTask(session: TaskDisplaySession) {
@@ -1401,9 +1354,6 @@ class DhdTaskDisplayBackend internal constructor(
 
     companion object {
         const val TERMINAL_RETENTION_MS: Long = 30 * 60 * 1000L
-        private const val TASK_LIVENESS_POLL_MS = 1_000L
-        private const val TASK_LIVENESS_MISSING_CONFIRMATIONS = 3
-        private val DUMPSYS_ACTIVITY_COMMAND = listOf("dumpsys", "activity", "activities")
         private const val MAX_RECORD_PURPOSE_CHARS = 240
         private const val MAX_RECORD_ERROR_CHARS = 4_000
         private const val RECONCILIATION_ATTEMPTS = 4
