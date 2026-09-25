@@ -1,7 +1,6 @@
 package com.phonecontrol.assistant.ui.displays
 
 import android.content.pm.PackageManager
-import com.phonecontrol.assistant.MainActivity
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent

@@ -1,7 +1,6 @@
 package com.phonecontrol.assistant.ui.displays
 
 import android.view.Surface as AndroidSurface
-import android.view.TextureView
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat

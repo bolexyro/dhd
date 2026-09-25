@@ -6,7 +6,6 @@ import android.view.Surface as AndroidSurface
 import android.view.TextureView
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.semantics.semantics
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** A scroll-safe decoder target with no control semantics. */

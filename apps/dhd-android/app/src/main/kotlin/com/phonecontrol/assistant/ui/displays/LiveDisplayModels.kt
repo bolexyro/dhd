@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.ui.displays
 
-import androidx.compose.foundation.layout.height
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplayGeometry
 
