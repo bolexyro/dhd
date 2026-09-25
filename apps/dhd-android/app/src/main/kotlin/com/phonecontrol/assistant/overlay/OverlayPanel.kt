@@ -49,6 +49,7 @@ import com.phonecontrol.assistant.overlay.composer.GlyphButton
 import com.phonecontrol.assistant.overlay.effects.ComposerPerimeterGlow
 import com.phonecontrol.assistant.session.DhdToolCall
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
 import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlin.math.abs
@@ -122,9 +123,7 @@ fun OverlayPanel(
             preferences.getString(UiPreferencesRepository.KEY_VISIBLE_REASONING_EFFORTS, null),
         )
     }
-    val reasoningEffort = ReasoningEffort.fromStorage(reasoningEffortValue)
-        .takeIf { it in visibleReasoningEfforts }
-        ?: visibleReasoningEfforts.first()
+    val reasoningEffort = effectiveReasoningEffort(reasoningEffortValue, visibleReasoningEfforts)
     LaunchedEffect(reasoningEffortValue, reasoningEffort, visibleReasoningEfforts) {
         if (reasoningEffortValue != reasoningEffort.storageValue) {
             reasoningEffortValue = reasoningEffort.storageValue
