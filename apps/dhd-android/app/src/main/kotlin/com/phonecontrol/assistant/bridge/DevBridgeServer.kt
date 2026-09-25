@@ -4,6 +4,7 @@ import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.bridge.handlers.SessionHandlers
+import com.phonecontrol.assistant.bridge.handlers.SteerHandlers
 import com.phonecontrol.assistant.bridge.pairing.PairingProtocol
 import com.phonecontrol.assistant.bridge.pairing.PairingReturnAddress
 import com.phonecontrol.assistant.bridge.pairing.PairingUdpServer
@@ -201,6 +202,7 @@ class DevBridgeServer internal constructor(
     )
     private val phoneActionLock = PhoneActionLock()
     private val toolCalls = ToolCallScope(coordinator, platform)
+    private val steers = SteerHandlers(coordinator, presence)
     private val sessions = SessionHandlers(coordinator, platform, presence)
     private val bridgeJson = BridgeJson(base64)
     private val captures = CaptureService(coordinator, observationProvider, taskDisplayRequiredProvider)
@@ -332,10 +334,10 @@ class DevBridgeServer internal constructor(
                 "companion_disconnected" -> sessions.companionDisconnected(requestId, reply)
                 "pending_request" -> sessions.pendingRequest(requestId, reply)
                 "claim_request" -> sessions.claimRequest(requestId, json, reply)
-                "pending_steer" -> pendingSteer(requestId, json, reply)
-                "claim_steer" -> claimSteer(requestId, json, reply)
-                "release_steer" -> releaseSteer(requestId, json, reply)
-                "complete_steer" -> completeSteer(requestId, json, reply)
+                "pending_steer" -> steers.pendingSteer(requestId, json, reply)
+                "claim_steer" -> steers.claimSteer(requestId, json, reply)
+                "release_steer" -> steers.releaseSteer(requestId, json, reply)
+                "complete_steer" -> steers.completeSteer(requestId, json, reply)
                 "bind_codex_thread" -> sessions.bindCodexThread(requestId, json, reply)
                 "release_request" -> sessions.releaseRequest(requestId, json, reply)
                 "stream_agent_message" -> sessions.streamAgentMessage(requestId, json, reply)
@@ -388,100 +390,6 @@ class DevBridgeServer internal constructor(
             platform.logError(BRIDGE_LOG_TAG, "Bridge request failed", error)
             reply.write(errorResponse(requestId, "The phone bridge failed: $message"))
         }
-    }
-
-    private fun pendingSteer(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        presence.markSeen()
-        val expectedSessionId = json.optString("sessionId").trim().ifBlank { null }
-        val state = coordinator.state.value
-        val pending = coordinator.pendingSteer(expectedSessionId)
-        val response = JSONObject()
-            .put("type", "pending_steer")
-            .put("requestId", requestId)
-            .put("ok", true)
-            .put("active", state is SessionState.Running)
-            .put("attentionPending", coordinator.attentionPending())
-            .put("available", pending != null && !coordinator.attentionPending())
-        if (pending != null) {
-            response
-                .put("steerId", pending.steerId)
-                .put("sessionId", pending.sessionId)
-        }
-        reply.write(response)
-    }
-
-    private fun claimSteer(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val sessionId = json.optString("sessionId").trim()
-        val steerId = json.optString("steerId").trim()
-        require(sessionId.isNotEmpty()) { "sessionId is required." }
-        require(steerId.isNotEmpty()) { "steerId is required." }
-        val claimed = coordinator.claimSteer(sessionId, steerId)
-        if (claimed == null) {
-            reply.write(
-                errorResponse(requestId, "No unclaimed steer matched the supplied session and steer id.")
-                    .put("code", BridgeErrorCodes.STEER_NOT_AVAILABLE),
-            )
-            return
-        }
-        reply.write(
-            JSONObject()
-                .put("type", "steer_claimed")
-                .put("requestId", requestId)
-                .put("ok", true)
-                .put("steerId", claimed.steerId)
-                .put("sessionId", claimed.sessionId)
-                .put("text", claimed.text),
-        )
-    }
-
-    private fun releaseSteer(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val sessionId = json.optString("sessionId").trim()
-        val steerId = json.optString("steerId").trim()
-        require(sessionId.isNotEmpty()) { "sessionId is required." }
-        require(steerId.isNotEmpty()) { "steerId is required." }
-        val released = coordinator.releaseSteer(sessionId, steerId)
-        reply.write(
-            JSONObject()
-                .put("type", "steer_released")
-                .put("requestId", requestId)
-                .put("ok", released)
-                .put("sessionId", sessionId)
-                .put("steerId", steerId)
-                .put("released", released),
-        )
-    }
-
-    private fun completeSteer(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val sessionId = json.optString("sessionId").trim()
-        val steerId = json.optString("steerId").trim()
-        require(sessionId.isNotEmpty()) { "sessionId is required." }
-        require(steerId.isNotEmpty()) { "steerId is required." }
-        val completed = coordinator.completeSteer(sessionId, steerId)
-        reply.write(
-            JSONObject()
-                .put("type", "steer_completed")
-                .put("requestId", requestId)
-                .put("ok", completed)
-                .put("sessionId", sessionId)
-                .put("steerId", steerId)
-                .put("delivered", completed),
-        )
     }
 
     private suspend fun requestAttention(
