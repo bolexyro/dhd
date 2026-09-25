@@ -79,6 +79,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.phonecontrol.assistant.developer.TaskPreviewState
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.needsAttention
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.developer.DeveloperModeStatus
@@ -2419,8 +2420,7 @@ private fun WorkingContent(
     val colors = LocalAssistantColors.current
     val sessionCalls = calls.filter {
         it.sessionId == state.sessionIdOrNull &&
-            !it.toolName.equals("dhd_close_display", ignoreCase = true) &&
-            !it.toolName.equals("close_display", ignoreCase = true)
+            !ToolNames.isCloseDisplay(it.toolName)
     }
     val attention = state.needsAttention
     val paused = state is SessionState.Paused
@@ -2668,8 +2668,7 @@ internal fun effectiveOverlayPanelMode(
 internal fun workingRowSessionCalls(state: SessionState, calls: List<DhdToolCall>): List<DhdToolCall> =
     calls.filter {
         it.sessionId == state.sessionIdOrNull &&
-            !it.toolName.equals("dhd_close_display", ignoreCase = true) &&
-            !it.toolName.equals("close_display", ignoreCase = true)
+            !ToolNames.isCloseDisplay(it.toolName)
     }
 
 internal fun workingRowTask(

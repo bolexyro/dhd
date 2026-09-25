@@ -1,5 +1,7 @@
 package com.phonecontrol.assistant.session
 
+import com.phonecontrol.assistant.core.ToolNames
+
 /** A safe, presentation-only description of one DHD dynamic tool call. */
 data class DhdToolCall(
     val id: String,
@@ -19,14 +21,14 @@ enum class DhdToolCallStatus {
 }
 
 fun defaultDhdToolPurpose(toolName: String): String = when (toolName) {
-    "dhd_list_allowed_apps" -> "Checking which apps DHD can use"
-    "dhd_browse_app" -> "Browsing installed apps"
-    "dhd_set_app_display_layout" -> "Adjusting the app's task-display layout"
-    "dhd_get_foreground_app" -> "Checking which app is on screen"
-    "dhd_observe" -> "Inspecting the current screen"
-    "dhd_open_app" -> "Opening an app"
-    "dhd_execute" -> "Performing a phone interaction"
-    "dhd_execute_sequence" -> "Performing a validated series of interactions"
-    "dhd_request_attention" -> "Waiting for your attention"
+    ToolNames.LIST_ALLOWED_APPS -> "Checking which apps DHD can use"
+    ToolNames.BROWSE_APP -> "Browsing installed apps"
+    ToolNames.SET_APP_DISPLAY_LAYOUT -> "Adjusting the app's task-display layout"
+    ToolNames.FOREGROUND_APP -> "Checking which app is on screen"
+    ToolNames.OBSERVE -> "Inspecting the current screen"
+    ToolNames.OPEN_APP -> "Opening an app"
+    ToolNames.EXECUTE -> "Performing a phone interaction"
+    ToolNames.EXECUTE_SEQUENCE -> "Performing a validated series of interactions"
+    ToolNames.REQUEST_ATTENTION -> "Waiting for your attention"
     else -> "Working with the phone"
 }

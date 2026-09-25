@@ -155,17 +155,11 @@ import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.DevBridgeServer
 import com.phonecontrol.assistant.bridge.PendingCompanionPairing
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.ConversationStore
-import com.phonecontrol.assistant.data.DHD_BROWSE_APP_TOOL
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
-import com.phonecontrol.assistant.data.DHD_EXECUTE_SEQUENCE_TOOL
-import com.phonecontrol.assistant.data.DHD_EXECUTE_TOOL
-import com.phonecontrol.assistant.data.DHD_FOREGROUND_APP_TOOL
-import com.phonecontrol.assistant.data.DHD_LIST_ALLOWED_APPS_TOOL
-import com.phonecontrol.assistant.data.DHD_OBSERVE_TOOL
-import com.phonecontrol.assistant.data.DHD_OPEN_APP_TOOL
 import com.phonecontrol.assistant.data.TimelineItem
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.DhdToolCall
@@ -963,8 +957,7 @@ private fun TaskGroup.merge(other: TaskGroup): TaskGroup = copy(
 
 private fun TimelineItem.Activity.isDhdActionActivity(): Boolean =
     !status.equals("confirmation", ignoreCase = true) &&
-            !toolName.equals("dhd_close_display", ignoreCase = true) &&
-            !toolName.equals("close_display", ignoreCase = true)
+            !ToolNames.isCloseDisplay(toolName)
 
 internal const val MAX_VISIBLE_TRACE_ACTIVITIES = 5
 
@@ -1012,8 +1005,8 @@ private fun TimelineItem.Activity.isInFlight(): Boolean =
 private fun TimelineItem.Activity.matchesLiveTool(toolCall: DhdToolCall): Boolean {
     val activityStatus = status.lowercase()
     val sameTool = toolName?.equals(toolCall.toolName, ignoreCase = true) == true ||
-            (toolCall.toolName.equals(DHD_OPEN_APP_TOOL, ignoreCase = true) &&
-                    toolName.equals(DHD_EXECUTE_TOOL, ignoreCase = true) &&
+            (toolCall.toolName.equals(ToolNames.OPEN_APP, ignoreCase = true) &&
+                    toolName.equals(ToolNames.EXECUTE, ignoreCase = true) &&
                     actionType.equals("OPEN_APP", ignoreCase = true))
     return runId == toolCall.sessionId &&
             sameTool &&
@@ -2618,12 +2611,12 @@ internal fun toolActivityColor(
 
     return when (toolName?.lowercase()) {
         "wait", "dhd_wait", "phone_wait_for" -> colors.accentMagenta
-        DHD_OBSERVE_TOOL, "dhd_observe_app" -> colors.accentBlue
-        DHD_EXECUTE_TOOL, DHD_EXECUTE_SEQUENCE_TOOL -> colors.accentGreen
-        DHD_BROWSE_APP_TOOL -> colors.accentPurple
-        DHD_OPEN_APP_TOOL -> colors.accentCyan
-        DHD_FOREGROUND_APP_TOOL -> colors.accentOrange
-        DHD_LIST_ALLOWED_APPS_TOOL -> colors.accentPink
+        ToolNames.OBSERVE, "dhd_observe_app" -> colors.accentBlue
+        ToolNames.EXECUTE, ToolNames.EXECUTE_SEQUENCE -> colors.accentGreen
+        ToolNames.BROWSE_APP -> colors.accentPurple
+        ToolNames.OPEN_APP -> colors.accentCyan
+        ToolNames.FOREGROUND_APP -> colors.accentOrange
+        ToolNames.LIST_ALLOWED_APPS -> colors.accentPink
         else -> fallback
     }
 }

@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.produceState
 import androidx.lifecycle.lifecycleScope
+import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.developer.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
@@ -552,7 +553,7 @@ internal fun latestToolNameForRun(events: List<ActivityEvent>, sessionKey: Strin
     sessionKey?.let {
         events.asReversed()
             .firstOrNull { event ->
-                event.sessionId == sessionKey && !event.toolName.isNullOrBlank() && !event.toolName.equals("dhd_close_display", ignoreCase = true) && !event.toolName.equals("close_display", ignoreCase = true)
+                event.sessionId == sessionKey && !event.toolName.isNullOrBlank() && !ToolNames.isCloseDisplay(event.toolName)
             }
             ?.toolName
     }

@@ -17,6 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.ActivityEventKind
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.domain.ActionType
 import com.phonecontrol.assistant.execution.TaskDisplayRecord
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
@@ -32,14 +33,6 @@ const val DHD_THREAD_INACTIVITY_MS = 3 * 60 * 60 * 1000L
 internal fun hasDhdConversationExpired(lastActivityEpochMs: Long, nowEpochMs: Long): Boolean =
     nowEpochMs - lastActivityEpochMs >= DHD_THREAD_INACTIVITY_MS
 
-const val DHD_LIST_ALLOWED_APPS_TOOL = "dhd_list_allowed_apps"
-const val DHD_FOREGROUND_APP_TOOL = "dhd_get_foreground_app"
-const val DHD_EXECUTE_TOOL = "dhd_execute"
-const val DHD_EXECUTE_SEQUENCE_TOOL = "dhd_execute_sequence"
-const val DHD_OPEN_APP_TOOL = "dhd_open_app"
-const val DHD_BROWSE_APP_TOOL = "dhd_browse_app"
-const val DHD_SET_APP_DISPLAY_LAYOUT_TOOL = "dhd_set_app_display_layout"
-const val DHD_OBSERVE_TOOL = "dhd_observe"
 
 /** Local, app-private conversation metadata. Codex remains the remote context source of truth. */
 @Entity(tableName = "conversations")
@@ -619,9 +612,9 @@ class ConversationStore(context: Context) {
                         // boundary. Keep the public tool name so the UI can
                         // distinguish real tool calls from system activity.
                         toolName = event.toolName ?: when (event.actionType) {
-                            ActionType.OPEN_APP -> DHD_OPEN_APP_TOOL
+                            ActionType.OPEN_APP -> ToolNames.OPEN_APP
                             null -> null
-                            else -> DHD_EXECUTE_TOOL
+                            else -> ToolNames.EXECUTE
                         },
                         actionType = actionName,
                         status = status,
@@ -780,7 +773,7 @@ class ConversationStore(context: Context) {
             TimelineItem.Message(it.id, it.runId, it.role, it.text, it.createdAtEpochMs)
         }
         val activities = dao.listConversationActivities(conversationId)
-            .filterNot { it.toolName.equals("dhd_close_display", ignoreCase = true) || it.toolName.equals("close_display", ignoreCase = true) }
+            .filterNot { ToolNames.isCloseDisplay(it.toolName) }
             .map {
             TimelineItem.Activity(
                 id = it.id,
