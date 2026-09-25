@@ -1,6 +1,7 @@
 import net from "node:net";
 import { randomUUID } from "node:crypto";
 import { errorMessage } from "./shared/errors.js";
+import { NdjsonLineBuffer } from "./phone/ndjson.js";
 import { isMainModule } from "./shared/is-main-module.js";
 import { bridgeTokenSetting } from "./config/env.js";
 
@@ -40,7 +41,7 @@ export async function runDesktopCodexBridgeDemo(
 
   await new Promise<void>((resolve, reject) => {
     const socket = net.createConnection({ host: options.host, port: options.port });
-    let buffer = "";
+    const lines = new NdjsonLineBuffer();
     let finished = false;
     const finish = (error?: Error) => {
       if (finished) return;
@@ -60,13 +61,7 @@ export async function runDesktopCodexBridgeDemo(
       socket.write(`${JSON.stringify(request)}\n`);
     });
     socket.on("data", (chunk: Buffer) => {
-      buffer += chunk.toString("utf8");
-      let newline = buffer.indexOf("\n");
-      while (newline >= 0) {
-        const line = buffer.slice(0, newline).trim();
-        buffer = buffer.slice(newline + 1);
-        newline = buffer.indexOf("\n");
-        if (!line) continue;
+      for (const line of lines.readLines(chunk)) {
         let message: Record<string, unknown>;
         try {
           message = JSON.parse(line) as Record<string, unknown>;
