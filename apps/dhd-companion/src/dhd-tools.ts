@@ -32,6 +32,7 @@ import {
 } from "@dhd/screenshot-markers";
 import { errorMessage } from "./shared/errors.js";
 import { isRecord, readRecord } from "./shared/guards.js";
+import { isMainModule } from "./shared/is-main-module.js";
 
 export * from "./dhd-tool-contract.js";
 
@@ -947,12 +948,7 @@ export function createDhdMcpServer(
   return server;
 }
 
-function isMainModule(): boolean {
-  return process.argv[1]?.endsWith("dhd-tools.ts") === true ||
-    process.argv[1]?.endsWith("dhd-tools.js") === true;
-}
-
-if (isMainModule()) {
+if (isMainModule("dhd-tools")) {
   const server = createDhdMcpServer();
   void server.connect(new StdioServerTransport()).catch((error: unknown) => {
     console.error(`[phone-assistant-mcp] startup failed: ${errorMessage(error)}`);

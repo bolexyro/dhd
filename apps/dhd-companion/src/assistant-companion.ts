@@ -47,6 +47,7 @@ import {
 } from "./phone-assistant-bridge.js";
 import { errorMessage, toError } from "./shared/errors.js";
 import { asRecord } from "./shared/guards.js";
+import { isMainModule } from "./shared/is-main-module.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -2432,11 +2433,7 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-const isMainModule =
-  process.argv[1]?.endsWith("assistant-companion.ts") ||
-  process.argv[1]?.endsWith("assistant-companion.js");
-
-if (isMainModule) {
+if (isMainModule("assistant-companion")) {
   runAssistantCompanion().catch((error: unknown) => {
     console.error(
       `[phone-assistant-companion] ${errorMessage(error)}`,

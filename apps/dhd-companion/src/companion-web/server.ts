@@ -47,6 +47,7 @@ import type {
 } from "./api.js";
 import { errorMessage, toError } from "../shared/errors.js";
 import { isPlainRecord, isRecord } from "../shared/guards.js";
+import { isMainModule } from "../shared/is-main-module.js";
 
 export interface ConnectionConfig {
   host: string;
@@ -1493,7 +1494,7 @@ function shutdownDashboard(exitCode: number): void {
     });
 }
 
-if (process.argv[1] && (process.argv[1].endsWith("server.ts") || process.argv[1].endsWith("server.js"))) {
+if (isMainModule("server")) {
   const port = Number(process.env.COMPANION_PORT || DEFAULT_WEB_PORT);
   const host = process.env.COMPANION_HOST || DEFAULT_WEB_HOST;
   process.once("SIGINT", () => shutdownDashboard(0));

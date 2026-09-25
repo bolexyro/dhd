@@ -1,6 +1,7 @@
 import net from "node:net";
 import { randomUUID } from "node:crypto";
 import { errorMessage } from "./shared/errors.js";
+import { isMainModule } from "./shared/is-main-module.js";
 
 interface DemoOptions {
   host: string;
@@ -141,10 +142,7 @@ function parseInteger(value: string, name: string): number {
   return parsed;
 }
 
-const isMainModule = process.argv[1]?.endsWith("desktop-codex-bridge-demo.ts") ||
-  process.argv[1]?.endsWith("desktop-codex-bridge-demo.js");
-
-if (isMainModule) {
+if (isMainModule("desktop-codex-bridge-demo")) {
   runDesktopCodexBridgeDemo().catch((error: unknown) => {
     console.error(`[desktop-bridge] ${errorMessage(error)}`);
     process.exitCode = 1;
