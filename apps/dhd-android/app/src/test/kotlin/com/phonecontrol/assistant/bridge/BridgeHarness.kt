@@ -4,10 +4,10 @@ import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.domain.ObservationSnapshot
 import com.phonecontrol.assistant.domain.PhoneAction
 import com.phonecontrol.assistant.domain.ScreenProtection
-import com.phonecontrol.assistant.execution.ForegroundAppResult
-import com.phonecontrol.assistant.execution.ObservationCaptureResult
+import com.phonecontrol.assistant.observation.ForegroundAppResult
+import com.phonecontrol.assistant.observation.ObservationCaptureResult
 import com.phonecontrol.assistant.execution.PhoneActionTransport
-import com.phonecontrol.assistant.execution.PhoneObservationSource
+import com.phonecontrol.assistant.observation.PhoneObservationSource
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
 import com.phonecontrol.assistant.execution.TaskDisplayCapture
 import com.phonecontrol.assistant.execution.TaskDisplayCloseResult

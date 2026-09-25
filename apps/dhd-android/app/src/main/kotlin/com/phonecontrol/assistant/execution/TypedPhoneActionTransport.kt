@@ -20,6 +20,8 @@ import com.phonecontrol.assistant.domain.TapAction
 import com.phonecontrol.assistant.domain.TypeAction
 import com.phonecontrol.assistant.domain.WaitAction
 import com.phonecontrol.assistant.domain.TASK_CLICK_MOVE_DURATION_MS
+import com.phonecontrol.assistant.observation.ObservationCaptureResult
+import com.phonecontrol.assistant.observation.PhoneObservationProvider
 import kotlinx.coroutines.delay
 
 sealed interface TransportResult {

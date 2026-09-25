@@ -6,7 +6,7 @@ import android.view.Display
 import android.view.Surface
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.data.ConversationStore
-import com.phonecontrol.assistant.execution.ForegroundAppInfo
+import com.phonecontrol.assistant.observation.ForegroundAppInfo
 import com.phonecontrol.assistant.execution.PhoneProcessRunner
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
 import com.phonecontrol.assistant.execution.TaskDisplayCapture

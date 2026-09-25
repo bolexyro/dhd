@@ -7,7 +7,7 @@ import com.phonecontrol.assistant.domain.KeypressKey
 import com.phonecontrol.assistant.domain.ObservationSnapshot
 import com.phonecontrol.assistant.domain.TapAction
 import com.phonecontrol.assistant.session.ActionExecutionResult
-import com.phonecontrol.assistant.execution.ObservationCaptureResult
+import com.phonecontrol.assistant.observation.ObservationCaptureResult
 import com.phonecontrol.assistant.execution.TransportResult
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals

@@ -15,7 +15,7 @@ import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.policy.PolicyEngine
 import com.phonecontrol.assistant.session.AssistantForegroundService
 import com.phonecontrol.assistant.session.SessionCoordinator
-import com.phonecontrol.assistant.execution.PhoneObservationProvider
+import com.phonecontrol.assistant.observation.PhoneObservationProvider
 import com.phonecontrol.assistant.execution.TypedPhoneActionTransport
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.session.DhdNotificationVisibility

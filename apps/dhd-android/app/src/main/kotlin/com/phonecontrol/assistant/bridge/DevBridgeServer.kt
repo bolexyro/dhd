@@ -34,9 +34,9 @@ import com.phonecontrol.assistant.session.DhdToolCallStatus
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.session.defaultDhdToolPurpose
-import com.phonecontrol.assistant.execution.ForegroundAppResult
-import com.phonecontrol.assistant.execution.ObservationCaptureResult
-import com.phonecontrol.assistant.execution.PhoneObservationSource
+import com.phonecontrol.assistant.observation.ForegroundAppResult
+import com.phonecontrol.assistant.observation.ObservationCaptureResult
+import com.phonecontrol.assistant.observation.PhoneObservationSource
 import com.phonecontrol.assistant.execution.TransportResult
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
 import com.phonecontrol.assistant.execution.TaskDisplayCloseResult

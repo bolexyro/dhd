@@ -7,7 +7,7 @@ import com.phonecontrol.assistant.domain.ScreenProtectionStatus
 import com.phonecontrol.assistant.domain.StaleObservationDiagnostics
 import com.phonecontrol.assistant.domain.StaleObservationReason
 import com.phonecontrol.assistant.domain.StaleObservationReasonCode
-import com.phonecontrol.assistant.execution.ObservationCaptureResult
+import com.phonecontrol.assistant.observation.ObservationCaptureResult
 import com.phonecontrol.assistant.execution.RejectionCode
 import com.phonecontrol.assistant.execution.TaskDisplayResolution
 import com.phonecontrol.assistant.execution.TaskDisplayStatus

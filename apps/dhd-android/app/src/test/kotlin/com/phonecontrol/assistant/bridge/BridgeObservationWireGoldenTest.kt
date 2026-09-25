@@ -2,9 +2,9 @@ package com.phonecontrol.assistant.bridge
 
 import com.phonecontrol.assistant.domain.ScreenProtection
 import com.phonecontrol.assistant.domain.ScreenProtectionStatus
-import com.phonecontrol.assistant.execution.ForegroundAppInfo
-import com.phonecontrol.assistant.execution.ForegroundAppResult
-import com.phonecontrol.assistant.execution.ObservationCaptureResult
+import com.phonecontrol.assistant.observation.ForegroundAppInfo
+import com.phonecontrol.assistant.observation.ForegroundAppResult
+import com.phonecontrol.assistant.observation.ObservationCaptureResult
 import com.phonecontrol.assistant.execution.TaskDisplayResolution
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runCurrent

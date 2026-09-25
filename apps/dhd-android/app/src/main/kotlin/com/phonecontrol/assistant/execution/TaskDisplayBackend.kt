@@ -1,6 +1,7 @@
 package com.phonecontrol.assistant.execution
 
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.observation.ForegroundAppInfo
 import android.view.Surface
 import kotlinx.coroutines.flow.StateFlow
 

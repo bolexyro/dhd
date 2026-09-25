@@ -1,6 +1,8 @@
-package com.phonecontrol.assistant.execution
+package com.phonecontrol.assistant.observation
 
 import com.phonecontrol.assistant.domain.ScreenProtectionStatus
+import com.phonecontrol.assistant.execution.detectScreenProtection
+import com.phonecontrol.assistant.execution.parseWindowSecuritySignals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.execution
+package com.phonecontrol.assistant.observation
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -10,7 +10,9 @@ import com.phonecontrol.assistant.domain.GuardRegion
 import com.phonecontrol.assistant.domain.ObservationSnapshot
 import com.phonecontrol.assistant.domain.ScreenProtection
 import com.phonecontrol.assistant.execution.PhoneProcessRunner
+import com.phonecontrol.assistant.execution.TaskDisplayBackend
 import com.phonecontrol.assistant.execution.TaskDisplayResolution
+import com.phonecontrol.assistant.execution.detectScreenProtection
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.LinkedHashMap
