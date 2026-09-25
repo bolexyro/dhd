@@ -3,6 +3,7 @@ package com.phonecontrol.assistant.bridge
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
+import com.phonecontrol.assistant.bridge.presence.CompanionPresence
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.optionalDisplayRef
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseGuardRegions
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parsePhoneAction
@@ -181,14 +182,12 @@ class DevBridgeServer internal constructor(
     @Volatile private var serverSocket: ServerSocket? = null
     @Volatile private var pairingSocket: DatagramSocket? = null
     @Volatile private var started = false
-  @Volatile private var lastCompanionSeenElapsedMs: Long = 0L
-  private val _companionConnected = MutableStateFlow(false)
+    private val presence = CompanionPresence(clock)
   private val pairingStateLock = Any()
     private val discoveryNonces = LinkedHashMap<String, Long>()
   private val completedPairingResponses = LinkedHashMap<String, CompletedCompanionPairingResponse>()
   @Volatile private var pendingCompanionPairingRequest: PendingCompanionPairingRequest? = null
   private val _pendingCompanionPairing = MutableStateFlow<PendingCompanionPairing?>(null)
-  private val codexWarmupRequested = AtomicBoolean(false)
     private val phoneActionMutex = Mutex()
     private val overlayVisibilityGate
         get() = platform.overlayVisibilityGate()
@@ -214,7 +213,8 @@ class DevBridgeServer internal constructor(
         val response: JSONObject,
     )
 
-    val companionConnected: StateFlow<Boolean> = _companionConnected.asStateFlow()
+    val companionConnected: StateFlow<Boolean>
+        get() = presence.companionConnected
 
     val pendingCompanionPairing: StateFlow<PendingCompanionPairing?> =
         _pendingCompanionPairing.asStateFlow()
@@ -247,7 +247,7 @@ class DevBridgeServer internal constructor(
             }
         }
         scope.launch { runPairingDiscovery() }
-        scope.launch { monitorCompanionPresence() }
+        scope.launch { presence.monitor() }
     }
 
     fun stop() {
@@ -257,26 +257,8 @@ class DevBridgeServer internal constructor(
         pairingSocket?.close()
         pairingSocket = null
         clearPendingCompanionPairing()
-        lastCompanionSeenElapsedMs = 0L
-        _companionConnected.value = false
+        presence.release()
         scope.coroutineContext[Job]?.cancel()
-    }
-
-    private suspend fun monitorCompanionPresence() {
-        while (currentCoroutineContext().isActive) {
-            val lastSeen = lastCompanionSeenElapsedMs
-            val connected = lastSeen > 0L &&
-                clock.elapsedMillis() - lastSeen <= COMPANION_PRESENCE_TIMEOUT_MS
-            if (_companionConnected.value != connected) {
-                _companionConnected.value = connected
-            }
-            delay(COMPANION_PRESENCE_CHECK_INTERVAL_MS)
-        }
-    }
-
-    private fun markCompanionSeen() {
-        lastCompanionSeenElapsedMs = clock.elapsedMillis()
-        _companionConnected.value = true
     }
 
     private fun runPairingDiscovery() {
@@ -564,7 +546,7 @@ class DevBridgeServer internal constructor(
      * the background, without making the Android app wait for the desktop.
      */
     fun requestCodexWarmup() {
-        codexWarmupRequested.set(true)
+        presence.requestCodexWarmup()
     }
 
     private suspend fun handleClient(client: Socket) {
@@ -621,7 +603,7 @@ class DevBridgeServer internal constructor(
         // current task or Codex polling phase.
         val requestType = json.optString("type")
         if (requestType != "status" && requestType != "companion_disconnected") {
-            markCompanionSeen()
+            presence.markSeen()
         }
         reply.write(
             JSONObject()
@@ -877,7 +859,7 @@ class DevBridgeServer internal constructor(
     ) {
         // Keep the phone-side companion lease independent from pending work,
         // Codex startup, or a long-running task request.
-        markCompanionSeen()
+        presence.markSeen()
         reply.write(
             JSONObject()
                 .put("type", "heartbeat")
@@ -891,8 +873,7 @@ class DevBridgeServer internal constructor(
         requestId: String,
         reply: BridgeReply,
     ) {
-        lastCompanionSeenElapsedMs = 0L
-        _companionConnected.value = false
+        presence.release()
         reply.write(
             JSONObject()
                 .put("type", "companion_disconnected")
@@ -909,14 +890,14 @@ class DevBridgeServer internal constructor(
         // The companion's normal pending-request poll doubles as its
         // heartbeat. The phone uses this to render the existing recovery card
         // without exposing the request or requiring another protocol.
-        markCompanionSeen()
+        presence.markSeen()
         val pending = coordinator.pendingRequest()
         val response = JSONObject()
             .put("type", "pending_request")
             .put("requestId", requestId)
             .put("ok", true)
             .put("available", pending != null)
-            .put("warmupRequested", codexWarmupRequested.getAndSet(false))
+            .put("warmupRequested", presence.consumeCodexWarmupRequest())
         if (pending != null) {
             response
                 .put("sessionId", pending.sessionId)
@@ -965,7 +946,7 @@ class DevBridgeServer internal constructor(
         json: JSONObject,
         reply: BridgeReply,
     ) {
-        markCompanionSeen()
+        presence.markSeen()
         val expectedSessionId = json.optString("sessionId").trim().ifBlank { null }
         val state = coordinator.state.value
         val pending = coordinator.pendingSteer(expectedSessionId)
@@ -1132,7 +1113,7 @@ class DevBridgeServer internal constructor(
         json: JSONObject,
         reply: BridgeReply,
     ) {
-        markCompanionSeen()
+        presence.markSeen()
         val sessionId = json.optString("sessionId").trim()
         val messageId = json.optString("messageId").trim()
         val text = json.optString("text")
@@ -2312,11 +2293,6 @@ class DevBridgeServer internal constructor(
         const val COMPLETED_PAIRING_RESPONSE_TTL_MS = 10_000L
         const val MAX_COMPLETED_PAIRING_RESPONSES = 16
         const val MAX_DESKTOP_NAME_CHARS = 80
-        // The companion uses short-lived TCP polls. Allow several missed
-        // polls before showing a disconnect so one Wi-Fi/scheduler hiccup
-        // does not flap the phone UI offline.
-        const val COMPANION_PRESENCE_TIMEOUT_MS = 15_000L
-        const val COMPANION_PRESENCE_CHECK_INTERVAL_MS = 1_000L
     }
 }
 
