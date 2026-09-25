@@ -58,3 +58,19 @@ export function turnCompletionError(message: JsonRpcMessage): Error | null {
 export function turnFailureError(message: JsonRpcMessage): Error {
   return new Error(extractTurnError(message.params) || "Codex App Server turn failed.");
 }
+
+export function isRetryableError(message: JsonRpcMessage): boolean {
+  return message.method === "error" && asRecord(message.params)?.willRetry === true;
+}
+
+export function notificationThreadId(message: JsonRpcMessage): string | null {
+  const threadId = asRecord(message.params)?.threadId;
+  return typeof threadId === "string" && threadId ? threadId : null;
+}
+
+export function notificationTurnId(message: JsonRpcMessage): string | null {
+  const params = asRecord(message.params);
+  if (typeof params?.turnId === "string" && params.turnId) return params.turnId;
+  const turnId = asRecord(params?.turn)?.id;
+  return typeof turnId === "string" && turnId ? turnId : null;
+}

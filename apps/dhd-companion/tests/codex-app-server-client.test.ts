@@ -580,3 +580,53 @@ describe("turn completion rejections", () => {
     expect(reasons).toEqual([]);
   });
 });
+
+describe("terminal turn notifications", () => {
+  async function startTurn(): Promise<{ turn: ReturnType<CodexAppServerClient["runTurn"]> }> {
+    const turn = client.runTurn("open the store");
+    await waitUntilSteerable();
+    return { turn };
+  }
+
+  it("keeps the turn running through a retryable error", async () => {
+    const { turn } = await startTurn();
+    server.notify("error", {
+      threadId: "thread-1",
+      turnId: "turn-1",
+      willRetry: true,
+      error: { message: "stream disconnected; retrying" },
+    });
+    server.notify(...completed);
+
+    await expect(turn).resolves.toMatchObject({ threadId: "thread-1" });
+    await vi.waitFor(() =>
+      expect(errorLog).toContain("[codex-app-server] retrying after error: stream disconnected; retrying"),
+    );
+  });
+
+  it.each([
+    ["turn/completed", { threadId: "thread-1", turn: { id: "turn-old", status: "failed" } }],
+    ["turn/completed", { threadId: "thread-other", turn: { id: "turn-1", status: "interrupted" } }],
+    ["turn/failed", { threadId: "thread-1", turnId: "turn-old", error: { message: "old turn failed" } }],
+    ["error", { threadId: "thread-other", turnId: "turn-1", willRetry: false, error: { message: "other thread" } }],
+  ])("ignores %s for a different turn %j", async (method, params) => {
+    const { turn } = await startTurn();
+    server.notify(method, params);
+    server.notify("turn/completed", { threadId: "thread-1", turn: { id: "turn-1", status: "completed" } });
+
+    await expect(turn).resolves.toMatchObject({ threadId: "thread-1" });
+  });
+
+  it("still fails the turn on a final error for the active turn", async () => {
+    const { turn } = await startTurn();
+    const rejection = expect(turn).rejects.toThrow("quota exhausted");
+    server.notify("error", {
+      threadId: "thread-1",
+      turnId: "turn-1",
+      willRetry: false,
+      error: { message: "quota exhausted" },
+    });
+
+    await rejection;
+  });
+});

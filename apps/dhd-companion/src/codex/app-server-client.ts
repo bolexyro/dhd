@@ -27,7 +27,10 @@ import {
 } from "./extract.js";
 import { JsonRpcConnection, type JsonRpcMessage } from "./json-rpc.js";
 import {
+  isRetryableError,
   logServerNotification,
+  notificationThreadId,
+  notificationTurnId,
   startedThreadId,
   turnCompletedStatus,
   turnCompletionError,
@@ -47,6 +50,7 @@ import { TurnCompletion, type TurnResult } from "./turn-completion.js";
 import { SingleFlight } from "../shared/single-flight.js";
 
 const MAX_STEER_CHARS = 4_000;
+const TERMINAL_TURN_METHODS = new Set(["turn/completed", "turn/failed", "error"]);
 
 export interface CodexAppServerClientOptions {
   spawnAppServer?: AppServerSpawner;
@@ -451,6 +455,14 @@ export class CodexAppServerClient {
       completion.streamFinalAnswer(recordAgentMessageCompleted(completion, message.params));
       return;
     }
+    if (TERMINAL_TURN_METHODS.has(message.method) && !this.concernsActiveTurn(message)) {
+      console.error(`[codex-app-server] ignored ${message.method} for another turn`);
+      return;
+    }
+    if (isRetryableError(message)) {
+      console.error(`[codex-app-server] retrying after error: ${turnFailureError(message).message}`);
+      return;
+    }
     if (message.method === "turn/completed") {
       this.activeTiming?.log(
         "turn/completed",
@@ -469,6 +481,13 @@ export class CodexAppServerClient {
       completion.reject(turnFailureError(message));
       this.turnCompletion = null;
     }
+  }
+
+  private concernsActiveTurn(message: JsonRpcMessage): boolean {
+    const threadId = notificationThreadId(message);
+    if (threadId && this.activeThreadId && threadId !== this.activeThreadId) return false;
+    const turnId = notificationTurnId(message);
+    return !(turnId && this.activeTurnId && turnId !== this.activeTurnId);
   }
 
   private forgetLoadedThread(threadId: string): void {
