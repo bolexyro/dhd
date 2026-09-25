@@ -3,6 +3,7 @@ package com.phonecontrol.assistant.bridge
 import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.bridge.handlers.AppCatalogHandlers
+import com.phonecontrol.assistant.bridge.handlers.AttentionHandler
 import com.phonecontrol.assistant.bridge.handlers.DisplayHandlers
 import com.phonecontrol.assistant.bridge.handlers.ExecuteActionHandler
 import com.phonecontrol.assistant.bridge.handlers.ExecuteSequenceHandler
@@ -14,7 +15,6 @@ import com.phonecontrol.assistant.bridge.pairing.PairingReturnAddress
 import com.phonecontrol.assistant.bridge.pairing.PairingUdpServer
 import com.phonecontrol.assistant.bridge.pairing.PendingCompanionPairing
 import com.phonecontrol.assistant.bridge.presence.CompanionPresence
-import com.phonecontrol.assistant.bridge.protocol.ActionParser.optionalDisplayRef
 import com.phonecontrol.assistant.bridge.protocol.ActionParser.parseGuardRegions
 import com.phonecontrol.assistant.bridge.protocol.BridgeJson
 import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_REQUEST_CHARS
@@ -36,18 +36,15 @@ import com.phonecontrol.assistant.core.Clock
 import com.phonecontrol.assistant.core.DeviceInfo
 import com.phonecontrol.assistant.core.SystemClockClock
 import com.phonecontrol.assistant.core.ToolNames
-import com.phonecontrol.assistant.core.conversationIdOrNull
 import com.phonecontrol.assistant.domain.ActionMetadata
 import com.phonecontrol.assistant.domain.GuardRegion
 import com.phonecontrol.assistant.domain.OpenAppAction
 import com.phonecontrol.assistant.domain.TapAction
-import com.phonecontrol.assistant.session.AttentionResolution
 import com.phonecontrol.assistant.session.DhdToolCallStatus
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.observation.ObservationCaptureResult
 import com.phonecontrol.assistant.observation.PhoneObservationSource
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
-import com.phonecontrol.assistant.execution.TaskDisplayResolution
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -182,6 +179,15 @@ class DevBridgeServer internal constructor(
         displayTargets,
         captures,
         bridgeJson,
+    )
+    private val attention = AttentionHandler(
+        coordinator,
+        platform,
+        taskDisplayRequiredProvider,
+        displayTargets,
+        captures,
+        bridgeJson,
+        base64,
     )
 
     val companionConnected: StateFlow<Boolean>
@@ -356,7 +362,7 @@ class DevBridgeServer internal constructor(
                     fallbackToolName = ToolNames.REQUEST_ATTENTION,
                     terminalStatus = DhdToolCallStatus.ATTENTION,
                 ) {
-                    requestAttention(requestId, json, reply)
+                    attention.requestAttention(requestId, json, reply)
                 }
                 "stop_session" -> sessions.stopSession(requestId, json, reply)
                 else -> reply.write(errorResponse(requestId, "Unsupported bridge request type."))
@@ -365,89 +371,6 @@ class DevBridgeServer internal constructor(
             val message = error.message ?: error::class.java.simpleName
             platform.logError(BRIDGE_LOG_TAG, "Bridge request failed", error)
             reply.write(errorResponse(requestId, "The phone bridge failed: $message"))
-        }
-    }
-
-    private suspend fun requestAttention(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val reason = json.optString("reason")
-            .trim()
-            .ifBlank { "The phone assistant needs your attention." }
-            .take(MAX_TEXT_CHARS)
-        val sessionId = coordinator.activeSessionId()
-        if (sessionId == null) {
-            reply.write(
-                errorResponse(requestId, "The phone assistant has no active session to interrupt.")
-                    .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
-            )
-            return
-        }
-        val requestedDisplayRef = optionalDisplayRef(json)
-        val target = if (taskDisplayRequiredProvider() || requestedDisplayRef != null) {
-            when (val resolution = displayTargets.resolve(displayRef = requestedDisplayRef)) {
-                is TaskDisplayResolution.Ready -> resolution.target
-                is TaskDisplayResolution.Unavailable -> {
-                    reply.write(
-                        errorResponse(requestId, resolution.message).put("code", resolution.code),
-                    )
-                    return
-                }
-            }
-        } else {
-            null
-        }
-        val attention = coordinator.requestAttentionWaiter(reason)
-        if (attention == null) {
-            reply.write(
-                errorResponse(requestId, "The phone assistant is already waiting for the user's attention.")
-                    .put("code", BridgeErrorCodes.ATTENTION_ALREADY_PENDING),
-            )
-            return
-        }
-        platform.showAttentionNotification(reason, coordinator.state.value.conversationIdOrNull)
-        when (attention.await()) {
-            AttentionResolution.Cancelled -> reply.write(
-                JSONObject()
-                    .put("type", "attention_cancelled")
-                    .put("requestId", requestId)
-                    .put("ok", false)
-                    .put("sessionId", sessionId)
-                    .put("code", BridgeErrorCodes.SESSION_STOPPED)
-                    .put("message", "The attention step was cancelled because the phone session stopped."),
-            )
-
-            AttentionResolution.Acknowledged -> {
-                platform.removeAttentionNotification()
-                val response = JSONObject()
-                    .put("type", "attention_resolved")
-                    .put("requestId", requestId)
-                    .put("ok", true)
-                    .put("sessionId", sessionId)
-                    .put("acknowledged", true)
-                    .put("message", "The user confirmed that the attention step is complete. Observe the phone before taking the next action.")
-                when (val captured = captures.captureWithRetry(
-                    expectedPackageName = null,
-                    guardRegions = emptyList(),
-                    taskSessionKey = target?.session?.sessionKey ?: sessionId,
-                    displayId = target?.session?.displayId,
-                    expectedDisplayRef = target?.displayRef,
-                )) {
-                    is ObservationCaptureResult.Failed -> response
-                        .put("observationError", captured.message)
-                        .put("observationErrorCode", captured.code)
-                    is ObservationCaptureResult.Succeeded -> {
-                        captures.remember(captured.snapshot)
-                        response
-                            .put("observation", bridgeJson.snapshotJson(captured.snapshot))
-                            .put("screenshotBase64", base64.encode(captured.screenshot))
-                            .put("screenshotMimeType", "image/png")
-                    }
-                }
-                reply.write(response)
-            }
         }
     }
 
