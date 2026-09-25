@@ -1,5 +1,5 @@
-import type { PhoneAssistantToolResult } from "./dhd-tools.js";
-import { isRecord } from "./shared/guards.js";
+import type { PhoneAssistantToolResult } from "../tools/result/types.js";
+import { isRecord } from "./guards.js";
 
 export type CompanionJsonValue =
   | null

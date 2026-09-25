@@ -1,3 +1,3 @@
-import { setCompanionEventSink } from "../../src/companion-events.js";
+import { setCompanionEventSink } from "../../src/shared/companion-events.js";
 
 setCompanionEventSink(() => undefined);

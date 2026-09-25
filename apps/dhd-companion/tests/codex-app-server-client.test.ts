@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CodexAppServerClient } from "../src/codex/app-server-client.js";
-import { setCompanionEventSink, type CompanionEvent } from "../src/companion-events.js";
+import { setCompanionEventSink, type CompanionEvent } from "../src/shared/companion-events.js";
 import {
   JsonRpcFailure,
   startFakeAppServer,

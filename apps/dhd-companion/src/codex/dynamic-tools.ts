@@ -4,7 +4,7 @@ import {
   emitCompanionToolCallEvent,
   type CompanionJsonValue,
   type CompanionToolCallEvent,
-} from "../companion-events.js";
+} from "../shared/companion-events.js";
 import { isGuardRegionsEnabled } from "../config/env.js";
 import { errorMessage } from "../shared/errors.js";
 import { asRecord } from "../shared/guards.js";

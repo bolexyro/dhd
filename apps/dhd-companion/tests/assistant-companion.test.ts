@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   CompanionTokenUsageEvent,
   CompanionToolCallEvent
-} from "../src/companion-events.js";
+} from "../src/shared/companion-events.js";
 import { CodexAppServerClient } from "../src/codex/app-server-client.js";
 import { handleDynamicToolCall } from "../src/codex/dynamic-tools.js";
 import { shouldInterruptForPhoneStop } from "../src/worker/steer.js";

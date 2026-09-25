@@ -1,7 +1,7 @@
 import type {
   CompanionPlanUpdatedEvent,
   CompanionTokenUsageEvent,
-} from "../companion-events.js";
+} from "../shared/companion-events.js";
 import { asRecord } from "../shared/guards.js";
 
 export function extractThreadId(value: unknown): string | null {

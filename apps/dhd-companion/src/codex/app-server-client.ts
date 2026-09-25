@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import * as readline from "node:readline";
 
-import { emitCompanionPlanEvent, emitCompanionTokenUsageEvent } from "../companion-events.js";
+import { emitCompanionPlanEvent, emitCompanionTokenUsageEvent } from "../shared/companion-events.js";
 import { codexHomeDirectory, codexRuntimeDirectory } from "../config/env.js";
 import { errorMessage, toError } from "../shared/errors.js";
 import { asRecord } from "../shared/guards.js";

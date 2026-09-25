@@ -16,7 +16,7 @@ import {
   type CompanionPlanUpdatedEvent,
   type CompanionTokenUsageEvent,
   type CompanionToolCallEvent,
-} from "../companion-events.js";
+} from "../shared/companion-events.js";
 import { parsePort, requestBridge } from "../phone/bridge-client.js";
 import {
   DEFAULT_BRIDGE_HOST,
