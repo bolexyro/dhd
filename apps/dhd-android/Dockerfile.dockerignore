@@ -1,0 +1,10 @@
+**
+!contracts/**
+!apps/dhd-android/**
+apps/dhd-android/.gradle
+apps/dhd-android/build
+apps/dhd-android/app/build
+apps/dhd-android/local.properties
+apps/dhd-android/.idea
+apps/dhd-android/captures
+apps/dhd-android/**/*.iml

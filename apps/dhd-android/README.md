@@ -78,7 +78,7 @@ unit tests.
 For the container-first verification path, run this from the repository root:
 
 ```powershell
-docker build -t phone-control-android-assistant:check apps/dhd-android
+docker build -f apps/dhd-android/Dockerfile -t dhd-android:check .
 ```
 
 The first run downloads the Android SDK base image; subsequent checks reuse
