@@ -1,0 +1,16 @@
+{
+  "port": 8766,
+  "request": null,
+  "response": {
+    "addresses": [
+      "192.168.1.42"
+    ],
+    "deviceId": "7d3c6a52-4f1b-4a8e-9c2d-5b6e7f8a9b0c",
+    "port": 8765,
+    "requestId": "pair-1",
+    "token": "0123456789abcdef0123456789abcdef",
+    "type": "dhd_pair_approval_offer",
+    "version": 1
+  },
+  "transport": "udp"
+}

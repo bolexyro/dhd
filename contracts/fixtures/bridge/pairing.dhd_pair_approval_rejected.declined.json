@@ -1,0 +1,12 @@
+{
+  "port": 8766,
+  "request": null,
+  "response": {
+    "deviceId": "7d3c6a52-4f1b-4a8e-9c2d-5b6e7f8a9b0c",
+    "message": "The phone declined the desktop companion pairing request.",
+    "requestId": "pair-1",
+    "type": "dhd_pair_approval_rejected",
+    "version": 1
+  },
+  "transport": "udp"
+}
