@@ -169,8 +169,12 @@ class NativeDisplayParsersTest {
             create("task-1", "com.example.shop", "720", "1560", "420", "30", "2000000", "100"),
         )
         assertEquals(
+            "DHD display operation failed: appDensityDpi is out of range.",
+            create("task-1", "com.example.shop", "720", "1560", "420", "30", "2000000", "100", "720", "1560"),
+        )
+        assertEquals(
             "DHD display operation failed: appDisplayWidth is out of range.",
-            create("task-1", "com.example.shop", "720", "1560", "420", "30", "2000000", "100", "5000", "1000"),
+            create("task-1", "com.example.shop", "720", "1560", "420", "30", "2000000", "320", "5000", "1000"),
         )
     }
 }

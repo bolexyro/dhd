@@ -53,7 +53,7 @@ final class DisplayCommandHandler {
         int bitRate = boundedInt(command.get(8), 128_000, 20_000_000, "bitRate");
         // Accept the old payload from an already-running app process, but make
         // new sessions explicit about the app-visible density.
-        int appDensityDpi = command.size() == 10
+        int appDensityDpi = command.size() >= 10
                 ? boundedInt(command.get(9), 120, 640, "appDensityDpi")
                 : densityDpi;
         int appDisplayWidth = command.size() == 12
