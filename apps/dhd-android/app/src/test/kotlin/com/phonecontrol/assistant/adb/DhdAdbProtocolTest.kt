@@ -17,11 +17,6 @@ class DhdAdbProtocolTest {
     }
 
     @Test
-    fun `uses exec wire service for exec out`() {
-        assertEquals("exec:screencap -p", buildDhdAdbExecService("screencap -p"))
-    }
-
-    @Test
     fun `encodes ADB headers with little endian fields and checksum`() {
         val service = buildDhdAdbShellV2Service("echo hi")
         val bytes = DhdAdbProtocol.message(

@@ -125,38 +125,6 @@ internal class DhdAdbClient(
         )
     }
 
-    fun execOut(command: String): DhdAdbCommandResult {
-        // `exec-out` is the desktop adb CLI spelling. The ADB wire service
-        // itself is named `exec`.
-        val channel = open(buildDhdAdbExecService(command))
-        val stdout = ByteArrayOutputStream()
-        try {
-            while (true) {
-                val message = read()
-                when (message.command) {
-                    DhdAdbProtocol.A_WRTE -> {
-                        appendBounded(stdout, message.data)
-                        write(DhdAdbProtocol.A_OKAY, channel.localId, message.arg0)
-                    }
-
-                    DhdAdbProtocol.A_OKAY -> Unit
-
-                    DhdAdbProtocol.A_CLSE -> {
-                        write(DhdAdbProtocol.A_CLSE, channel.localId, message.arg0)
-                        break
-                    }
-
-                    else -> throw IOException(
-                        "ADB returned ${message.commandName()} while reading command output.",
-                    )
-                }
-            }
-        } finally {
-            closeQuietly()
-        }
-        return DhdAdbCommandResult(exitCode = 0, stdout = stdout.toByteArray(), stderr = "")
-    }
-
     private fun open(service: String): AdbChannel {
         val localId = 1
         write(DhdAdbProtocol.A_OPEN, localId, 0, service)

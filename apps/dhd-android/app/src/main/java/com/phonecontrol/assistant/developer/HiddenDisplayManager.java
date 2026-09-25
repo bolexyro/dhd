@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.Arrays;
 
 /** Reflection bridge keeps hidden display-manager classes out of the app's compile API. */
 final class HiddenDisplayManager {
@@ -94,14 +93,6 @@ final class HiddenDisplayManager {
         if (displayId <= 0) return;
         try { releaseMethod.invoke(service, callback); } catch (Throwable ignored) {}
         displayId = -1;
-    }
-
-    private Method findMethod(String name, Class<?>... parameterTypes) throws NoSuchMethodException {
-        for (Method method : service.getClass().getMethods()) {
-            if (!name.equals(method.getName())) continue;
-            if (Arrays.equals(method.getParameterTypes(), parameterTypes)) return method;
-        }
-        throw new NoSuchMethodException(name);
     }
 
     private static int displayFlags() {

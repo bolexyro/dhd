@@ -62,12 +62,6 @@ internal class DhdMaintenanceClient(
         execute(listOf("true")).exitCode == 0
     }.getOrDefault(false)
 
-    fun capabilities(): Capabilities? = runCatching {
-        val result = execute(listOf("dhd-capabilities"))
-        if (result.exitCode != 0 || result.timedOut) return@runCatching null
-        parseCapabilities(String(result.stdout, Charsets.UTF_8))
-    }.getOrNull()
-
     /**
      * Keep the reason for a failed health check. The old Boolean-only probe
      * made a dead daemon, an unavailable socket, and a malformed capability

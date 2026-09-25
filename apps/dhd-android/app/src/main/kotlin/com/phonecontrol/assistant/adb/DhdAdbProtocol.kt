@@ -4,7 +4,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 internal object DhdAdbProtocol {
-    const val A_SYNC = 0x434e5953
     const val A_CNXN = 0x4e584e43
     const val A_AUTH = 0x48545541
     const val A_OPEN = 0x4e45504f
@@ -16,10 +15,6 @@ internal object DhdAdbProtocol {
     const val A_VERSION = 0x01000000
     const val A_MAXDATA = 4096
     const val A_STLS_VERSION = 0x01000000
-
-    const val ADB_AUTH_TOKEN = 1
-    const val ADB_AUTH_SIGNATURE = 2
-    const val ADB_AUTH_RSAPUBLICKEY = 3
 
     const val SHELL_V2_STDOUT = 1
     const val SHELL_V2_STDERR = 2
@@ -50,12 +45,6 @@ internal object DhdAdbProtocol {
         var sum = 0
         data.forEach { sum += it.toInt() and 0xff }
         return sum
-    }
-
-    fun decodeShellV2Packet(data: ByteArray): List<ShellV2Packet> {
-        val decoder = ShellV2Decoder()
-        decoder.append(data)
-        return decoder.drain()
     }
 
     data class ShellV2Packet(val streamId: Int, val payload: ByteArray)
@@ -116,7 +105,3 @@ internal object DhdAdbProtocol {
 /** ADB wire service used by `adb shell` when it requests shell-v2 raw output. */
 internal fun buildDhdAdbShellV2Service(command: String): String =
     "shell,v2,TERM=dumb,raw:$command"
-
-/** ADB wire service used by the desktop `adb exec-out` command. */
-internal fun buildDhdAdbExecService(command: String): String =
-    "exec:$command"
