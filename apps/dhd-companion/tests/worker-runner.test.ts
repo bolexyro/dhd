@@ -23,7 +23,8 @@ vi.mock("../src/phone/bridge-client.js", async () => {
   };
 });
 
-const { processPendingRequest, processPendingSteer } = await import("../src/assistant-companion.js");
+const { processPendingRequest } = await import("../src/worker/request-runner.js");
+const { processPendingSteer } = await import("../src/worker/steer.js");
 
 type RunTurnArgs = [
   phoneRequest: string,
