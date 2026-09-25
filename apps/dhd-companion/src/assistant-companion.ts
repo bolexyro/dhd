@@ -56,34 +56,18 @@ import {
   type PhoneToolFailure,
 } from "./codex/dynamic-tools.js";
 import { answerServerRequest } from "./codex/server-requests.js";
+import { JsonRpcConnection, type JsonRpcMessage } from "./codex/json-rpc.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
 const COMPANION_HEARTBEAT_INTERVAL_MS = 2_500;
 const COMPANION_HEARTBEAT_TIMEOUT_MS = 4_000;
-const APP_SERVER_REQUEST_TIMEOUT_MS = 30_000;
 const STREAM_BRIDGE_TIMEOUT_MS = 5_000;
 const MAX_AGENT_FEEDBACK_CHARS = 4_000;
 const MAX_STEER_CHARS = 4_000;
 const DEFAULT_COMPLETION_MESSAGE = "Your DHD task is ready to review.";
 const PREWARM_ATTEMPTS = 2;
 const PREWARM_RETRY_DELAY_MS = 500;
-type JsonRpcId = number | string;
-
-interface JsonRpcMessage {
-  id?: JsonRpcId;
-  method?: string;
-  params?: unknown;
-  result?: unknown;
-  error?: { code?: number; message?: string; data?: unknown };
-}
-
-interface PendingRpcRequest {
-  resolve: (message: JsonRpcMessage) => void;
-  reject: (error: Error) => void;
-  timer: NodeJS.Timeout;
-}
-
 interface TurnResult {
   text: string;
   threadId: string;
@@ -103,8 +87,10 @@ export interface CodexAppServerClientOptions {
 export class CodexAppServerClient {
   private child: ChildProcessWithoutNullStreams | null = null;
   private reader: readline.Interface | null = null;
-  private nextId = 1;
-  private pending = new Map<JsonRpcId, PendingRpcRequest>();
+  private readonly rpc = new JsonRpcConnection((line) => this.writeToAppServer(line), {
+    onRequest: (message) => void this.handleServerRequest(message),
+    onNotification: (message) => this.handleNotification(message),
+  });
   private startPromise: Promise<void> | null = null;
   private initialized = false;
   private loadedThreadIds = new Set<string>();
@@ -174,7 +160,7 @@ export class CodexAppServerClient {
       logger.log("spawn:complete", `pid=${this.child?.pid ?? "?"}`);
       logger.log("initialize:start");
       try {
-        await this.request("initialize", {
+        await this.rpc.request("initialize", {
           clientInfo: {
             name: "dhd-phone-assistant",
             title: "DHD phone assistant",
@@ -182,7 +168,7 @@ export class CodexAppServerClient {
           },
           capabilities: { experimentalApi: true },
         });
-        this.notify("initialized", {});
+        this.rpc.notify("initialized", {});
         this.initialized = true;
         logger.log("initialize:complete");
       } catch (error) {
@@ -255,7 +241,7 @@ export class CodexAppServerClient {
       } else if (existingThreadId) {
         logger.log("resume:start", `threadId=${existingThreadId}`);
         try {
-          const threadResponse = await this.request("thread/resume", {
+          const threadResponse = await this.rpc.request("thread/resume", {
             ...threadParams,
             threadId: existingThreadId,
           });
@@ -281,7 +267,7 @@ export class CodexAppServerClient {
           );
         }
         logger.log("thread/start:start");
-        const threadResponse = await this.request("thread/start", threadParams);
+        const threadResponse = await this.rpc.request("thread/start", threadParams);
         threadId = extractThreadId(threadResponse.result);
         logger.log("thread/start:complete", `threadId=${threadId ?? "?"}`);
       }
@@ -296,7 +282,7 @@ export class CodexAppServerClient {
         // Naming is best-effort: older App Server builds may not expose this
         // convenience method, but a failed name update must not lose a turn.
         try {
-          await this.request("thread/name/set", {
+          await this.rpc.request("thread/name/set", {
             threadId,
             name: threadTitle.trim().slice(0, 80),
           });
@@ -312,7 +298,7 @@ export class CodexAppServerClient {
           throw new Error("Codex App Server turn was interrupted.");
         }
         logger.log("turn/start:start", `threadId=${threadId}`);
-        const turnStartResponse = await this.request("turn/start", {
+        const turnStartResponse = await this.rpc.request("turn/start", {
           threadId,
           model,
           effort: normalizeCodexEffort(reasoningEffort),
@@ -389,7 +375,7 @@ export class CodexAppServerClient {
       throw new Error("Codex has no active turn to steer.");
     }
 
-    const response = await this.request("turn/steer", {
+    const response = await this.rpc.request("turn/steer", {
       threadId,
       input: [{ type: "text", text: safeText }],
       expectedTurnId: turnId,
@@ -409,7 +395,7 @@ export class CodexAppServerClient {
     this.interruptRequested = true;
     if (!threadId) return;
     const turnId = this.activeTurnId;
-    await this.request("turn/interrupt", {
+    await this.rpc.request("turn/interrupt", {
       threadId,
       ...(turnId ? { turnId } : {}),
     });
@@ -424,7 +410,7 @@ export class CodexAppServerClient {
     });
     this.child = child;
     this.reader = readline.createInterface({ input: child.stdout });
-    this.reader.on("line", (line) => this.handleLine(line));
+    this.reader.on("line", (line) => this.rpc.handleLine(line));
     child.stderr.on("data", (chunk: Buffer) => {
       const text = chunk.toString("utf8").trim();
       if (text) console.error(`[codex-app-server] ${text}`);
@@ -460,47 +446,7 @@ export class CodexAppServerClient {
     );
   }
 
-  private handleLine(line: string): void {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    let message: JsonRpcMessage;
-    try {
-      message = JSON.parse(trimmed) as JsonRpcMessage;
-    } catch {
-      console.error(
-        `[codex-app-server] ignored non-JSON stdout: ${trimmed.slice(0, 240)}`,
-      );
-      return;
-    }
-
-    // App Server is bidirectional: a message with both `method` and `id` is a
-    // server request that this client must answer, not a response to one of
-    // our requests. Handling it before the pending map prevents server and
-    // client request IDs from colliding.
-    if (message.method && message.id !== undefined) {
-      void this.handleServerRequest(message);
-      return;
-    }
-
-    if (message.id !== undefined) {
-      const waiter = this.pending.get(message.id);
-      if (waiter) {
-        this.pending.delete(message.id);
-        clearTimeout(waiter.timer);
-        if (message.error) {
-          waiter.reject(
-            new Error(
-              message.error.message ||
-                `Codex App Server request ${message.id} failed.`,
-            ),
-          );
-        } else {
-          waiter.resolve(message);
-        }
-      }
-      return;
-    }
-
+  private handleNotification(message: JsonRpcMessage): void {
     const tokenUsageEvent = extractCompanionTokenUsageEvent(message);
     if (tokenUsageEvent) {
       emitCompanionTokenUsageEvent({
@@ -677,7 +623,7 @@ export class CodexAppServerClient {
     }
     timing.log("thread/unsubscribe:start", `threadId=${threadId}`);
     try {
-      await this.request("thread/unsubscribe", { threadId });
+      await this.rpc.request("thread/unsubscribe", { threadId });
       timing.log("thread/unsubscribe:complete", `threadId=${threadId}`);
     } catch (error) {
       timing.log("thread/unsubscribe:error", `threadId=${threadId}`);
@@ -703,17 +649,17 @@ export class CodexAppServerClient {
       if (method === "item/tool/call") {
         const result = await handleDynamicToolCall(message.params);
         this.recordDynamicToolResult(message.params, result);
-        this.respond(id, result);
+        this.rpc.respond(id, result);
         return;
       }
       const answer = answerServerRequest(method, message.params);
       if ("error" in answer) {
-        this.respondError(id, answer.error.code, answer.error.message);
+        this.rpc.respondError(id, answer.error.code, answer.error.message);
       } else {
-        this.respond(id, answer.result);
+        this.rpc.respond(id, answer.result);
       }
     } catch (error) {
-      this.respondError(
+      this.rpc.respondError(
         id,
         -32000,
         errorMessage(error),
@@ -733,66 +679,15 @@ export class CodexAppServerClient {
     });
   }
 
-  private respond(id: JsonRpcId, result: unknown): void {
-    this.send({ id, result });
-  }
-
-  private respondError(id: JsonRpcId, code: number, message: string): void {
-    try {
-      this.send({ id, error: { code, message } });
-    } catch (error) {
-      // The App Server can interrupt and close its stdin while an async
-      // server request handler is still unwinding. A best-effort JSON-RPC
-      // error must not become an unhandled rejection that kills the phone
-      // companion worker during an otherwise expected shutdown.
-      console.error(
-        `[codex-app-server] could not send server-request error: ${errorMessage(error)}`,
-      );
-    }
-  }
-
-  private request(
-    method: string,
-    params: Record<string, unknown>,
-  ): Promise<JsonRpcMessage> {
-    const id = this.nextId++;
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        if (!this.pending.delete(id)) return;
-        reject(
-          new Error(
-            `Timed out waiting for Codex App Server request ${method}.`,
-          ),
-        );
-      }, APP_SERVER_REQUEST_TIMEOUT_MS);
-      this.pending.set(id, { resolve, reject, timer });
-      try {
-        this.send({ method, id, params });
-      } catch (error) {
-        this.pending.delete(id);
-        clearTimeout(timer);
-        reject(toError(error));
-      }
-    });
-  }
-
-  private notify(method: string, params: Record<string, unknown>): void {
-    this.send({ method, params });
-  }
-
-  private send(message: JsonRpcMessage): void {
+  private writeToAppServer(line: string): void {
     if (!this.child || this.child.stdin.destroyed) {
       throw new Error("Codex App Server is not running.");
     }
-    this.child.stdin.write(`${JSON.stringify(message)}\n`);
+    this.child.stdin.write(line);
   }
 
   private failPending(error: Error): void {
-    for (const waiter of this.pending.values()) {
-      clearTimeout(waiter.timer);
-      waiter.reject(error);
-    }
-    this.pending.clear();
+    this.rpc.rejectPending(error);
     this.turnCompletion?.reject(error);
     this.turnCompletion = null;
   }
@@ -807,11 +702,7 @@ export class CodexAppServerClient {
     this.activeDhdThreadId = null;
     this.hasCurrentDhdThread = false;
     this.turnCompletion = null;
-    for (const waiter of this.pending.values()) {
-      clearTimeout(waiter.timer);
-      waiter.reject(new Error("Codex App Server stopped."));
-    }
-    this.pending.clear();
+    this.rpc.rejectPending(new Error("Codex App Server stopped."));
     reader?.close();
     if (!child || child.killed) return;
     child.stdin.end();
