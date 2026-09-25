@@ -5,8 +5,8 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.phonecontrol.assistant.developer.DhdMaintenanceBootstrap
-import com.phonecontrol.assistant.developer.DhdMaintenanceRecoveryPolicy
+import com.phonecontrol.assistant.maintenance.DhdMaintenanceBootstrap
+import com.phonecontrol.assistant.maintenance.DhdMaintenanceRecoveryPolicy
 import com.phonecontrol.assistant.execution.PhoneProcessResult
 import java.net.SocketTimeoutException
 import java.util.concurrent.atomic.AtomicBoolean

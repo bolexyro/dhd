@@ -12,7 +12,7 @@ import com.phonecontrol.assistant.adb.DhdAdbController
 import com.phonecontrol.assistant.adb.DhdAdbKey
 import com.phonecontrol.assistant.adb.DhdAdbPairingNotification
 import com.phonecontrol.assistant.adb.DhdAdbPairingService
-import com.phonecontrol.assistant.developer.DhdMaintenanceBootstrap
+import com.phonecontrol.assistant.maintenance.DhdMaintenanceBootstrap
 import com.phonecontrol.assistant.developer.DhdMaintenanceDaemon
 import com.phonecontrol.assistant.adb.PreferenceDhdAdbKeyStore
 import com.phonecontrol.assistant.domain.ActionType

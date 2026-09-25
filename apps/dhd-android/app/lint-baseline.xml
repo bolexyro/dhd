@@ -735,7 +735,7 @@
         errorLine1="                preferences.edit().putInt(KEY_MAINTENANCE_PORT, generated).apply()"
         errorLine2="                ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdMaintenanceBootstrap.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/maintenance/DhdMaintenanceBootstrap.kt"
             line="24"
             column="17"/>
     </issue>
@@ -746,7 +746,7 @@
         errorLine1="                preferences.edit().putString(KEY_MAINTENANCE_TOKEN, generated).apply()"
         errorLine2="                ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdMaintenanceBootstrap.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/maintenance/DhdMaintenanceBootstrap.kt"
             line="35"
             column="17"/>
     </issue>

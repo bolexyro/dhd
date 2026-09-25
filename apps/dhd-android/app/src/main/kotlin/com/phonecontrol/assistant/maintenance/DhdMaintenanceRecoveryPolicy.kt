@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.maintenance
 
 /**
  * Debounces local maintenance failures before DHD asks ADB to bootstrap the

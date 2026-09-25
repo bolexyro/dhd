@@ -1,5 +1,6 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.maintenance
 
+import com.phonecontrol.assistant.developer.DhdMaintenanceWire
 import com.phonecontrol.assistant.execution.PhoneProcessResult
 import java.io.DataInputStream
 import java.io.DataOutputStream

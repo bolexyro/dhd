@@ -1,5 +1,7 @@
 package com.phonecontrol.assistant.developer
 
+import com.phonecontrol.assistant.maintenance.DhdMaintenanceClient
+import com.phonecontrol.assistant.maintenance.buildDhdMaintenanceStartCommand
 import com.phonecontrol.assistant.testing.CanonicalJson
 import com.phonecontrol.assistant.testing.Goldens
 import java.io.ByteArrayInputStream

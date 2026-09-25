@@ -1,9 +1,10 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.maintenance
 
 import android.content.Context
 import android.content.SharedPreferences
 import com.phonecontrol.assistant.adb.DhdAdbClient
 import com.phonecontrol.assistant.adb.quoteDhdAdbShellArgument
+import com.phonecontrol.assistant.developer.DhdMaintenanceDaemon
 import java.io.IOException
 import kotlinx.coroutines.delay
 
