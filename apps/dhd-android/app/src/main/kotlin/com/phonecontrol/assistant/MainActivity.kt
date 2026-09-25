@@ -11,22 +11,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.produceState
 import androidx.lifecycle.lifecycleScope
-import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.PermissionSetupRepository
-import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.overlay.OverlayPreferences
 import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.session.SessionCommands
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.AppViewModel
 import com.phonecontrol.assistant.ui.PhoneControlApp
-import com.phonecontrol.assistant.ui.displays.DisplayUiSources
 import com.phonecontrol.assistant.ui.displays.applicationLabel
 import com.phonecontrol.assistant.ui.displays.mapDisplayUi
 import kotlinx.coroutines.Job
@@ -52,6 +50,9 @@ class MainActivity : ComponentActivity() {
     private var overlayActivityToken: OverlayVisibilityGate.Token? = null
     private var conversationExpiryMonitor: Job? = null
     private val sessionCommands = SessionCommands(this)
+    private val appViewModel: AppViewModel by viewModels {
+        AppViewModel.factory((application as PhoneControlApplication).container)
+    }
     private val permissionSetup: PermissionSetupRepository
         get() = (application as PhoneControlApplication).container.permissionSetupRepository
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -93,41 +94,9 @@ class MainActivity : ComponentActivity() {
         val app = (application as PhoneControlApplication).container
         val appPackageManager = packageManager
         setContent {
-            val display by app.taskDisplayBackend.activeSession.collectAsState()
-            val playback by app.taskDisplayBackend.previewState.collectAsState()
-            val previewStates by app.taskDisplayBackend.previewStates.collectAsState()
-            val backendDisplayRecords by app.taskDisplayBackend.displayRecords.collectAsState()
-            val sessionState by app.sessionCoordinator.state.collectAsState()
-            val events by app.sessionCoordinator.events.collectAsState()
-            val pointerEvent by app.sessionCoordinator.pointerEvent.collectAsState()
-            val coordinatorSessionKey = sessionState.sessionIdOrNull
-            // A new coordinator run can claim a retained display whose native
-            // owner key belongs to the previous run. Resolve that binding for
-            // the inline viewer so the UI follows the selected display rather
-            // than assuming the two keys are identical.
-            val resolvedDisplayForRun by produceState<TaskDisplaySession?>(
-                initialValue = null,
-                key1 = coordinatorSessionKey,
-                key2 = display?.sessionKey,
-                // Selecting a retained display with displayRef publishes its
-                // updated registry record after the initial lookup. Include
-                // the registry in the keys so the suspended lookup retries
-                // once that binding becomes visible to the UI.
-                key3 = backendDisplayRecords,
-            ) {
-                value = coordinatorSessionKey?.let { app.taskDisplayBackend.current(it) }
-            }
+            val uiState by appViewModel.uiState.collectAsState()
             val displayUi = mapDisplayUi(
-                sources = DisplayUiSources(
-                    activeDisplay = display,
-                    playback = playback,
-                    previewStates = previewStates,
-                    records = backendDisplayRecords,
-                    sessionState = sessionState,
-                    events = events,
-                    pointerEvent = pointerEvent,
-                    resolvedDisplayForRun = resolvedDisplayForRun,
-                ),
+                sources = uiState.displaySources,
                 appLabelFor = { packageName -> packageName.applicationLabel(appPackageManager) },
             )
             val displayForRun = displayUi.displayForRun
