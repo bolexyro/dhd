@@ -505,8 +505,8 @@
         errorLine1="    var nowEpochMs by remember { mutableStateOf(System.currentTimeMillis()) }"
         errorLine2="                                 ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="4063"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/displays/TaskDisplaysSheet.kt"
+            line="73"
             column="34"/>
     </issue>
 
@@ -933,8 +933,8 @@
         errorLine1="        setOnTouchListener { _, _ -> true }"
         errorLine2="                           ~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/LiveDisplayPreview.kt"
-            line="871"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/displays/surface/ReadOnlyPreviewTextureView.kt"
+            line="28"
             column="28"/>
     </issue>
 

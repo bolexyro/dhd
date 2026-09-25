@@ -49,54 +49,19 @@ import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
 import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
+import com.phonecontrol.assistant.ui.displays.FullScreenLiveDisplayViewer
+import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
+import com.phonecontrol.assistant.ui.displays.TaskDisplayUiRecord
+import com.phonecontrol.assistant.ui.displays.TaskDisplaysScreen
+import com.phonecontrol.assistant.ui.displays.displayRecordsWithPreviewFallback
+import com.phonecontrol.assistant.ui.displays.surface.PreviewSurfaceDestroyed
+import com.phonecontrol.assistant.ui.displays.viewerPreviewState
 import com.phonecontrol.assistant.ui.navigation.AppRoutes
 import com.phonecontrol.assistant.ui.navigation.supportedInitialRoute
 import com.phonecontrol.assistant.ui.theme.DarkAssistantColors
 import com.phonecontrol.assistant.ui.theme.LightAssistantColors
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.ThemeMode
-
-internal fun displayRecordsWithPreviewFallback(
-    displayRecords: List<TaskDisplayUiRecord>,
-    previewState: LiveDisplayPreviewState?,
-): List<TaskDisplayUiRecord> =
-    // Until the backend exposes its registry, the active preview remains a
-    // valid single-record manager model. MainActivity can pass persisted and
-    // retained records later without changing the viewer contract.
-    displayRecords.ifEmpty {
-        previewState?.sessionKey?.let { key ->
-            listOf(
-                TaskDisplayUiRecord(
-                    sessionKey = key,
-                    lifecycle = TaskDisplayLifecycle.RUNNING,
-                    appLabel = previewState.appLabel,
-                    currentPurpose = previewState.purpose,
-                    currentToolName = previewState.currentToolName,
-                    previewState = previewState,
-                ),
-            )
-        }.orEmpty()
-    }
-
-internal fun viewerPreviewState(
-    viewerRecord: TaskDisplayUiRecord?,
-    previewState: LiveDisplayPreviewState?,
-): LiveDisplayPreviewState? = viewerRecord?.previewState
-    ?: previewState?.takeIf { it.sessionKey == viewerRecord?.sessionKey }
-    ?: viewerRecord?.let { record ->
-        val ratio = record.geometry?.let { geometry ->
-            geometry.width.toFloat() / geometry.height.toFloat()
-        } ?: DEFAULT_LIVE_DISPLAY_PREVIEW_ASPECT_RATIO
-        LiveDisplayPreviewState.unavailable(
-            message = record.error,
-            aspectRatio = ratio,
-            sessionKey = record.sessionKey,
-        ).copy(
-            appLabel = record.appLabel,
-            purpose = record.currentPurpose,
-            currentToolName = record.currentToolName,
-        )
-    }
 
 @Composable
 fun PhoneControlApp(

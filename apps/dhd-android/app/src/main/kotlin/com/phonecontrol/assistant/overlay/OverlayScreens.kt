@@ -90,14 +90,14 @@ import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.session.DhdToolCall
 import com.phonecontrol.assistant.session.DhdToolCallStatus
 import com.phonecontrol.assistant.session.SessionState
-import com.phonecontrol.assistant.ui.LiveDisplayPreview
-import com.phonecontrol.assistant.ui.LiveDisplayPreviewState
 import com.phonecontrol.assistant.ui.MarkdownContent
 import com.phonecontrol.assistant.ui.THINKING_WORDS
 import com.phonecontrol.assistant.ui.components.reasoning.FastModeButton
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningEffortButton
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningEffortTrack
-import com.phonecontrol.assistant.ui.liveDisplayCornerShape
+import com.phonecontrol.assistant.ui.displays.LiveDisplayPreview
+import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
+import com.phonecontrol.assistant.ui.displays.liveDisplayCornerShape
 import com.phonecontrol.assistant.ui.theme.AssistantColorScheme
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlinx.coroutines.delay

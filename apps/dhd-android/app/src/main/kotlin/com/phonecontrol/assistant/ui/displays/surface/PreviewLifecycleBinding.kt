@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.ui
+package com.phonecontrol.assistant.ui.displays.surface
 
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver

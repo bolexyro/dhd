@@ -1,6 +1,7 @@
 package com.phonecontrol.assistant.ui
 
 import com.phonecontrol.assistant.data.TimelineItem
+import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

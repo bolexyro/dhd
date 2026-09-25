@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.ui
+package com.phonecontrol.assistant.ui.displays
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -24,10 +24,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.phonecontrol.assistant.domain.ClickPhase
-import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.domain.TASK_CLICK_MOVE_DURATION_MS
-import kotlinx.coroutines.launch
+import com.phonecontrol.assistant.domain.TaskPointerEvent
 import kotlin.math.max
+import kotlinx.coroutines.launch
 
 private const val CLICK_PRESS_DURATION_MS = 150L
 private const val CLICK_PRESS_DOWN_MS = 60
