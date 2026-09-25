@@ -111,8 +111,8 @@ class NativeDisplayParsersTest {
         // The native encoder may have only one static keyframe available when
         // the first TextureView surface attaches. That frame must survive the
         // initial handshake; subsequent decoder handoffs require a fresh IDR.
-        assertEquals(false, DhdNativeDisplayService.shouldResetStreamQueue(false))
-        assertEquals(true, DhdNativeDisplayService.shouldResetStreamQueue(true))
+        assertEquals(false, StreamServer.shouldResetStreamQueue(false))
+        assertEquals(true, StreamServer.shouldResetStreamQueue(true))
     }
 
     @Test

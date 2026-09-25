@@ -2,26 +2,14 @@ package com.phonecontrol.assistant.developer;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.MediaCodec;
-import android.media.MediaFormat;
 import android.view.Surface;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,7 +40,6 @@ final class DhdNativeDisplayService implements Closeable {
             Pattern.compile("[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}");
     private static final Pattern PACKAGE_PATTERN =
             Pattern.compile("[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+");
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final Map<String, DisplaySession> sessions = new HashMap<>();
     private final Object lock = new Object();
@@ -335,37 +322,13 @@ final class DhdNativeDisplayService implements Closeable {
         private final int appDisplayHeight;
         private final int frameRate;
         private final int bitRate;
-        private final String streamToken = newToken();
-        private final ArrayDeque<EncodedPacket> packets = new ArrayDeque<>(MAX_STREAM_QUEUE_PACKETS);
-        private final Object streamLock = new Object();
-        private final Object codecLock = new Object();
         private final ExecutorService executor = Executors.newFixedThreadPool(2);
         private final AtomicBoolean closed = new AtomicBoolean(false);
-        private volatile boolean streamClientAllowed;
-        private volatile Socket streamClient;
-        /** True until the queue contains a fresh, decodable IDR boundary. */
-        private boolean awaitingKeyFrame = true;
-        /** A reconnect must not accept a keyframe from before its reset point. */
-        private long keyFrameRequiredAfterPts = Long.MIN_VALUE;
-        private long lastEnqueuedPresentationTimeUs = Long.MIN_VALUE;
-        /**
-         * The first viewer may consume a keyframe that was encoded while the
-         * display was starting. Keep that startup frame; only later viewers
-         * need a queue reset and a fresh IDR boundary.
-         */
-        private boolean streamHasServedClient;
-        private ServerSocket streamServer;
-        // Keep the bound port as immutable session metadata. The daemon can
-        // snapshot a session for LIST while close() is releasing the server;
-        // reading ServerSocket.getLocalPort() after it is nulled would make
-        // reconciliation fail spuriously.
-        private volatile int streamPort = -1;
-        private MediaCodec encoder;
-        private Surface encoderSurface;
+        private final AvcEncoderPipeline encoder = new AvcEncoderPipeline(closed);
+        private final StreamServer stream;
+        private final DisplayOverrides overrides;
         private HiddenDisplayManager displayBridge;
         private int displayId = -1;
-        private volatile MediaFormat outputFormat;
-        private final DisplayOverrides overrides;
 
         DisplaySession(String sessionKey, String packageName, int width, int height,
                        int densityDpi, int appDensityDpi,
@@ -381,21 +344,13 @@ final class DhdNativeDisplayService implements Closeable {
             this.appDisplayHeight = appDisplayHeight;
             this.frameRate = frameRate;
             this.bitRate = bitRate;
+            this.stream = new StreamServer(width, height, encoder, closed);
             this.overrides = new DisplayOverrides(
                     width, height, densityDpi, appDensityDpi, appDisplayWidth, appDisplayHeight);
         }
 
         void start() throws Exception {
-            MediaFormat format = MediaFormat.createVideoFormat(CODEC_MIME, width, height);
-            format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                    MediaCodecInfoCompat.COLOR_FORMAT_SURFACE);
-            format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
-            format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
-            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
-            encoder = MediaCodec.createEncoderByType(CODEC_MIME);
-            encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-            encoderSurface = encoder.createInputSurface();
-            encoder.start();
+            Surface encoderSurface = encoder.start(width, height, bitRate, frameRate);
 
             displayBridge = new HiddenDisplayManager();
             displayId = displayBridge.createVirtualDisplay(
@@ -403,12 +358,9 @@ final class DhdNativeDisplayService implements Closeable {
             if (displayId <= 0) throw new IOException("Android created an invalid task display id.");
             overrides.apply(displayId);
 
-            streamServer = new ServerSocket();
-            streamServer.setReuseAddress(true);
-            streamServer.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0));
-            streamPort = streamServer.getLocalPort();
-            executor.submit(this::drainEncoder);
-            executor.submit(this::serveStream);
+            stream.bind();
+            executor.submit(() -> encoder.drain(stream));
+            executor.submit(stream::serve);
             TaskLauncher.launch(packageName, displayId);
         }
 
@@ -425,340 +377,33 @@ final class DhdNativeDisplayService implements Closeable {
                     ",\"appDisplayHeight\":" + appDisplayHeight +
                     ",\"frameRate\":" + frameRate +
                     ",\"bitRate\":" + bitRate +
-                    ",\"streamPort\":" + streamPort +
-                    ",\"streamToken\":\"" + escape(streamToken) + "\"" +
+                    ",\"streamPort\":" + stream.port() +
+                    ",\"streamToken\":\"" + escape(stream.token()) + "\"" +
                     ",\"codecMime\":\"" + CODEC_MIME + "\"}";
             return json.getBytes(StandardCharsets.UTF_8);
         }
 
         void allowStreamClient() {
-            streamClientAllowed = true;
+            stream.allowClient();
         }
 
         void detachStreamClient() {
-            streamClientAllowed = false;
-            synchronized (streamLock) {
-                closeQuietly(streamClient);
-                streamClient = null;
-                streamLock.notifyAll();
-            }
+            stream.detachClient();
         }
 
         @Override
         public void close() {
             if (!closed.compareAndSet(false, true)) return;
-            synchronized (streamLock) {
-                closeQuietly(streamClient);
-                closeQuietly(streamServer);
-                streamClient = null;
-                streamServer = null;
-                streamLock.notifyAll();
-            }
-            synchronized (codecLock) {
-                if (encoder != null) {
-                    try { encoder.stop(); } catch (Throwable ignored) {}
-                    try { encoder.release(); } catch (Throwable ignored) {}
-                    encoder = null;
-                }
-                if (encoderSurface != null) {
-                    closeQuietly(encoderSurface);
-                    encoderSurface = null;
-                }
-            }
+            stream.close();
+            encoder.close();
             overrides.reset(displayId);
             if (displayBridge != null && displayId > 0) displayBridge.releaseVirtualDisplay();
             displayId = -1;
             executor.shutdownNow();
         }
 
-        private void drainEncoder() {
-            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-            try {
-                while (!closed.get()) {
-                    EncodedPacket packet = null;
-                    boolean endOfStream = false;
-                    boolean formatChanged = false;
-                    synchronized (codecLock) {
-                        MediaCodec codec = encoder;
-                        if (codec == null) return;
-                        int index = codec.dequeueOutputBuffer(info, 100_000L);
-                        if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                            outputFormat = codec.getOutputFormat();
-                            formatChanged = true;
-                        } else if (index >= 0) {
-                            ByteBuffer buffer = codec.getOutputBuffer(index);
-                            if (buffer != null && info.size > 0) {
-                                ByteBuffer duplicate = buffer.duplicate();
-                                duplicate.position(info.offset);
-                                duplicate.limit(info.offset + info.size);
-                                byte[] bytes = new byte[info.size];
-                                duplicate.get(bytes);
-                                packet = new EncodedPacket(info.flags, info.presentationTimeUs, bytes);
-                            }
-                            codec.releaseOutputBuffer(index, false);
-                            endOfStream = (info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
-                        }
-                    }
-                    if (formatChanged) {
-                        synchronized (streamLock) { streamLock.notifyAll(); }
-                        continue;
-                    }
-                    if (packet != null) enqueue(packet);
-                    if (endOfStream) return;
-                }
-            } catch (Throwable ignored) {
-                // The task receives a stream EOF and can report the failed preview.
-            }
-        }
-
-        private void enqueue(EncodedPacket packet) {
-            if (packet.bytes.length == 0 || packet.bytes.length > MAX_STREAM_PACKET_BYTES) return;
-            boolean requestSyncFrame = false;
-            boolean accepted = true;
-            synchronized (streamLock) {
-                long previousLastPts = lastEnqueuedPresentationTimeUs;
-                lastEnqueuedPresentationTimeUs = Math.max(
-                        lastEnqueuedPresentationTimeUs,
-                        packet.presentationTimeUs);
-                if (packets.size() >= MAX_STREAM_QUEUE_PACKETS) {
-                    // Dropping an arbitrary AVC packet can discard a P-frame
-                    // that later frames reference. The decoder then renders a
-                    // blank surface until the next IDR. Reset the queue at a
-                    // GOP boundary and request a fresh sync frame instead.
-                    packets.clear();
-                    awaitingKeyFrame = true;
-                    keyFrameRequiredAfterPts = Math.max(
-                            keyFrameRequiredAfterPts,
-                            previousLastPts);
-                    requestSyncFrame = true;
-                }
-                if (awaitingKeyFrame) {
-                    boolean isFreshKeyFrame =
-                            (packet.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0 &&
-                                    packet.presentationTimeUs > keyFrameRequiredAfterPts;
-                    if (!isFreshKeyFrame) {
-                        // Keep the queue empty until the encoder supplies the
-                        // requested fresh IDR. Do not return before the sync-
-                        // frame request below; otherwise an overflow would
-                        // leave the decoder waiting forever on an old GOP.
-                        accepted = false;
-                    } else {
-                        awaitingKeyFrame = false;
-                        keyFrameRequiredAfterPts = Long.MIN_VALUE;
-                    }
-                }
-                if (accepted) {
-                    packets.addLast(packet);
-                    streamLock.notifyAll();
-                }
-            }
-            if (requestSyncFrame) {
-                try {
-                    requestSyncFrame();
-                } catch (Throwable ignored) {
-                    // The next encoder keyframe still provides a safe
-                    // recovery point if this best-effort request is rejected.
-                }
-            }
-            if (!accepted) return;
-        }
-
-        private void serveStream() {
-            while (!closed.get()) {
-                Socket client = null;
-                try {
-                    ServerSocket server = streamServer;
-                    if (server == null) return;
-                    client = server.accept();
-                    client.setTcpNoDelay(true);
-                    // Authenticate the client before exposing the codec
-                    // configuration or a single video packet. A server-only
-                    // token in the response would allow any local process to
-                    // read the preview stream.
-                    client.setSoTimeout(2_000);
-                    DataInputStream input = new DataInputStream(client.getInputStream());
-                    if (!authenticateClient(input)) {
-                        closeQuietly(client);
-                        continue;
-                    }
-                    client.setSoTimeout(30_000);
-                    synchronized (streamLock) {
-                        if (!streamClientAllowed) {
-                            closeQuietly(client);
-                            continue;
-                        }
-                        closeQuietly(streamClient);
-                        streamClient = client;
-                    }
-                    writeStream(client);
-                } catch (Throwable ignored) {
-                    if (closed.get()) return;
-                } finally {
-                    synchronized (streamLock) {
-                        if (streamClient == client) streamClient = null;
-                    }
-                    closeQuietly(client);
-                }
-            }
-        }
-
-        private boolean authenticateClient(DataInputStream input) throws IOException {
-            if (input.readInt() != STREAM_MAGIC || input.readInt() != STREAM_VERSION) return false;
-            int length = input.readInt();
-            if (length < 0 || length > 128) return false;
-            byte[] bytes = new byte[length];
-            input.readFully(bytes);
-            return DhdMaintenanceProtocol.tokensEqual(
-                    streamToken,
-                    new String(bytes, StandardCharsets.UTF_8));
-        }
-
-        private void writeStream(Socket client) throws Exception {
-            DataOutputStream output = new DataOutputStream(client.getOutputStream());
-            boolean requestInitialSync = false;
-            synchronized (streamLock) {
-                // The first client can use the keyframe already buffered
-                // while the target activity was launching. Clearing it makes
-                // a static display depend on a second sync frame, which some
-                // hardware encoders do not emit until the pixels change.
-                // Once a client has been served, a replacement decoder must
-                // start at a fresh IDR so it cannot show an old display.
-                if (shouldResetStreamQueue(streamHasServedClient)) {
-                    packets.clear();
-                    awaitingKeyFrame = true;
-                    keyFrameRequiredAfterPts = lastEnqueuedPresentationTimeUs;
-                    requestInitialSync = true;
-                } else if (packets.isEmpty()) {
-                    // No startup frame is available yet. Preserve the queue
-                    // semantics and request one without discarding anything.
-                    awaitingKeyFrame = true;
-                    keyFrameRequiredAfterPts = Long.MIN_VALUE;
-                    requestInitialSync = true;
-                }
-                streamHasServedClient = true;
-            }
-            if (requestInitialSync) {
-                // Request a fresh IDR so a static display does not wait for
-                // the encoder's next periodic sync interval. The first
-                // request never invalidates a frame already in the queue.
-                requestSyncFrame();
-            }
-            MediaFormat format;
-            synchronized (streamLock) {
-                while (!closed.get() && outputFormat == null) streamLock.wait(100L);
-                format = outputFormat;
-            }
-            if (format == null) throw new IOException("Encoder format did not become available.");
-            output.writeInt(STREAM_MAGIC);
-            output.writeInt(STREAM_VERSION);
-            writeString(output, streamToken);
-            writeString(output, CODEC_MIME);
-            output.writeInt(width);
-            output.writeInt(height);
-            writeBuffer(output, format, "csd-0");
-            writeBuffer(output, format, "csd-1");
-            output.flush();
-
-            boolean keyFrameSeen = false;
-            while (!closed.get() && !client.isClosed()) {
-                EncodedPacket packet;
-                synchronized (streamLock) {
-                    while (!closed.get() && packets.isEmpty() && streamClient == client) streamLock.wait(250L);
-                    if (closed.get() || streamClient != client) return;
-                    packet = packets.pollFirst();
-                }
-                if (packet == null) continue;
-                if (!keyFrameSeen) {
-                    if ((packet.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) == 0) continue;
-                    keyFrameSeen = true;
-                }
-                output.writeInt(packet.flags);
-                output.writeLong(packet.presentationTimeUs);
-                output.writeInt(packet.bytes.length);
-                output.write(packet.bytes);
-                output.flush();
-            }
-        }
-
-        private void requestSyncFrame() throws IOException {
-            synchronized (codecLock) {
-                MediaCodec codec = encoder;
-                if (codec == null || closed.get()) throw new IOException("DHD display encoder is closed.");
-                try {
-                    android.os.Bundle parameters = new android.os.Bundle();
-                    parameters.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
-                    codec.setParameters(parameters);
-                } catch (Throwable error) {
-                    throw new IOException("DHD display encoder could not request a key frame.", error);
-                }
-            }
-        }
-
-        private static void writeString(DataOutputStream output, String value) throws IOException {
-            byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-            if (bytes.length > 128) throw new IOException("DHD display stream string is too long.");
-            output.writeInt(bytes.length);
-            output.write(bytes);
-        }
-
-        private static void writeBuffer(DataOutputStream output, MediaFormat format, String key) throws IOException {
-            ByteBuffer source = format.getByteBuffer(key);
-            if (source == null) {
-                output.writeInt(-1);
-                return;
-            }
-            ByteBuffer buffer = source.duplicate();
-            byte[] bytes = new byte[buffer.remaining()];
-            buffer.get(bytes);
-            if (bytes.length > 1 << 20) throw new IOException("DHD codec config is too large.");
-            output.writeInt(bytes.length);
-            output.write(bytes);
-        }
-
         private static String escape(String text) {
             return text.replace("\\", "\\\\").replace("\"", "\\\"");
         }
-
-        private static void closeQuietly(Closeable closeable) {
-            if (closeable == null) return;
-            try { closeable.close(); } catch (Throwable ignored) {}
-        }
-
-        private static void closeQuietly(Surface surface) {
-            if (surface == null) return;
-            try { surface.release(); } catch (Throwable ignored) {}
-        }
-
-        private static final class EncodedPacket {
-            final int flags;
-            final long presentationTimeUs;
-            final byte[] bytes;
-
-            EncodedPacket(int flags, long presentationTimeUs, byte[] bytes) {
-                this.flags = flags;
-                this.presentationTimeUs = presentationTimeUs;
-                this.bytes = bytes;
-            }
-        }
-    }
-
-    /** Queue reset is safe only after the stream has served its first client. */
-    static boolean shouldResetStreamQueue(boolean streamHasServedClient) {
-        return streamHasServedClient;
-    }
-
-    /** Compatibility constants kept out of the public SDK surface. */
-    private static final class MediaCodecInfoCompat {
-        static final int COLOR_FORMAT_SURFACE = 0x7F000789;
-
-        private MediaCodecInfoCompat() {}
-    }
-
-    private static String newToken() {
-        byte[] bytes = new byte[24];
-        RANDOM.nextBytes(bytes);
-        StringBuilder result = new StringBuilder(bytes.length * 2);
-        for (byte value : bytes) result.append(String.format(Locale.ROOT, "%02x", value));
-        return result.toString();
     }
 }
