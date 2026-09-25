@@ -68,17 +68,6 @@
     </issue>
 
     <issue
-        id="NewApi"
-        message="`android:windowLightNavigationBar` requires API level 27 (current min is 26)"
-        errorLine1="        &lt;item name=&quot;android:windowLightNavigationBar&quot;>false&lt;/item>"
-        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/values/styles.xml"
-            line="8"
-            column="15"/>
-    </issue>
-
-    <issue
         id="OldTargetApi"
         message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
         errorLine1="        targetSdk = 35"
