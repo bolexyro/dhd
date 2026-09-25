@@ -43,6 +43,7 @@ import type {
   CompanionTokenUsageSnapshot,
   DiscoveredPhoneSnapshot,
 } from "./api.js";
+import { compactBase64, parseBase64DataUrl } from "../shared/base64.js";
 import { errorMessage, toError } from "../shared/errors.js";
 import { isPlainRecord, isRecord } from "../shared/guards.js";
 import { isMainModule } from "../shared/is-main-module.js";
@@ -269,11 +270,8 @@ export function toJsonValue(value: unknown): CompanionJsonValue {
 
 export function decodeImage(value: string): Buffer | undefined {
   const raw = value.trim();
-  const dataUrlMatch = raw.match(/^data:([^;,]+);base64,([\s\S]*)$/i);
-  const base64 = (dataUrlMatch ? dataUrlMatch[2] : raw).replace(/\s+/g, "");
-  if (!base64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || base64.length % 4 !== 0) {
-    return undefined;
-  }
+  const base64 = compactBase64(parseBase64DataUrl(raw)?.base64 ?? raw);
+  if (!base64) return undefined;
   const bytes = Buffer.from(base64, "base64");
   return bytes.length > 0 ? bytes : undefined;
 }

@@ -16,7 +16,7 @@ import {
   type DhdMarkerContext,
 } from "./markers.js";
 import { withoutScreenshot } from "./sanitize.js";
-import { normalizeScreenshot, type NormalizedScreenshot } from "./screenshot.js";
+import { normalizeScreenshot, pngScreenshot, type NormalizedScreenshot } from "./screenshot.js";
 import type {
   AssistantImageContent,
   AssistantTextContent,
@@ -79,12 +79,7 @@ export function toMcpResult(
           beforeObservation.screenshotDimensions,
           actionTap,
         );
-        const cropBase64 = Buffer.from(crop.screenshot).toString("base64");
-        beforeTapImage = {
-          base64: cropBase64,
-          mimeType: beforeRendered.screenshot.mimeType,
-          dataUrl: `data:${beforeRendered.screenshot.mimeType};base64,${cropBase64}`,
-        };
+        beforeTapImage = pngScreenshot(Buffer.from(crop.screenshot).toString("base64"));
         screenshotEvidence = {
           kind: "before_tap_crop",
           sourceObservationId: beforeObservation.observationId,

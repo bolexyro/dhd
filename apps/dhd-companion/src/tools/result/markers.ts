@@ -10,7 +10,7 @@ import {
 import type { BridgeMessage } from "../../phone/protocol.js";
 import { errorMessage } from "../../shared/errors.js";
 import { readRecord } from "../../shared/guards.js";
-import type { NormalizedScreenshot } from "./screenshot.js";
+import { pngScreenshot, type NormalizedScreenshot } from "./screenshot.js";
 
 const screenshotMarkerPresenter = new ScreenshotMarkerPresenter();
 
@@ -101,13 +101,8 @@ export function renderScreenshot(
         initialPointer: context?.initialPointer,
       }
     );
-    const base64 = Buffer.from(rendered.screenshot).toString("base64");
     return {
-      screenshot: {
-        base64,
-        mimeType: screenshot.mimeType,
-        dataUrl: `data:${screenshot.mimeType};base64,${base64}`,
-      },
+      screenshot: pngScreenshot(Buffer.from(rendered.screenshot).toString("base64")),
       marker: rendered.marker,
     };
   } catch (error) {

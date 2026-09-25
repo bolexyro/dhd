@@ -1,5 +1,6 @@
+import { compactBase64, parseBase64DataUrl } from "../../shared/base64.js";
+
 export const DHD_SCREENSHOT_MIME_TYPE = "image/png" as const;
-const SCREENSHOT_DATA_URL_PATTERN = /^data:([^;,]+);base64,([\s\S]*)$/i;
 
 export interface NormalizedScreenshot {
   base64: string;
@@ -35,12 +36,12 @@ export function normalizeScreenshot(
   let mimeType = declared;
   let base64 = raw;
   if (raw.startsWith("data:")) {
-    const match = SCREENSHOT_DATA_URL_PATTERN.exec(raw);
-    if (!match) {
+    const dataUrl = parseBase64DataUrl(raw);
+    if (!dataUrl) {
       throw new Error("The phone assistant returned an invalid screenshot data URL.");
     }
-    mimeType = match[1].toLowerCase();
-    base64 = match[2];
+    mimeType = dataUrl.mimeType.toLowerCase();
+    base64 = dataUrl.base64;
     if (declared !== DHD_SCREENSHOT_MIME_TYPE && declared !== mimeType) {
       throw new Error("The screenshot MIME type does not match its data URL.");
     }
@@ -49,11 +50,15 @@ export function normalizeScreenshot(
     throw new Error(`Unsupported phone screenshot MIME type: ${mimeType}.`);
   }
 
-  base64 = base64.replace(/\s+/g, "");
-  if (!base64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || base64.length % 4 !== 0) {
+  const compact = compactBase64(base64);
+  if (!compact) {
     throw new Error("The phone assistant returned invalid base64 screenshot data.");
   }
 
+  return pngScreenshot(compact);
+}
+
+export function pngScreenshot(base64: string): NormalizedScreenshot {
   return {
     base64,
     mimeType: DHD_SCREENSHOT_MIME_TYPE,
