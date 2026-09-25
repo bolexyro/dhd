@@ -1,4 +1,8 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import {
+  spawn,
+  type ChildProcessWithoutNullStreams,
+  type SpawnOptionsWithoutStdio,
+} from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
@@ -172,6 +176,16 @@ interface AgentMessageStreamUpdate {
   text: string;
 }
 
+export type AppServerSpawner = (
+  command: string,
+  args: readonly string[],
+  options: SpawnOptionsWithoutStdio,
+) => ChildProcessWithoutNullStreams;
+
+export interface CodexAppServerClientOptions {
+  spawnAppServer?: AppServerSpawner;
+}
+
 /**
  * Persistent Codex App Server client. Authentication stays in the Codex
  * CLI/App Server; this process never handles ChatGPT cookies or API keys.
@@ -209,6 +223,11 @@ export class CodexAppServerClient {
   private userMessageLogged = false;
   private activeModel = resolveCodexModel();
   private activeServiceTier = DEFAULT_CODEX_SERVICE_TIER;
+  private readonly spawnAppServer: AppServerSpawner;
+
+  constructor(options: CodexAppServerClientOptions = {}) {
+    this.spawnAppServer = options.spawnAppServer ?? spawn;
+  }
 
   /** True while this client still owns an in-flight App Server turn. */
   get isTurnInFlight(): boolean {
@@ -519,7 +538,7 @@ export class CodexAppServerClient {
       process.platform === "win32"
         ? `${quoteWindowsCommand(command)} ${args.map(quoteWindowsCommand).join(" ")}`
         : command;
-    const child = spawn(
+    const child = this.spawnAppServer(
       windowsCommand,
       process.platform === "win32" ? [] : args,
       {
