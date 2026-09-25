@@ -22,6 +22,7 @@ import type { SseHub } from "./sse.js";
 import { ToolCallStore } from "./tool-call-store.js";
 
 const MAX_LOG_ENTRIES = 250;
+const PUBLISH_BATCH_MS = 100;
 
 export type LogOptions = Pick<CompanionLogEntry, "level" | "source">;
 
@@ -35,6 +36,7 @@ export class DashboardState {
   private logEntries: CompanionLogEntry[] = [];
   private plan: CompanionPlanSnapshot | undefined;
   private tokenUsage: CompanionTokenUsageSnapshot | undefined;
+  private publishTimer: NodeJS.Timeout | undefined;
 
   constructor(private readonly sse: SseHub) {}
 
@@ -53,7 +55,11 @@ export class DashboardState {
   }
 
   publish(): void {
-    this.sse.broadcast(`data: ${JSON.stringify(this.snapshot())}\n\n`);
+    if (this.publishTimer) return;
+    this.publishTimer = setTimeout(() => {
+      this.publishTimer = undefined;
+      this.sse.broadcast(`data: ${JSON.stringify(this.snapshot())}\n\n`);
+    }, PUBLISH_BATCH_MS);
   }
 
   appendLog(
