@@ -80,7 +80,7 @@ class SessionCoordinator(
     private val _state = MutableStateFlow<SessionState>(SessionState.Idle)
     private val activityLog = ActivityLog(conversationStore)
     private val _pointerEvent = MutableStateFlow<TaskPointerEvent?>(null)
-    private val _toolCalls = MutableStateFlow<List<DhdToolCall>>(emptyList())
+    private val toolCallLog = ToolCallLog()
     private var sessionJob: Job? = null
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var claimedRequestSessionId: String? = null
@@ -91,7 +91,7 @@ class SessionCoordinator(
 
     val state: StateFlow<SessionState> = _state.asStateFlow()
     val events: StateFlow<List<ActivityEvent>> = activityLog.events
-    val toolCalls: StateFlow<List<DhdToolCall>> = _toolCalls.asStateFlow()
+    val toolCalls: StateFlow<List<DhdToolCall>> = toolCallLog.toolCalls
 
     /** Latest task-display pointer feedback for the read-only live preview. */
     val pointerEvent: StateFlow<TaskPointerEvent?> = _pointerEvent.asStateFlow()
@@ -121,7 +121,7 @@ class SessionCoordinator(
         _pointerEvent.value = null
         val startedRun = conversationStore?.startRun(sessionId, request, conversationId)
         claimedRequestSessionId = null
-        _toolCalls.value = emptyList()
+        toolCallLog.clear()
         _state.value = SessionState.Running(
             sessionId = sessionId,
             request = request.trim(),
@@ -152,23 +152,8 @@ class SessionCoordinator(
         val sessionId = current.sessionIdOrNull ?: return@synchronized null
         if (!current.isActive) return@synchronized null
 
-        val safeToolName = toolName.trim().take(MAX_TOOL_NAME_CHARS)
-            .ifBlank { "dhd_tool" }
-        val safePurpose = (purpose ?: defaultDhdToolPurpose(safeToolName))
-            .trim()
-            .take(MAX_TEXT_CHARS)
-            .ifBlank { defaultDhdToolPurpose(safeToolName) }
-        val now = System.currentTimeMillis()
-        val call = DhdToolCall(
-            id = UUID.randomUUID().toString(),
-            sessionId = sessionId,
-            toolName = safeToolName,
-            purpose = safePurpose,
-            status = DhdToolCallStatus.RUNNING,
-            startedAtEpochMs = now,
-        )
-        _toolCalls.value = (_toolCalls.value + call).takeLast(MAX_TOOL_CALLS)
-        setCurrentPurpose(safePurpose, metadataPurpose = safePurpose)
+        val call = toolCallLog.begin(sessionId, toolName, purpose)
+        setCurrentPurpose(call.purpose, metadataPurpose = call.purpose)
         call.id
     }
 
@@ -176,17 +161,7 @@ class SessionCoordinator(
         callId: String?,
         status: DhdToolCallStatus = DhdToolCallStatus.COMPLETED,
     ): Boolean = synchronized(lock) {
-        if (callId.isNullOrBlank()) return@synchronized false
-        val index = _toolCalls.value.indexOfFirst { it.id == callId }
-        if (index < 0) return@synchronized false
-        val call = _toolCalls.value[index]
-        if (call.status != DhdToolCallStatus.RUNNING) return@synchronized false
-        val updated = call.copy(
-            status = status,
-            endedAtEpochMs = System.currentTimeMillis(),
-        )
-        _toolCalls.value = _toolCalls.value.toMutableList().also { it[index] = updated }
-        true
+        toolCallLog.finish(callId, status)
     }
 
     /**
@@ -465,7 +440,7 @@ class SessionCoordinator(
         claimedSteers.clear()
         claimedRequestSessionId = null
         _pointerEvent.value = null
-        _toolCalls.value = emptyList()
+        toolCallLog.clear()
         activityLog.clear()
         _state.value = SessionState.Idle
         true
@@ -1161,8 +1136,6 @@ class SessionCoordinator(
     )
 
     private companion object {
-        const val MAX_TOOL_CALLS = 12
-        const val MAX_TOOL_NAME_CHARS = 80
         const val MAX_TEXT_CHARS = 240
         const val MAX_AGENT_FEEDBACK_CHARS = 4_000
         const val MAX_STEER_CHARS = 4_000
