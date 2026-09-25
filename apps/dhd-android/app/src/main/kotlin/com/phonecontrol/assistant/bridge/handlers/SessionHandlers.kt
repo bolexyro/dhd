@@ -11,6 +11,7 @@ import com.phonecontrol.assistant.bridge.protocol.errorResponse
 import com.phonecontrol.assistant.bridge.protocol.sessionStateName
 import com.phonecontrol.assistant.bridge.transport.BridgeReply
 import com.phonecontrol.assistant.core.conversationIdOrNull
+import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionCoordinator
@@ -308,8 +309,8 @@ internal class SessionHandlers(
             .trim()
             .ifBlank { null }
             ?.take(MAX_TEXT_CHARS)
-        val activeSessionId = coordinator.state.value.sessionIdOrNull
-        if (activeSessionId != sessionId) {
+        val state = coordinator.state.value
+        if (!state.isActive || state.sessionIdOrNull != sessionId) {
             reply.write(
                 errorResponse(requestId, "The phone session is no longer active.")
                     .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),

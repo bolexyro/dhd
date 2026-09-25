@@ -258,6 +258,7 @@ internal object SessionStateMachine {
 
     private fun stop(state: SessionState, event: SessionEvent.Stop): SessionTransition? {
         val sessionId = state.sessionIdOrNull ?: return null
+        if (!state.isActive) return null
         val continuationSettings = state.continuationSettings()
         return SessionTransition(
             state = SessionState.Stopped(
@@ -340,6 +341,7 @@ internal object SessionStateMachine {
 
     private fun complete(state: SessionState, event: SessionEvent.Complete): SessionTransition? {
         val sessionId = state.sessionIdOrNull ?: return null
+        if (!state.isActive) return null
         val feedback = event.agentFeedback
             ?.trim()
             ?.take(MAX_AGENT_FEEDBACK_CHARS)

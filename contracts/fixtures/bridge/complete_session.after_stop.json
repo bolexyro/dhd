@@ -13,13 +13,11 @@
       "type": "accepted"
     },
     {
-      "conversationId": "conversation-1",
-      "feedback": null,
-      "message": "Late completion.",
-      "ok": true,
+      "code": "SESSION_NOT_RUNNING",
+      "message": "The phone session is no longer active.",
+      "ok": false,
       "requestId": "req-complete_session",
-      "sessionId": "{{sessionId}}",
-      "type": "session_completed"
+      "type": "error"
     }
   ]
 }

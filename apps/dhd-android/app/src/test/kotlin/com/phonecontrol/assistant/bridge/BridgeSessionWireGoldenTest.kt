@@ -1,5 +1,6 @@
 package com.phonecontrol.assistant.bridge
 
+import com.phonecontrol.assistant.session.SessionState
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -373,14 +374,15 @@ class BridgeSessionWireGoldenTest {
     }
 
     @Test
-    fun `complete session after a stop is accepted today`() = runTest {
+    fun `complete session after a stop is rejected and keeps the stop`() = runTest {
         val harness = BridgeHarness()
         harness.startSession()
         assertTrue(harness.coordinator.stop("Stopped by the user."))
         harness.exchange(
-            "complete_session.after_stop_known_bug",
+            "complete_session.after_stop",
             request("complete_session", "sessionId" to "{{sessionId}}", "message" to "Late completion."),
         )
+        assertEquals("Stopped by the user.", (harness.coordinator.state.value as SessionState.Stopped).reason)
     }
 
     @Test

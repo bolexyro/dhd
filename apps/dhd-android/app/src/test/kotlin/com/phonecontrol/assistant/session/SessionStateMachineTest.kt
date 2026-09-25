@@ -113,12 +113,10 @@ class SessionStateMachineTest {
     }
 
     @Test
-    fun `known bug complete is accepted after a stop`() {
+    fun `complete is rejected after a stop`() {
         val stopped = SessionStateMachine.reduce(running, SessionEvent.Stop("Stopped by the user.", 3_000L))!!.state
 
-        val completed = SessionStateMachine.reduce(stopped, SessionEvent.Complete("Late.", null, null, 4_000L))!!.state
-
-        assertEquals(SessionState.Completed("run-1", "Late.", "conversation-1", workedDurationMs = 2_500L), completed)
+        assertNull(SessionStateMachine.reduce(stopped, SessionEvent.Complete("Late.", null, null, 4_000L)))
     }
 
     @Test

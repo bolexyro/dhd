@@ -45,11 +45,9 @@ class SessionTerminalTransitionTest {
         event: String,
         apply: SessionCoordinator.() -> Boolean,
         expected: Map<Start, Outcome>,
-        knownBugs: Map<Start, Outcome> = emptyMap(),
     ) {
-        assertEquals(Start.entries.toSet(), expected.keys + knownBugs.keys)
-        assertEquals(emptySet<Start>(), expected.keys intersect knownBugs.keys)
-        (expected + knownBugs).forEach { (start, outcome) ->
+        assertEquals(Start.entries.toSet(), expected.keys)
+        expected.forEach { (start, outcome) ->
             val coordinator = coordinator().arrange(start)
             assertEquals("$event from $start", outcome, coordinator.describe(coordinator.apply()))
         }
@@ -98,46 +96,42 @@ class SessionTerminalTransitionTest {
     )
 
     @Test
-    fun `stop is accepted for every state with a session id`() = assertTransitions(
+    fun `stop only applies to active sessions`() = assertTransitions(
         event = "stop",
         apply = { stop("Late stop.") },
         expected = mapOf(
             Start.IDLE to Outcome(false, "Idle"),
             Start.RUNNING to Outcome(true, "Stopped", "Late stop."),
             Start.PAUSED to Outcome(true, "Stopped", "Late stop."),
-        ),
-        knownBugs = mapOf(
-            Start.STOPPED to Outcome(true, "Stopped", "Late stop."),
-            Start.FAILED to Outcome(true, "Stopped", "Late stop."),
-            Start.COMPLETED to Outcome(true, "Stopped", "Late stop."),
+            Start.STOPPED to Outcome(false, "Stopped", "Stopped by the user."),
+            Start.FAILED to Outcome(false, "Stopped", "Failed: Codex crashed."),
+            Start.COMPLETED to Outcome(false, "Completed", "Milk added."),
         ),
     )
 
     @Test
-    fun `complete is accepted for every state with a session id`() = assertTransitions(
+    fun `complete only applies to active sessions`() = assertTransitions(
         event = "complete",
         apply = { complete("Late completion.") },
         expected = mapOf(
             Start.IDLE to Outcome(false, "Idle"),
             Start.RUNNING to Outcome(true, "Completed", "Late completion."),
             Start.PAUSED to Outcome(true, "Completed", "Late completion."),
-        ),
-        knownBugs = mapOf(
-            Start.STOPPED to Outcome(true, "Completed", "Late completion."),
-            Start.FAILED to Outcome(true, "Completed", "Late completion."),
-            Start.COMPLETED to Outcome(true, "Completed", "Late completion."),
+            Start.STOPPED to Outcome(false, "Stopped", "Stopped by the user."),
+            Start.FAILED to Outcome(false, "Stopped", "Failed: Codex crashed."),
+            Start.COMPLETED to Outcome(false, "Completed", "Milk added."),
         ),
     )
 
     @Test
-    fun `known bug complete overwrites a user stop and keeps its session id`() {
+    fun `late completion keeps a user stop`() {
         val coordinator = coordinator().arrange(Start.STOPPED)
         val sessionId = (coordinator.state.value as SessionState.Stopped).sessionId
         assertEquals(
-            Outcome(true, "Completed", "Late completion."),
+            Outcome(false, "Stopped", "Stopped by the user."),
             coordinator.describe(coordinator.complete("Late completion.")),
         )
-        assertEquals(sessionId, (coordinator.state.value as SessionState.Completed).sessionId)
+        assertEquals(sessionId, (coordinator.state.value as SessionState.Stopped).sessionId)
     }
 
     @Test
