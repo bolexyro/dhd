@@ -9,6 +9,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 
 internal data class DhdAdbCommandResult(
@@ -21,10 +22,12 @@ internal data class DhdAdbCommandResult(
 internal class DhdAdbClient(
     private val host: String,
     private val port: Int,
-    private val key: DhdAdbKey,
+    private val sslContext: () -> SSLContext,
     private val connectTimeoutMs: Int = DEFAULT_CONNECT_TIMEOUT_MS,
     private val readTimeoutMs: Int = DEFAULT_READ_TIMEOUT_MS,
 ) : Closeable {
+    constructor(host: String, port: Int, key: DhdAdbKey) : this(host, port, { key.sslContext })
+
     private var socket: Socket? = null
     private var tlsSocket: SSLSocket? = null
     private var input: DataInputStream? = null
@@ -44,7 +47,7 @@ internal class DhdAdbClient(
         var response = read()
         if (response.command == DhdAdbProtocol.A_STLS) {
             write(DhdAdbProtocol.A_STLS, DhdAdbProtocol.A_STLS_VERSION, 0)
-            val secure = key.sslContext.socketFactory.createSocket(
+            val secure = sslContext().socketFactory.createSocket(
                 raw,
                 host,
                 port,
