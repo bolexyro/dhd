@@ -2,6 +2,7 @@
 
 package com.phonecontrol.assistant.ui.settings
 
+import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,6 +42,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.BuildConfig
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.adb.DeveloperConnectionState
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
@@ -357,7 +359,11 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsRow(
                         title = stringResource(R.string.settings_version),
-                        subtitle = stringResource(R.string.settings_0_1_0_android_sdk_35),
+                        subtitle = stringResource(
+                            R.string.settings_version_summary,
+                            BuildConfig.VERSION_NAME,
+                            Build.VERSION.SDK_INT,
+                        ),
                         leading = { SettingsRowIcon(R.drawable.ic_info, "Version") },
                     )
                 }

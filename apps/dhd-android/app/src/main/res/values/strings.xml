@@ -79,7 +79,7 @@
     <string name="recovery_dhd_needs_your_attention">DHD needs your attention</string>
     <string name="recovery_instructions">Instructions</string>
     <string name="recovery_view_instructions">View instructions</string>
-    <string name="settings_0_1_0_android_sdk_35">0.1.0 • Android SDK 35</string>
+    <string name="settings_version_summary">%1$s • Android SDK %2$d</string>
     <string name="settings_about">About</string>
     <string name="settings_allow_access_to_all_installed_apps">Allow access to all installed apps</string>
     <string name="settings_allowed_apps">Allowed apps</string>
