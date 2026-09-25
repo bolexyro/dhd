@@ -6,7 +6,12 @@ import type { CompanionDashboard } from "./dashboard.js";
 import { discoveredPhoneSnapshot } from "./pairing-service.js";
 import { readRequestBody } from "./request-body.js";
 import { isTrustedDashboardRequest } from "./request-guard.js";
-import { serveStaticFile, staticAssetFor } from "./static.js";
+import {
+  defaultStaticLayout,
+  serveStaticFile,
+  staticAssetFor,
+  type StaticLayout,
+} from "./static.js";
 
 const TOOL_IMAGE_PATH = /^\/api\/tool-calls\/([^/]+)\/images\/(\d+)$/;
 
@@ -129,6 +134,7 @@ function requestUrl(req: http.IncomingMessage): URL | undefined {
 async function handleRequest(
   dashboard: CompanionDashboard,
   routes: Record<string, JsonRoute>,
+  layout: StaticLayout,
   req: http.IncomingMessage,
   res: http.ServerResponse,
 ): Promise<void> {
@@ -172,15 +178,18 @@ async function handleRequest(
     return;
   }
 
-  const staticAsset = staticAssetFor(pathname);
+  const staticAsset = staticAssetFor(pathname, layout);
   if (staticAsset) return serveStaticFile(res, staticAsset);
   writeText(res, 404, "Not Found");
 }
 
-export function createCompanionWebServer(dashboard: CompanionDashboard): http.Server {
+export function createCompanionWebServer(
+  dashboard: CompanionDashboard,
+  layout: StaticLayout = defaultStaticLayout,
+): http.Server {
   const routes = jsonPostRoutes(dashboard);
   return http.createServer((req, res) => {
-    handleRequest(dashboard, routes, req, res).catch((error: unknown) => {
+    handleRequest(dashboard, routes, layout, req, res).catch((error: unknown) => {
       console.error(`Companion dashboard request failed: ${errorMessage(error)}`);
       if (!res.headersSent) writeText(res, 500, "Internal Server Error");
       else res.end();

@@ -5,6 +5,7 @@ import { errorMessage } from "../../shared/errors.js";
 import { companionDashboard, type CompanionDashboard } from "./dashboard.js";
 import { createCompanionWebServer } from "./routes.js";
 import { loadConnection } from "./settings-store.js";
+import { RUNNING_FROM_SOURCE } from "./static.js";
 
 const DEFAULT_WEB_PORT = 8766;
 const DEFAULT_WEB_HOST = "127.0.0.1";
@@ -16,7 +17,7 @@ export async function startCompanionWebServer(
 ): Promise<http.Server> {
   dashboard.state.connection = await loadConnection();
   dashboard.monitor.startHeartbeat();
-  dashboard.devReload.start();
+  if (RUNNING_FROM_SOURCE) dashboard.devReload.start();
   const server = createCompanionWebServer(dashboard);
 
   return new Promise((resolveReady, rejectReady) => {

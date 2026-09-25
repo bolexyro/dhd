@@ -3,17 +3,9 @@ import { readFile } from "node:fs/promises";
 import type http from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
 
-const MODULE_DIRECTORY = fileURLToPath(new URL(".", import.meta.url));
-const PROJECT_ROOT = resolve(MODULE_DIRECTORY, "../../../");
-export const CLIENT_SOURCE_DIRECTORY = resolve(PROJECT_ROOT, "src/dashboard/client");
-export const CLIENT_DIST_DIRECTORY = resolve(PROJECT_ROOT, "dist/dashboard/client");
-const CLIENT_ROOT: StaticRoot = { source: CLIENT_SOURCE_DIRECTORY, dist: CLIENT_DIST_DIRECTORY };
-const SHARED_ROOT: StaticRoot = {
-  source: resolve(PROJECT_ROOT, "src/shared"),
-  dist: resolve(PROJECT_ROOT, "dist/shared"),
-};
+const PROJECT_ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../");
+export const RUNNING_FROM_SOURCE = import.meta.url.endsWith(".ts");
 const STATIC_FILES: Record<string, string> = {
   "/": "index.html",
   "/index.html": "index.html",
@@ -31,8 +23,13 @@ const NO_CACHE_HEADERS = {
 };
 
 export interface StaticRoot {
-  source: string;
+  source?: string;
   dist: string;
+}
+
+export interface StaticLayout {
+  client: StaticRoot;
+  shared: StaticRoot;
 }
 
 export interface StaticAsset {
@@ -40,20 +37,34 @@ export interface StaticAsset {
   fileName: string;
 }
 
-function hasModule(root: StaticRoot, name: string): boolean {
-  return existsSync(resolve(root.source, `${name}.ts`)) || existsSync(resolve(root.dist, `${name}.js`));
+export function staticLayout(projectRoot: string, fromSource: boolean): StaticLayout {
+  const root = (sourcePath: string, distPath: string): StaticRoot => ({
+    ...(fromSource ? { source: resolve(projectRoot, sourcePath) } : {}),
+    dist: resolve(projectRoot, distPath),
+  });
+  return {
+    client: root("src/dashboard/client", "dist/dashboard/client"),
+    shared: root("src/shared", "dist/shared"),
+  };
 }
 
-export function staticAssetFor(pathname: string): StaticAsset | undefined {
-  if (Object.hasOwn(STATIC_FILES, pathname)) return { root: CLIENT_ROOT, fileName: STATIC_FILES[pathname] };
-  if (CLIENT_ENTRY_PATHS.has(pathname)) return { root: CLIENT_ROOT, fileName: "main.js" };
+export const defaultStaticLayout = staticLayout(PROJECT_ROOT, RUNNING_FROM_SOURCE);
+
+function hasModule(root: StaticRoot, name: string): boolean {
+  return (root.source !== undefined && existsSync(resolve(root.source, `${name}.ts`))) ||
+    existsSync(resolve(root.dist, `${name}.js`));
+}
+
+export function staticAssetFor(pathname: string, layout: StaticLayout): StaticAsset | undefined {
+  if (Object.hasOwn(STATIC_FILES, pathname)) return { root: layout.client, fileName: STATIC_FILES[pathname] };
+  if (CLIENT_ENTRY_PATHS.has(pathname)) return { root: layout.client, fileName: "main.js" };
   const clientModule = CLIENT_MODULE_PATH.exec(pathname)?.[1];
-  if (clientModule && clientModule !== "main" && hasModule(CLIENT_ROOT, clientModule)) {
-    return { root: CLIENT_ROOT, fileName: `${clientModule}.js` };
+  if (clientModule && clientModule !== "main" && hasModule(layout.client, clientModule)) {
+    return { root: layout.client, fileName: `${clientModule}.js` };
   }
   const sharedModule = SHARED_MODULE_PATH.exec(pathname)?.[1];
   if (sharedModule && BROWSER_SHARED_MODULES.has(sharedModule)) {
-    return { root: SHARED_ROOT, fileName: `${sharedModule}.js` };
+    return { root: layout.shared, fileName: `${sharedModule}.js` };
   }
   return undefined;
 }
@@ -68,7 +79,8 @@ function getContentType(path: string): string {
   return "text/plain; charset=utf-8";
 }
 
-function transpileTsFile(tsCode: string): string {
+async function transpileTsFile(tsCode: string): Promise<string> {
+  const { default: ts } = await import("typescript");
   return ts.transpileModule(tsCode, {
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
@@ -81,13 +93,13 @@ function transpileTsFile(tsCode: string): string {
 
 export async function serveStaticFile(res: http.ServerResponse, { root, fileName }: StaticAsset): Promise<void> {
   // If a JS module is requested, check if a corresponding TS source exists and transpile on-the-fly
-  if (fileName.endsWith(".js")) {
+  if (root.source !== undefined && fileName.endsWith(".js")) {
     const tsFileName = fileName.replace(/\.js$/, ".ts");
     const srcTsPath = resolve(root.source, tsFileName);
     if (existsSync(srcTsPath)) {
       try {
         const tsCode = await readFile(srcTsPath, "utf8");
-        const jsCode = transpileTsFile(tsCode);
+        const jsCode = await transpileTsFile(tsCode);
         res.writeHead(200, {
           "Content-Type": "application/javascript; charset=utf-8",
           ...NO_CACHE_HEADERS
@@ -100,7 +112,8 @@ export async function serveStaticFile(res: http.ServerResponse, { root, fileName
     }
   }
 
-  for (const filePath of [resolve(root.source, fileName), resolve(root.dist, fileName)]) {
+  const candidates = [root.source, root.dist].filter((directory): directory is string => directory !== undefined);
+  for (const filePath of candidates.map((directory) => resolve(directory, fileName))) {
     if (existsSync(filePath)) {
       try {
         const content = await readFile(filePath);

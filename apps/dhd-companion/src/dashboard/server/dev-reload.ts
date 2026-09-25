@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import type { SseHub } from "./sse.js";
-import { CLIENT_DIST_DIRECTORY, CLIENT_SOURCE_DIRECTORY } from "./static.js";
+import { defaultStaticLayout } from "./static.js";
 
 export class DevReloadWatcher {
   private fileWatcher: FSWatcher | undefined;
@@ -12,9 +12,8 @@ export class DevReloadWatcher {
   constructor(private readonly sse: SseHub) {}
 
   start(): void {
-    if (this.fileWatcher) return;
-    const srcWebDir = CLIENT_SOURCE_DIRECTORY;
-    if (!existsSync(srcWebDir)) return;
+    const srcWebDir = defaultStaticLayout.client.source;
+    if (this.fileWatcher || !srcWebDir || !existsSync(srcWebDir)) return;
 
     try {
       this.fileWatcher = watch(srcWebDir, { recursive: true }, (_eventType, filename) => {
@@ -27,7 +26,7 @@ export class DevReloadWatcher {
           const isHtml = filename.endsWith(".html");
 
           // Sync static assets to dist if dist exists
-          const distWebDir = CLIENT_DIST_DIRECTORY;
+          const distWebDir = defaultStaticLayout.client.dist;
           if (existsSync(distWebDir)) {
             try {
               const srcFile = resolve(srcWebDir, filename);
