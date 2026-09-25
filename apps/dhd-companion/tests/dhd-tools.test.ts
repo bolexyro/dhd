@@ -20,7 +20,7 @@ import {
   isGuardRegionsEnabled,
   toMcpResult
 } from "../src/dhd-tools.js";
-import { buildDhdDynamicTools, toDynamicToolResponse } from "../src/assistant-companion.js";
+import { buildDhdDynamicTools, toDynamicToolResponse } from "../src/codex/dynamic-tools.js";
 import { dhdToolDescription } from "../src/tools/registry.js";
 
 const metadata = {

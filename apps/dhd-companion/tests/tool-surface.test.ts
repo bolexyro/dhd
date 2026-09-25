@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
-import { buildDhdDynamicTools } from "../src/assistant-companion.js";
+import { buildDhdDynamicTools } from "../src/codex/dynamic-tools.js";
 import { GUARD_REGIONS_FEATURE_FLAG, createDhdMcpServer } from "../src/dhd-tools.js";
 
 const originalGuardRegionsFlag = process.env[GUARD_REGIONS_FEATURE_FLAG];
