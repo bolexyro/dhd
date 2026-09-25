@@ -187,14 +187,8 @@ interface ConversationDao {
     @Query("SELECT * FROM task_displays ORDER BY createdAtEpochMs DESC, sessionKey ASC")
     fun listTaskDisplays(): List<TaskDisplayEntity>
 
-    @Query("SELECT * FROM task_displays WHERE sessionKey = :sessionKey LIMIT 1")
-    fun findTaskDisplay(sessionKey: String): TaskDisplayEntity?
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertTaskDisplay(display: TaskDisplayEntity)
-
-    @Query("DELETE FROM task_displays WHERE sessionKey = :sessionKey")
-    fun deleteTaskDisplay(sessionKey: String)
 
     @Query("DELETE FROM task_displays")
     fun deleteAllTaskDisplays()
@@ -683,10 +677,6 @@ class ConversationStore(context: Context) {
         dao.listTaskDisplays().mapNotNull { it.toTaskDisplayRecord() }
     }
 
-    fun findTaskDisplay(sessionKey: String): TaskDisplayRecord? = synchronized(lock) {
-        dao.findTaskDisplay(sessionKey)?.toTaskDisplayRecord()
-    }
-
     fun currentPurpose(runId: String): String? = synchronized(lock) {
         dao.findRun(runId)?.currentPurpose
     }
@@ -694,10 +684,6 @@ class ConversationStore(context: Context) {
     /** Insert or replace one display's metadata without storing frames. */
     fun upsertTaskDisplay(record: TaskDisplayRecord) = synchronized(lock) {
         dao.insertTaskDisplay(record.toEntity())
-    }
-
-    fun deleteTaskDisplay(sessionKey: String) = synchronized(lock) {
-        dao.deleteTaskDisplay(sessionKey)
     }
 
     fun deleteAllTaskDisplays() = synchronized(lock) {
@@ -712,15 +698,6 @@ class ConversationStore(context: Context) {
 
     fun codexThreadId(conversationId: String?): String? = synchronized(lock) {
         dao.findConversation(canonicalConversationId(conversationId))?.codexThreadId
-    }
-
-    fun renameConversation(conversationId: String, title: String): Boolean = synchronized(lock) {
-        val conversation = dao.findConversation(conversationId) ?: return@synchronized false
-        val safeTitle = title.trim().replace(Regex("\\s+"), " ").take(MAX_TITLE_CHARS)
-        if (safeTitle.isBlank()) return@synchronized false
-        dao.updateConversation(conversation.copy(title = safeTitle, updatedAtEpochMs = System.currentTimeMillis()))
-        refresh(conversationId)
-        true
     }
 
     fun deleteConversation(conversationId: String): Boolean = synchronized(lock) {
