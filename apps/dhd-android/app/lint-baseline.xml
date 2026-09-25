@@ -92,100 +92,100 @@
     <issue
         id="PrivateApi"
         message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Class&lt;?> serviceManager = Class.forName(&quot;android.os.ServiceManager&quot;);"
-        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="        Class&lt;?> serviceManager = Class.forName(&quot;android.os.ServiceManager&quot;);"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1136"
-            column="39"/>
-    </issue>
-
-    <issue
-        id="PrivateApi"
-        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Class&lt;?> stub = Class.forName(&quot;android.hardware.display.IDisplayManager$Stub&quot;);"
-        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1140"
-            column="29"/>
-    </issue>
-
-    <issue
-        id="PrivateApi"
-        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Class&lt;?> displayManager = Class.forName(&quot;android.hardware.display.IDisplayManager&quot;);"
-        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1142"
-            column="39"/>
-    </issue>
-
-    <issue
-        id="PrivateApi"
-        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Class&lt;?> callbackType = Class.forName(&quot;android.hardware.display.IVirtualDisplayCallback&quot;);"
-        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1143"
-            column="37"/>
-    </issue>
-
-    <issue
-        id="PrivateApi"
-        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Class&lt;?> windowStub = Class.forName(&quot;android.view.IWindowManager$Stub&quot;);"
-        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1158"
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="30"
             column="35"/>
     </issue>
 
     <issue
         id="PrivateApi"
         message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Class&lt;?> windowManager = Class.forName(&quot;android.view.IWindowManager&quot;);"
-        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="        Class&lt;?> stub = Class.forName(&quot;android.hardware.display.IDisplayManager$Stub&quot;);"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1161"
-            column="38"/>
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="34"
+            column="25"/>
     </issue>
 
     <issue
         id="PrivateApi"
         message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Class&lt;?> callbackType = Class.forName(&quot;android.hardware.display.IVirtualDisplayCallback&quot;);"
-        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="        Class&lt;?> displayManager = Class.forName(&quot;android.hardware.display.IDisplayManager&quot;);"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1176"
-            column="37"/>
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="36"
+            column="35"/>
     </issue>
 
     <issue
         id="PrivateApi"
         message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Class&lt;?> projectionType = Class.forName(&quot;android.media.projection.IMediaProjection&quot;);"
-        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="        Class&lt;?> callbackType = Class.forName(&quot;android.hardware.display.IVirtualDisplayCallback&quot;);"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1177"
-            column="39"/>
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="37"
+            column="33"/>
     </issue>
 
     <issue
         id="PrivateApi"
         message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
-        errorLine1="            Method create = Class.forName(&quot;android.hardware.display.IDisplayManager&quot;).getMethod("
-        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="        Class&lt;?> windowStub = Class.forName(&quot;android.view.IWindowManager$Stub&quot;);"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/com/phonecontrol/assistant/developer/DhdNativeDisplayService.java"
-            line="1183"
-            column="29"/>
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="52"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> windowManager = Class.forName(&quot;android.view.IWindowManager&quot;);"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="55"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> callbackType = Class.forName(&quot;android.hardware.display.IVirtualDisplayCallback&quot;);"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="70"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> projectionType = Class.forName(&quot;android.media.projection.IMediaProjection&quot;);"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="71"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Method create = Class.forName(&quot;android.hardware.display.IDisplayManager&quot;).getMethod("
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="77"
+            column="25"/>
     </issue>
 
     <issue
