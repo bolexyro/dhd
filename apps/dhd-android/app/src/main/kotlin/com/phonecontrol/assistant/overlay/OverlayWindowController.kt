@@ -17,7 +17,6 @@ import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.ComposeView
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.phonecontrol.assistant.MainActivity
@@ -34,6 +33,7 @@ import com.phonecontrol.assistant.overlay.bubble.bubblePositionOnNearestEdge
 import com.phonecontrol.assistant.overlay.bubble.clampBubblePosition
 import com.phonecontrol.assistant.overlay.effects.OverlayGlow
 import com.phonecontrol.assistant.session.AssistantForegroundService
+import com.phonecontrol.assistant.session.SessionCommands
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.navigation.AppRoutes
@@ -63,6 +63,7 @@ class OverlayWindowController(
     }
 
     private val appContext = context.applicationContext
+    private val sessionCommands = SessionCommands(appContext)
     private val windowManager = appContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val _panelMode = MutableStateFlow(OverlayPanelMode.BUBBLE)
     private val _resultMessage = MutableStateFlow<String?>(null)
@@ -655,21 +656,12 @@ class OverlayWindowController(
             prefs.getString(UiPreferencesRepository.KEY_REASONING_EFFORT, ReasoningEffort.default.storageValue),
         )?.codexValue ?: ReasoningEffort.default.codexValue
         val fastMode = prefs.getBoolean(UiPreferencesRepository.KEY_FAST_MODE, false)
-        val intent = android.content.Intent(appContext, AssistantForegroundService::class.java)
-            .setAction(AssistantForegroundService.ACTION_START)
-            .putExtra(AssistantForegroundService.EXTRA_REQUEST, request)
-            .putExtra(AssistantForegroundService.EXTRA_CONVERSATION_ID, DHD_CONVERSATION_ID)
-            .putExtra(AssistantForegroundService.EXTRA_REASONING_EFFORT, reasoningEffort)
-            .putExtra(AssistantForegroundService.EXTRA_FAST_MODE, fastMode)
-        ContextCompat.startForegroundService(appContext, intent)
+        sessionCommands.start(request, DHD_CONVERSATION_ID, reasoningEffort, fastMode)
         setPanelMode(OverlayPanelMode.WORKING)
     }
 
     private fun stopSession() {
-        appContext.startService(
-            android.content.Intent(appContext, AssistantForegroundService::class.java)
-                .setAction(AssistantForegroundService.ACTION_STOP_USER),
-        )
+        sessionCommands.stop()
     }
 
     private fun acknowledgeAttention(): Boolean {

@@ -23,7 +23,7 @@ import com.phonecontrol.assistant.data.PermissionSetupRepository
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.overlay.OverlayPreferences
 import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
-import com.phonecontrol.assistant.session.AssistantForegroundService
+import com.phonecontrol.assistant.session.SessionCommands
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.PhoneControlApp
 import com.phonecontrol.assistant.ui.displays.activeDisplayUiRecord
@@ -57,6 +57,7 @@ class MainActivity : ComponentActivity() {
     private var notificationSetupStepHandled = false
     private var overlayActivityToken: OverlayVisibilityGate.Token? = null
     private var conversationExpiryMonitor: Job? = null
+    private val sessionCommands = SessionCommands(this)
     private val permissionSetup: PermissionSetupRepository
         get() = (application as PhoneControlApplication).container.permissionSetupRepository
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -406,43 +407,23 @@ class MainActivity : ComponentActivity() {
         reasoningEffort: String? = null,
         fastMode: Boolean = false,
     ) {
-        val intent = Intent(this, AssistantForegroundService::class.java)
-            .setAction(AssistantForegroundService.ACTION_START)
-            .putExtra(AssistantForegroundService.EXTRA_REQUEST, request)
-        if (!conversationId.isNullOrBlank()) {
-            intent.putExtra(AssistantForegroundService.EXTRA_CONVERSATION_ID, conversationId)
-        }
-        if (!reasoningEffort.isNullOrBlank()) {
-            intent.putExtra(AssistantForegroundService.EXTRA_REASONING_EFFORT, reasoningEffort)
-        }
-        intent.putExtra(AssistantForegroundService.EXTRA_FAST_MODE, fastMode)
-        ContextCompat.startForegroundService(this, intent)
+        sessionCommands.start(request, conversationId, reasoningEffort, fastMode)
     }
 
     private fun stopSession() {
-        startService(
-            Intent(this, AssistantForegroundService::class.java)
-                .setAction(AssistantForegroundService.ACTION_STOP_USER),
-        )
+        sessionCommands.stop()
     }
 
     private fun startFresh() {
         val app = (application as PhoneControlApplication).container
         app.startFresh()
-        startService(
-            Intent(this, AssistantForegroundService::class.java)
-                .setAction(AssistantForegroundService.ACTION_START_FRESH),
-        )
+        sessionCommands.startFresh()
     }
 
     private fun continueSession() {
         val app = (application as PhoneControlApplication).container
         if (app.sessionCoordinator.state.value !is SessionState.Stopped) return
-        ContextCompat.startForegroundService(
-            this,
-            Intent(this, AssistantForegroundService::class.java)
-                .setAction(AssistantForegroundService.ACTION_CONTINUE),
-        )
+        sessionCommands.continueStopped()
     }
 
     private fun steerSession(text: String): Boolean =
@@ -459,10 +440,7 @@ class MainActivity : ComponentActivity() {
                 updatePermissionSetupStep()
             }
         } else if (overlayEnabled) {
-            startService(
-                Intent(this, AssistantForegroundService::class.java)
-                    .setAction(AssistantForegroundService.ACTION_ENABLE_OVERLAY),
-            )
+            sessionCommands.enableOverlay()
         }
     }
 
@@ -471,10 +449,7 @@ class MainActivity : ComponentActivity() {
             pendingOverlayEnable = false
             OverlayPreferences.setEnabled(this, false)
             overlayEnabled = false
-            startService(
-                Intent(this, AssistantForegroundService::class.java)
-                    .setAction(AssistantForegroundService.ACTION_DISABLE_OVERLAY),
-            )
+            sessionCommands.disableOverlay()
             return
         }
 
@@ -500,10 +475,7 @@ class MainActivity : ComponentActivity() {
         OverlayPreferences.setEnabled(this, true)
         overlayEnabled = true
         overlayPermissionGranted = true
-        startService(
-            Intent(this, AssistantForegroundService::class.java)
-                .setAction(AssistantForegroundService.ACTION_ENABLE_OVERLAY),
-        )
+        sessionCommands.enableOverlay()
     }
 
     companion object {
