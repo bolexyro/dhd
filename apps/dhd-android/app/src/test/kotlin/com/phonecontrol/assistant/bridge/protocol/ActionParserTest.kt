@@ -1,7 +1,5 @@
-package com.phonecontrol.assistant.bridge
+package com.phonecontrol.assistant.bridge.protocol
 
-import com.phonecontrol.assistant.bridge.protocol.ActionParser
-import com.phonecontrol.assistant.bridge.protocol.InvalidSequencePayloadException
 import com.phonecontrol.assistant.domain.ActionMetadata
 import com.phonecontrol.assistant.domain.BackAction
 import com.phonecontrol.assistant.domain.GuardRegion
@@ -20,8 +18,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
-class BridgeParserTest {
-    private val server = BridgeHarness().server
+class ActionParserTest {
     private val metadata = ActionMetadata(
         purpose = "Tap the cart",
         observationId = "obs-1",
@@ -209,73 +206,6 @@ class BridgeParserTest {
                     JSONObject().put("observationId", "obs-1").put("displayRef", "DSP_0123456789ABCD").put("actions", JSONArray().put(back)),
                 )
             }.message,
-        )
-    }
-
-    @Test
-    fun `fallback tool names follow the action type`() {
-        assertEquals("dhd_open_app", server.fallbackActionToolName(JSONObject().put("action", JSONObject().put("type", "OPEN_APP"))))
-        assertEquals("dhd_execute", server.fallbackActionToolName(JSONObject().put("action", JSONObject().put("type", "tap"))))
-        assertEquals("dhd_execute", server.fallbackActionToolName(JSONObject()))
-    }
-
-    @Test
-    fun `metadata purpose is read from each tool shape in priority order`() {
-        assertNull(server.metadataPurpose(JSONObject()))
-        assertEquals("Direct", server.metadataPurpose(JSONObject().put("metadata", JSONObject().put("purpose", " Direct "))))
-        assertEquals(
-            "Action",
-            server.metadataPurpose(
-                JSONObject()
-                    .put("metadata", JSONObject().put("purpose", " "))
-                    .put("action", JSONObject().put("metadata", JSONObject().put("purpose", "Action"))),
-            ),
-        )
-        assertEquals(
-            "Second step",
-            server.metadataPurpose(
-                JSONObject().put(
-                    "actions",
-                    JSONArray()
-                        .put(JSONObject().put("metadata", JSONObject().put("purpose", "")))
-                        .put("not an object")
-                        .put(JSONObject().put("metadata", JSONObject().put("purpose", "Second step"))),
-                ),
-            ),
-        )
-    }
-
-    @Test
-    fun `tool purposes fall back to defaults and app labels`() {
-        val cases = listOf(
-            Triple("dhd_observe", JSONObject(), "Inspecting the current screen"),
-            Triple("dhd_observe", JSONObject().put("purpose", " Reading the price "), "Reading the price"),
-            Triple("dhd_open_app", JSONObject().put("action", JSONObject().put("packageName", "com.example.shop")), "Opening Shop"),
-            Triple("dhd_open_app", JSONObject().put("action", JSONObject().put("packageName", "com.example.unknown")), "Opening an app"),
-            Triple("dhd_execute", JSONObject().put("action", JSONObject().put("type", "open_app").put("packageName", "com.example.mail")), "Opening Mail"),
-            Triple("dhd_execute", JSONObject().put("action", JSONObject().put("type", "tap")), "Performing a phone interaction"),
-            Triple("dhd_set_app_display_layout", JSONObject().put("packageName", "com.example.shop").put("layout", "full_size"), "Fitting Shop to the task display"),
-            Triple("dhd_set_app_display_layout", JSONObject().put("packageName", "com.example.x").put("layout", "full_size"), "Fitting the app to the task display"),
-            Triple("dhd_set_app_display_layout", JSONObject().put("packageName", "com.example.shop").put("layout", "STANDARD"), "Restoring Shop's standard task layout"),
-            Triple("dhd_set_app_display_layout", JSONObject().put("layout", "standard"), "Restoring the standard task layout"),
-            Triple("dhd_set_app_display_layout", JSONObject().put("layout", "huge"), "Adjusting the app's task-display layout"),
-            Triple("dhd_request_attention", JSONObject(), "Waiting for your attention"),
-            Triple("dhd_list_allowed_apps", JSONObject(), "Checking which apps DHD can use"),
-            Triple("custom_tool", JSONObject(), "Working with the phone"),
-            Triple("dhd_observe", JSONObject().put("metadata", JSONObject().put("purpose", "From metadata")), "From metadata"),
-        )
-        cases.forEach { (toolName, json, expected) ->
-            assertEquals("$toolName $json", expected, server.toolPurpose(toolName, json))
-        }
-    }
-
-    @Test
-    fun `open app label equal to the package name falls back to the default purpose`() {
-        val harness = BridgeHarness()
-        harness.platform.labels["com.example.plain"] = "COM.EXAMPLE.PLAIN"
-        assertEquals(
-            "Opening an app",
-            harness.server.toolPurpose("dhd_open_app", JSONObject().put("action", JSONObject().put("packageName", "com.example.plain"))),
         )
     }
 }

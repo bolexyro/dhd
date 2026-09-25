@@ -39,6 +39,8 @@ import com.phonecontrol.assistant.bridge.protocol.resultMessage
 import com.phonecontrol.assistant.bridge.protocol.sessionStateName
 import com.phonecontrol.assistant.bridge.protocol.staleDetailsOrNull
 import com.phonecontrol.assistant.bridge.protocol.unstartedSequenceFailure
+import com.phonecontrol.assistant.bridge.routing.PhoneActionLock
+import com.phonecontrol.assistant.bridge.routing.ToolCallScope
 import com.phonecontrol.assistant.bridge.transport.BridgeReply
 import com.phonecontrol.assistant.bridge.transport.NdjsonWriter
 import com.phonecontrol.assistant.core.AndroidBase64Codec
@@ -196,9 +198,8 @@ class DevBridgeServer internal constructor(
         port = PAIRING_DISCOVERY_PORT,
         tag = TAG,
     )
-    private val phoneActionMutex = Mutex()
-    private val overlayVisibilityGate
-        get() = platform.overlayVisibilityGate()
+    private val phoneActionLock = PhoneActionLock()
+    private val toolCalls = ToolCallScope(coordinator, platform)
     private val bridgeJson = BridgeJson(base64)
     private val captures = CaptureService(coordinator, observationProvider, taskDisplayRequiredProvider)
     private val displayTargets = DisplayTargetResolver(taskDisplayBackend, coordinator, taskDisplayRequiredProvider, clock, platform)
@@ -322,7 +323,7 @@ class DevBridgeServer internal constructor(
         )
         try {
             when (requestType) {
-                "demo_run" -> phoneActionMutex.withLock { runDemo(parseRequest(json), reply) }
+                "demo_run" -> phoneActionLock.withLock { runDemo(parseRequest(json), reply) }
                 "start_session" -> startSession(requestId, json, reply)
                 "status" -> status(requestId, reply)
                 "heartbeat" -> heartbeat(requestId, reply)
@@ -338,39 +339,39 @@ class DevBridgeServer internal constructor(
                 "stream_agent_message" -> streamAgentMessage(requestId, json, reply)
                 "complete_session" -> completeSession(requestId, json, reply)
                 "fail_session" -> failSession(requestId, json, reply)
-                "allowed_apps" -> withDhdTool(json, ToolNames.LIST_ALLOWED_APPS) {
+                "allowed_apps" -> toolCalls.withDhdTool(json, ToolNames.LIST_ALLOWED_APPS) {
                     allowedApps(requestId, json, reply)
                 }
-                "browse_apps" -> withDhdTool(json, ToolNames.BROWSE_APP) {
+                "browse_apps" -> toolCalls.withDhdTool(json, ToolNames.BROWSE_APP) {
                     browseApps(requestId, json, reply)
                 }
-                "set_app_display_layout" -> withDhdTool(json, ToolNames.SET_APP_DISPLAY_LAYOUT) {
+                "set_app_display_layout" -> toolCalls.withDhdTool(json, ToolNames.SET_APP_DISPLAY_LAYOUT) {
                     setAppDisplayLayout(requestId, json, reply)
                 }
                 "list_displays" -> listDisplays(requestId, reply)
                 "close_display" -> closeDisplay(requestId, json, reply)
-                "foreground_app" -> withDhdTool(json, ToolNames.FOREGROUND_APP) {
+                "foreground_app" -> toolCalls.withDhdTool(json, ToolNames.FOREGROUND_APP) {
                     foregroundApp(requestId, json, reply)
                 }
-                "observe" -> withDhdTool(
+                "observe" -> toolCalls.withDhdTool(
                     json = json,
                     fallbackToolName = ToolNames.OBSERVE,
                 ) {
                     observe(requestId, json, reply)
                 }
-                "execute_action" -> withDhdTool(
+                "execute_action" -> toolCalls.withDhdTool(
                     json = json,
-                    fallbackToolName = fallbackActionToolName(json),
+                    fallbackToolName = toolCalls.fallbackActionToolName(json),
                 ) {
-                    phoneActionMutex.withLock { executeAction(requestId, json, reply) }
+                    phoneActionLock.withLock { executeAction(requestId, json, reply) }
                 }
-                "execute_sequence" -> withDhdTool(
+                "execute_sequence" -> toolCalls.withDhdTool(
                     json = json,
                     fallbackToolName = ToolNames.EXECUTE_SEQUENCE,
                 ) {
-                    phoneActionMutex.withLock { executeSequence(requestId, json, reply) }
+                    phoneActionLock.withLock { executeSequence(requestId, json, reply) }
                 }
-                "request_attention" -> withDhdTool(
+                "request_attention" -> toolCalls.withDhdTool(
                     json = json,
                     fallbackToolName = ToolNames.REQUEST_ATTENTION,
                     terminalStatus = DhdToolCallStatus.ATTENTION,
@@ -384,109 +385,6 @@ class DevBridgeServer internal constructor(
             val message = error.message ?: error::class.java.simpleName
             platform.logError(TAG, "Bridge request failed", error)
             reply.write(errorResponse(requestId, "The phone bridge failed: $message"))
-        }
-    }
-
-    private suspend fun withDhdTool(
-        json: JSONObject,
-        fallbackToolName: String,
-        hideDuringObservation: Boolean = false,
-        terminalStatus: DhdToolCallStatus = DhdToolCallStatus.COMPLETED,
-        block: suspend () -> Unit,
-    ) {
-        val toolName = json.optString("tool").trim().ifBlank { fallbackToolName }
-        val callId = coordinator.beginToolCall(toolName, toolPurpose(toolName, json))
-        val visibilityToken = if (hideDuringObservation) {
-            overlayVisibilityGate?.acquire(OverlayHideReason.OBSERVATION)
-        } else {
-            null
-        }
-        try {
-            block()
-            coordinator.finishToolCall(callId, terminalStatus)
-        } catch (error: Throwable) {
-            coordinator.finishToolCall(callId, DhdToolCallStatus.FAILED)
-            throw error
-        } finally {
-            visibilityToken?.close()
-        }
-    }
-
-    internal fun fallbackActionToolName(json: JSONObject): String {
-        val actionType = json.optJSONObject("action")?.optString("type")?.lowercase()
-        return if (actionType == "open_app") ToolNames.OPEN_APP else ToolNames.EXECUTE
-    }
-
-    internal fun toolPurpose(toolName: String, json: JSONObject): String =
-        metadataPurpose(json) ?: when (toolName) {
-            ToolNames.OBSERVE -> json.optString("purpose").trim().takeIf(String::isNotBlank)
-                ?: defaultDhdToolPurpose(toolName)
-            ToolNames.OPEN_APP -> openingAppPurpose(json)
-            ToolNames.SET_APP_DISPLAY_LAYOUT -> appDisplayLayoutPurpose(json)
-            ToolNames.EXECUTE -> {
-                val action = json.optJSONObject("action")
-                if (action?.optString("type")?.equals("open_app", ignoreCase = true) == true) {
-                    openingAppPurpose(json)
-                } else {
-                    defaultDhdToolPurpose(toolName)
-                }
-            }
-            ToolNames.REQUEST_ATTENTION -> defaultDhdToolPurpose(toolName)
-            else -> defaultDhdToolPurpose(toolName)
-        }
-
-    /** Read the user-visible purpose from each tool's metadata shape. */
-    internal fun metadataPurpose(json: JSONObject): String? {
-        val directPurpose = json.optJSONObject("metadata")
-            ?.optString("purpose")
-            ?.trim()
-            ?.takeIf(String::isNotBlank)
-        if (directPurpose != null) return directPurpose
-
-        val actionPurpose = json.optJSONObject("action")
-            ?.optJSONObject("metadata")
-            ?.optString("purpose")
-            ?.trim()
-            ?.takeIf(String::isNotBlank)
-        if (actionPurpose != null) return actionPurpose
-
-        val actions = json.optJSONArray("actions")
-        for (index in 0 until (actions?.length() ?: 0)) {
-            val purpose = actions
-                ?.optJSONObject(index)
-                ?.optJSONObject("metadata")
-                ?.optString("purpose")
-                ?.trim()
-                ?.takeIf(String::isNotBlank)
-            if (purpose != null) return purpose
-        }
-        return null
-    }
-
-    private fun openingAppPurpose(json: JSONObject): String {
-        val packageName = json.optJSONObject("action")
-            ?.optString("packageName")
-            ?.trim()
-            ?.takeIf(String::isNotBlank)
-        val label = packageName
-            ?.let(platform::appLabel)
-            ?.takeIf { it.isNotBlank() && !it.equals(packageName, ignoreCase = true) }
-        return label?.let { "Opening $it" } ?: defaultDhdToolPurpose(ToolNames.OPEN_APP)
-    }
-
-    private fun appDisplayLayoutPurpose(json: JSONObject): String {
-        val packageName = json.optString("packageName")
-            .trim()
-            .takeIf(String::isNotBlank)
-        val label = packageName
-            ?.let(platform::appLabel)
-            ?.takeIf { it.isNotBlank() && !it.equals(packageName, ignoreCase = true) }
-        return when (json.optString("layout").trim().lowercase(Locale.ROOT)) {
-            "full_size" -> label?.let { "Fitting $it to the task display" }
-                ?: "Fitting the app to the task display"
-            "standard" -> label?.let { "Restoring ${it}'s standard task layout" }
-                ?: "Restoring the standard task layout"
-            else -> defaultDhdToolPurpose(ToolNames.SET_APP_DISPLAY_LAYOUT)
         }
     }
 
@@ -1456,7 +1354,7 @@ class DevBridgeServer internal constructor(
         val activityToolName = json.optString("tool")
             .trim()
             .takeIf(String::isNotBlank)
-            ?: fallbackActionToolName(json)
+            ?: toolCalls.fallbackActionToolName(json)
         val result = coordinator.executeAction(
             action = action,
             observation = observation,
