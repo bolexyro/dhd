@@ -96,6 +96,15 @@ describe("phone bridge NDJSON framing", () => {
     await expect(result).resolves.toEqual({ type: "observation", ok: true });
   });
 
+  it("keeps a multibyte character that is split across chunks", async () => {
+    const { result, socket } = connect();
+    const line = Buffer.from('{"type":"completed","ok":true,"text":"caf\u00e9 \ud83d\ude42"}\n', "utf8");
+    const emojiStart = line.indexOf(Buffer.from("\ud83d\ude42", "utf8"));
+    socket.receive(line.subarray(0, emojiStart + 2), line.subarray(emojiStart + 2));
+
+    await expect(result).resolves.toEqual({ type: "completed", ok: true, text: "caf\u00e9 \ud83d\ude42" });
+  });
+
   it("ignores unknown non-terminal message types until a terminal line arrives", async () => {
     const { result, socket } = connect();
     let settled = false;
