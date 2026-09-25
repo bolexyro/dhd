@@ -831,7 +831,7 @@ class DhdAdbController(context: Context) {
         return false
     }
 
-    private companion object {
+    internal companion object {
         const val TAG = "DhdAdbController"
         const val PREFERENCES_NAME = "dhd_adb_connection"
         const val KEY_PAIRED = "paired"

@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
 const val DHD_CONVERSATION_ID = "dhd-assistant"
+internal const val CONVERSATION_DATABASE_NAME = "dhd-conversations.db"
 const val DHD_THREAD_INACTIVITY_MS = 3 * 60 * 60 * 1000L
 
 internal fun hasDhdConversationExpired(lastActivityEpochMs: Long, nowEpochMs: Long): Boolean =
@@ -214,7 +215,7 @@ interface ConversationDao {
         TaskDisplayEntity::class,
     ],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AssistantDatabase : RoomDatabase() {
     abstract fun conversationDao(): ConversationDao
@@ -330,7 +331,7 @@ class ConversationStore(context: Context) {
     private val database = Room.databaseBuilder(
         context.applicationContext,
         AssistantDatabase::class.java,
-        "dhd-conversations.db",
+        CONVERSATION_DATABASE_NAME,
     )
         .addMigrations(AssistantDatabase.MIGRATION_1_2, AssistantDatabase.MIGRATION_2_3)
         .allowMainThreadQueries()
@@ -811,7 +812,7 @@ class ConversationStore(context: Context) {
     private fun canonicalConversationId(@Suppress("UNUSED_PARAMETER") requestedId: String?): String =
         DHD_CONVERSATION_ID
 
-    private companion object {
+    internal companion object {
         const val ROLE_USER = "user"
         const val ROLE_STEER = "steer"
         const val ROLE_ASSISTANT = "assistant"
@@ -832,7 +833,7 @@ class ConversationStore(context: Context) {
     }
 }
 
-private fun ActivityEventKind.activityStatus(): String = when (this) {
+internal fun ActivityEventKind.activityStatus(): String = when (this) {
     ActivityEventKind.ACTION_PROPOSED -> "proposed"
     ActivityEventKind.ACTION_STARTED -> "running"
     ActivityEventKind.ACTION_SUCCEEDED -> "completed"

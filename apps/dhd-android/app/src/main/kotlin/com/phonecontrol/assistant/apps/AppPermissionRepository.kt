@@ -27,7 +27,7 @@ class AppPermissionRepository(context: Context) {
         preferences.edit().putStringSet(KEY_ENABLED_PACKAGES, next).apply()
     }
 
-    private companion object {
+    internal companion object {
         const val PREFERENCES_NAME = "phone_control_permissions"
         const val KEY_ENABLED_PACKAGES = "enabled_packages"
         const val KEY_FULL_ACCESS = "full_access_enabled"

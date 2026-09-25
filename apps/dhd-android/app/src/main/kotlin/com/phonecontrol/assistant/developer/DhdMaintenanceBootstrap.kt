@@ -112,7 +112,7 @@ internal class DhdMaintenanceBootstrap(
             ?.absolutePath
             ?: "/data/local/tmp/dhd-maintenance.log"
 
-    private companion object {
+    internal companion object {
         const val KEY_MAINTENANCE_PORT = "maintenance_port"
         const val KEY_MAINTENANCE_TOKEN = "maintenance_token"
     }

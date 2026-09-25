@@ -204,12 +204,12 @@ internal object DhdAdbPairingNotification {
     const val SEARCHING_NOTIFICATION_ID = 4207
     const val NOTIFICATION_ID = SEARCHING_NOTIFICATION_ID
 
-    private const val CHANNEL_ID = "dhd_adb_pairing"
-    private const val LEGACY_FOUND_NOTIFICATION_ID = 4211
-    private const val RESULT_NOTIFICATION_ID = 4208
-    private const val REQUEST_SUBMIT_CODE = 4209
-    private const val REQUEST_OPEN_APP = 4210
-    private const val REQUEST_STOP_SEARCHING = 4212
+    internal const val CHANNEL_ID = "dhd_adb_pairing"
+    internal const val LEGACY_FOUND_NOTIFICATION_ID = 4211
+    internal const val RESULT_NOTIFICATION_ID = 4208
+    internal const val REQUEST_SUBMIT_CODE = 4209
+    internal const val REQUEST_OPEN_APP = 4210
+    internal const val REQUEST_STOP_SEARCHING = 4212
 
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return

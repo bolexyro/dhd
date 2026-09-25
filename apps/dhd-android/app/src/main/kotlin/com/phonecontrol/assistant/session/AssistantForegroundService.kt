@@ -274,14 +274,14 @@ class AssistantForegroundService : Service() {
         const val EXTRA_REASONING_EFFORT = "com.phonecontrol.assistant.extra.REASONING_EFFORT"
         const val EXTRA_FAST_MODE = "com.phonecontrol.assistant.extra.FAST_MODE"
 
-        private const val CHANNEL_ID = "assistant_sessions"
-        private const val RESULT_CHANNEL_ID = "assistant_results"
-        private const val ATTENTION_CHANNEL_ID = "assistant_attention"
-        private const val NOTIFICATION_ID = 4201
-        private const val REQUEST_OPEN_APP = 4202
-        private const val REQUEST_STOP = 4204
-        private const val COMPLETION_NOTIFICATION_ID = 4205
-        private const val ATTENTION_NOTIFICATION_ID = 4206
+        internal const val CHANNEL_ID = "assistant_sessions"
+        internal const val RESULT_CHANNEL_ID = "assistant_results"
+        internal const val ATTENTION_CHANNEL_ID = "assistant_attention"
+        internal const val NOTIFICATION_ID = 4201
+        internal const val REQUEST_OPEN_APP = 4202
+        internal const val REQUEST_STOP = 4204
+        internal const val COMPLETION_NOTIFICATION_ID = 4205
+        internal const val ATTENTION_NOTIFICATION_ID = 4206
         private const val MAX_NOTIFICATION_TEXT_CHARS = 240
 
         /** Remove the in-progress notification when a bridge-owned run ends. */

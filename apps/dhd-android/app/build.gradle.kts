@@ -54,6 +54,7 @@ android {
         unitTests.all { test ->
             val contractsDir = rootProject.file("../../contracts")
             test.systemProperty("dhd.contractsDir", contractsDir.absolutePath)
+            test.systemProperty("dhd.moduleDir", projectDir.absolutePath)
             test.systemProperty(
                 "dhd.updateGoldens",
                 providers.gradleProperty("updateGoldens").getOrElse("false"),
@@ -66,6 +67,10 @@ android {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
         resources.excludes += "/META-INF/versions/**"
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

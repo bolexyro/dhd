@@ -2811,7 +2811,7 @@ class DevBridgeServer internal constructor(
         message: String,
     ) : IllegalArgumentException(message)
 
-    private companion object {
+    internal companion object {
         const val TAG = "PhoneControlBridge"
         const val LAN_BIND_HOST = "0.0.0.0"
         const val DEFAULT_PORT = 8765

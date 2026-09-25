@@ -190,7 +190,7 @@ class DhdAdbKey private constructor(
 
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val ENCRYPTION_KEY_ALIAS = "dhd_adb_encryption_key"
+        internal const val ENCRYPTION_KEY_ALIAS = "dhd_adb_encryption_key"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val IV_SIZE_BYTES = 12
         private const val TAG_SIZE_BYTES = 16
@@ -229,7 +229,7 @@ class DhdAdbKey private constructor(
             displayName = "DHD",
         )
 
-        private const val KEY_STORE_NAME = "dhd_adb_identity"
+        internal const val KEY_STORE_NAME = "dhd_adb_identity"
     }
 }
 
@@ -250,7 +250,7 @@ class PreferenceDhdAdbKeyStore(
     override fun get(): ByteArray? = preferences.getString(KEY_PRIVATE_KEY, null)
         ?.let { encoded -> runCatching { Base64.decode(encoded, Base64.NO_WRAP) }.getOrNull() }
 
-    private companion object {
+    internal companion object {
         const val KEY_PRIVATE_KEY = "encrypted_private_key"
     }
 }

@@ -38,12 +38,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private const val CONVERSATION_EXPIRY_CHECK_INTERVAL_MS = 1_000L
-private const val PERMISSION_SETUP_PREFERENCES = "dhd_permission_setup"
-private const val KEY_FIRST_RUN_PERMISSION_ONBOARDING_COMPLETED = "first_run_permission_onboarding_completed"
-private const val KEY_NOTIFICATION_SETUP_STEP_HANDLED = "notification_setup_step_handled"
-private const val STATE_PERMISSION_SETUP_STEP = "permission_setup_step"
-private const val STATE_NOTIFICATION_SETUP_HANDLED = "notification_setup_step_handled"
-private const val STATE_PENDING_OVERLAY_ENABLE = "pending_overlay_enable"
+internal const val PERMISSION_SETUP_PREFERENCES = "dhd_permission_setup"
+internal const val KEY_FIRST_RUN_PERMISSION_ONBOARDING_COMPLETED = "first_run_permission_onboarding_completed"
+internal const val KEY_NOTIFICATION_SETUP_STEP_HANDLED = "notification_setup_step_handled"
+internal const val STATE_PERMISSION_SETUP_STEP = "permission_setup_step"
+internal const val STATE_NOTIFICATION_SETUP_HANDLED = "notification_setup_step_handled"
+internal const val STATE_PENDING_OVERLAY_ENABLE = "pending_overlay_enable"
 
 class MainActivity : ComponentActivity() {
     private var pendingRequest: String? = null

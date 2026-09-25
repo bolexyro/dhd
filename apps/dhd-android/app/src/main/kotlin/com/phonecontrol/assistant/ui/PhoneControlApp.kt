@@ -133,11 +133,11 @@ val LightAssistantColors = AssistantColorScheme(
 
 val LocalAssistantColors = staticCompositionLocalOf { DarkAssistantColors }
 
-private const val PREFS_NAME = "dhd_ui_preferences"
-private const val KEY_THEME_MODE = "pref_theme_mode"
-private const val KEY_REASONING_EFFORT = "pref_reasoning_effort"
-private const val KEY_VISIBLE_REASONING_EFFORTS = "pref_visible_reasoning_efforts"
-private const val KEY_FAST_MODE = "pref_fast_mode"
+internal const val PREFS_NAME = "dhd_ui_preferences"
+internal const val KEY_THEME_MODE = "pref_theme_mode"
+internal const val KEY_REASONING_EFFORT = "pref_reasoning_effort"
+internal const val KEY_VISIBLE_REASONING_EFFORTS = "pref_visible_reasoning_efforts"
+internal const val KEY_FAST_MODE = "pref_fast_mode"
 
 enum class ThemeMode(val storageValue: String, val label: String) {
     SYSTEM("system", "System (Default)"),

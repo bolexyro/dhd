@@ -40,8 +40,8 @@ class TaskDisplayLayoutPreferences(context: Context) {
     }
 
     companion object {
-        private const val PREFERENCES_NAME = "dhd_task_display_preferences"
-        private const val KEY_FULL_SIZE_LAYOUT_PACKAGES = "full_size_layout_packages"
+        internal const val PREFERENCES_NAME = "dhd_task_display_preferences"
+        internal const val KEY_FULL_SIZE_LAYOUT_PACKAGES = "full_size_layout_packages"
     }
 }
 
