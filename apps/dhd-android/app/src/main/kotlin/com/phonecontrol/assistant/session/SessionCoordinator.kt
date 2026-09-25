@@ -6,27 +6,19 @@ import com.phonecontrol.assistant.domain.ClickPhase
 import com.phonecontrol.assistant.domain.ObservationSnapshot
 import com.phonecontrol.assistant.domain.PhoneAction
 import com.phonecontrol.assistant.domain.ReasoningEffort
-import com.phonecontrol.assistant.domain.SwipeAction
-import com.phonecontrol.assistant.domain.TapAction
 import com.phonecontrol.assistant.domain.TaskPointerEvent
-import com.phonecontrol.assistant.domain.StaleObservationDiagnostics
 import com.phonecontrol.assistant.domain.userFacingActivityLabel
-import com.phonecontrol.assistant.bridge.protocol.resultMessage
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.core.conversationIdOrNull
 import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.RunStatus
-import com.phonecontrol.assistant.policy.PolicyContext
-import com.phonecontrol.assistant.policy.PolicyDecision
 import com.phonecontrol.assistant.policy.PolicyEngine
 import com.phonecontrol.assistant.execution.PhoneActionTransport
-import com.phonecontrol.assistant.execution.RejectionCode
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
-import com.phonecontrol.assistant.execution.TransportResult
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
@@ -97,6 +89,34 @@ class SessionCoordinator(
         phoneAccessReadyProvider = phoneAccessReadyProvider,
         onPhoneAccessAttentionRequested = onPhoneAccessAttentionRequested,
         onPhoneAccessAttentionResolved = onPhoneAccessAttentionResolved,
+    )
+    private val actionPipeline = ActionPipeline(
+        host = object : ActionPipelineHost {
+            override fun runningSession(): SessionState.Running? = synchronized(lock) {
+                _state.value as? SessionState.Running
+            }
+
+            override fun isSessionActive(sessionId: String): Boolean = sessionStillActive(sessionId)
+
+            override fun setCurrentPurpose(purpose: String, metadataPurpose: String?) {
+                this@SessionCoordinator.setCurrentPurpose(purpose, metadataPurpose)
+            }
+
+            override fun publishPointer(
+                sessionId: String,
+                action: PhoneAction,
+                observation: ObservationSnapshot?,
+                clickPhase: ClickPhase,
+            ) = publishPointerEvent(sessionId, action, observation, clickPhase)
+
+            override suspend fun awaitPhoneAccess(): Boolean = awaitPhoneAccessForTool()
+        },
+        activityLog = activityLog,
+        policyEngine = policyEngine,
+        transport = transport,
+        enabledPackagesProvider = enabledPackagesProvider,
+        fullAccessProvider = fullAccessProvider,
+        taskDisplayRequiredProvider = taskDisplayRequiredProvider,
     )
 
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -738,203 +758,7 @@ class SessionCoordinator(
         observation: ObservationSnapshot?,
         toolName: String? = null,
         targetDisplay: TaskDisplaySession? = null,
-    ): ActionExecutionResult {
-        val running = synchronized(lock) { _state.value as? SessionState.Running }
-            ?: return ActionExecutionResult.SessionNotRunning
-        val targetSessionKey = targetDisplay?.sessionKey ?: running.sessionId
-        if (taskDisplayRequiredProvider()) {
-            val observationMatchesTask = observation?.taskSessionKey == targetSessionKey &&
-                (targetDisplay == null || observation.displayId == targetDisplay.displayId)
-            if ((observation != null && !observationMatchesTask) ||
-                (observation == null && action !is com.phonecontrol.assistant.domain.OpenAppAction)
-            ) {
-                return ActionExecutionResult.PolicyRejected(
-                    message = "The action must use the active task display; the physical display was not touched.",
-                    details = StaleObservationDiagnostics(
-                        approvedObservationId = action.metadata.observationId,
-                        currentObservationId = observation?.id,
-                        reasons = listOf(
-                            com.phonecontrol.assistant.domain.StaleObservationReason(
-                                code = com.phonecontrol.assistant.domain.StaleObservationReasonCode.TASK_SESSION_CHANGED,
-                                approved = observation?.taskSessionKey,
-                                current = targetSessionKey,
-                            ),
-                        ),
-                    ),
-                )
-            }
-        }
-        if (observation?.screenProtection?.requiresUserAttention == true &&
-            action !is com.phonecontrol.assistant.domain.OpenAppAction
-        ) {
-            val message = observation.screenProtection.reason
-                ?: "The current task screen is protected; ask the user to complete it before continuing."
-            appendEvent(
-                ActivityEventKind.ACTION_FAILED,
-                message,
-                sessionId = running.sessionId,
-                actionType = action.type,
-                toolName = toolName,
-                purpose = action.metadata.purpose,
-                observationId = action.metadata.observationId,
-                targetDescription = action.metadata.targetDescription,
-            )
-            return ActionExecutionResult.PolicyRejected(
-                message = "$message Call dhd_request_attention and wait for the user's Done acknowledgement.",
-                code = "SECURE_SCREEN_REQUIRES_USER",
-            )
-        }
-        val displayPurpose = userFacingActivityLabel(
-            actionType = action.type,
-            purpose = action.metadata.purpose,
-            targetDescription = action.metadata.targetDescription,
-        )
-        setCurrentPurpose(displayPurpose, metadataPurpose = action.metadata.purpose)
-        appendEvent(
-            ActivityEventKind.ACTION_PROPOSED,
-            // Keep the provider's metadata purpose as the activity label. The
-            // human-readable current-purpose status may still use displayPurpose.
-            action.metadata.purpose,
-            sessionId = running.sessionId,
-            actionType = action.type,
-            toolName = toolName,
-            purpose = action.metadata.purpose,
-            observationId = action.metadata.observationId,
-            targetDescription = action.metadata.targetDescription,
-        )
-
-        val decision = policyEngine.evaluate(
-            action,
-            PolicyContext(
-                enabledPackages = enabledPackagesProvider(),
-                foregroundPackage = observation?.packageName,
-                currentObservationId = observation?.id,
-                fullAccess = fullAccessProvider(),
-            ),
-        )
-        when (decision) {
-            PolicyDecision.Allowed -> Unit
-            is PolicyDecision.Denied -> {
-                appendEvent(
-                    ActivityEventKind.ACTION_FAILED,
-                    decision.message,
-                    sessionId = running.sessionId,
-                    actionType = action.type,
-                    toolName = toolName,
-                    purpose = action.metadata.purpose,
-                    observationId = action.metadata.observationId,
-                    targetDescription = action.metadata.targetDescription,
-                )
-                return ActionExecutionResult.PolicyRejected(decision.message, decision.details)
-            }
-        }
-
-        appendEvent(
-            ActivityEventKind.ACTION_STARTED,
-            "Executing ${action.type.name.lowercase().replace('_', ' ')}",
-            sessionId = running.sessionId,
-            actionType = action.type,
-            toolName = toolName,
-            purpose = action.metadata.purpose,
-            observationId = action.metadata.observationId,
-            targetDescription = action.metadata.targetDescription,
-        )
-        val tapAction = action as? TapAction
-        val stillActiveBeforeDispatch = synchronized(lock) {
-            _state.value.sessionIdOrNull == running.sessionId && _state.value.isActive
-        }
-        if (!stillActiveBeforeDispatch) return ActionExecutionResult.SessionNotRunning
-
-        var clickPressPublished = false
-        val beforeInput = if (tapAction != null && observation != null) {
-            {
-                if (!clickPressPublished) {
-                    clickPressPublished = true
-                    publishPointerEvent(
-                        sessionId = running.sessionId,
-                        action = tapAction,
-                        observation = observation,
-                        clickPhase = ClickPhase.PRESSED,
-                    )
-                }
-            }
-        } else {
-            null
-        }
-        val onPointerMove = when {
-            tapAction != null && observation != null -> {
-                {
-                    publishPointerEvent(
-                        sessionId = running.sessionId,
-                        action = tapAction,
-                        observation = observation,
-                        clickPhase = ClickPhase.MOVING,
-                    )
-                }
-            }
-
-            action is SwipeAction && observation != null -> {
-                {
-                    publishPointerEvent(
-                        sessionId = running.sessionId,
-                        action = action,
-                        observation = observation,
-                    )
-                }
-            }
-
-            else -> null
-        }
-        var result = transport.executeForSession(
-            targetSessionKey,
-            action,
-            observation,
-            beforeInput,
-            onPointerMove,
-        )
-        var phoneAccessRecoveryAttempts = 0
-        while (
-            result is TransportResult.Rejected &&
-                result.code == RejectionCode.DEVELOPER_MODE_UNAVAILABLE &&
-                phoneAccessRecoveryAttempts < MAX_PHONE_ACCESS_RECOVERY_ATTEMPTS
-        ) {
-            phoneAccessRecoveryAttempts += 1
-            if (!awaitPhoneAccessForTool()) {
-                val stillActiveAfterRecovery = synchronized(lock) {
-                    _state.value.sessionIdOrNull == running.sessionId && _state.value.isActive
-                }
-                if (!stillActiveAfterRecovery) return ActionExecutionResult.SessionNotRunning
-                break
-            }
-            result = transport.executeForSession(
-                targetSessionKey,
-                action,
-                observation,
-                beforeInput,
-                onPointerMove,
-            )
-        }
-        val stillActive = synchronized(lock) {
-            _state.value.sessionIdOrNull == running.sessionId && _state.value.isActive
-        }
-        if (!stillActive) return ActionExecutionResult.SessionNotRunning
-        val eventKind = if (result is TransportResult.Succeeded) {
-            ActivityEventKind.ACTION_SUCCEEDED
-        } else {
-            ActivityEventKind.ACTION_FAILED
-        }
-        appendEvent(
-            eventKind,
-            result.resultMessage(),
-            sessionId = running.sessionId,
-            actionType = action.type,
-            toolName = toolName,
-            purpose = action.metadata.purpose,
-            observationId = action.metadata.observationId,
-            targetDescription = action.metadata.targetDescription,
-        )
-        return ActionExecutionResult.TransportFinished(result)
-    }
+    ): ActionExecutionResult = actionPipeline.execute(action, observation, toolName, targetDisplay)
 
     /** Publish visual feedback for a gesture or one phase of a click. */
     private fun publishPointerEvent(
@@ -1012,7 +836,6 @@ class SessionCoordinator(
     private companion object {
         const val MAX_TEXT_CHARS = 240
         const val MAX_AGENT_FEEDBACK_CHARS = 4_000
-        const val MAX_PHONE_ACCESS_RECOVERY_ATTEMPTS = 3
         const val DEFAULT_ATTENTION_ACTION_LABEL = "Done"
     }
 }
