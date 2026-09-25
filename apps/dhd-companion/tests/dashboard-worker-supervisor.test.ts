@@ -73,7 +73,7 @@ beforeAll(async () => {
   vi.stubEnv("PHONE_ASSISTANT_BRIDGE_PORT", undefined);
   vi.stubEnv("PHONE_ASSISTANT_BRIDGE_TOKEN", "");
   vi.spyOn(console, "log").mockImplementation(() => undefined);
-  const { startCompanionWebServer } = await import("../src/companion-web/server.js");
+  const { startCompanionWebServer } = await import("../src/dashboard/server/main.js");
   server = await startCompanionWebServer(0, "127.0.0.1");
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });

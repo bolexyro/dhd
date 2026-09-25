@@ -2,11 +2,8 @@ import type { AddressInfo } from "node:net";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  createCompanionWebServer,
-  ingestCompanionTokenUsageEvent,
-  ingestCompanionToolCallEvent,
-} from "../src/companion-web/server.js";
+import { companionDashboard } from "../src/dashboard/server/dashboard.js";
+import { createCompanionWebServer } from "../src/dashboard/server/routes.js";
 import type { CompanionState } from "../src/companion-web/api.js";
 
 const openServers: ReturnType<typeof createCompanionWebServer>[] = [];
@@ -27,7 +24,7 @@ afterEach(async () => {
 });
 
 async function openWebServer(): Promise<{ baseUrl: string }> {
-  const server = createCompanionWebServer();
+  const server = createCompanionWebServer(companionDashboard);
   openServers.push(server);
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -51,7 +48,7 @@ describe("companion tool diagnostics", () => {
     const imageData = Buffer.from("test-image").toString("base64");
     const beforeImageData = Buffer.from("before-image").toString("base64");
 
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "dhd_tool_call",
       phase: "started",
       callId: "call-image",
@@ -59,7 +56,7 @@ describe("companion tool diagnostics", () => {
       arguments: {},
       timestamp: 1_000,
     });
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "dhd_tool_call",
       phase: "completed",
       callId: "call-image",
@@ -140,7 +137,7 @@ describe("companion tool diagnostics", () => {
   it("associates out-of-order completions with their stable call IDs and ignores non-DHD events", async () => {
     const { baseUrl } = await openWebServer();
 
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "dhd_tool_call",
       phase: "started",
       callId: "call-a",
@@ -148,7 +145,7 @@ describe("companion tool diagnostics", () => {
       arguments: { purpose: "first" },
       timestamp: 2_000,
     });
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "dhd_tool_call",
       phase: "started",
       callId: "call-b",
@@ -156,7 +153,7 @@ describe("companion tool diagnostics", () => {
       arguments: { action: { type: "back" } },
       timestamp: 2_010,
     });
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "dhd_tool_call",
       phase: "completed",
       callId: "call-b",
@@ -165,14 +162,14 @@ describe("companion tool diagnostics", () => {
       error: "POST_OBSERVATION_FAILED",
       completedAt: 2_040,
     });
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "completed",
       phase: "completed",
       callId: "ignored",
       tool: "phone_observe",
       completedAt: 2_050,
     });
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "dhd_tool_call",
       phase: "completed",
       callId: "call-a",
@@ -195,7 +192,7 @@ describe("companion tool diagnostics", () => {
     const { baseUrl } = await openWebServer();
     const imageData = Buffer.from("evicted-image").toString("base64");
 
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "dhd_tool_call",
       phase: "started",
       callId: "call-0",
@@ -203,7 +200,7 @@ describe("companion tool diagnostics", () => {
       arguments: {},
       timestamp: 0,
     });
-    ingestCompanionToolCallEvent({
+    companionDashboard.state.ingestToolCallEvent({
       type: "dhd_tool_call",
       phase: "completed",
       callId: "call-0",
@@ -212,7 +209,7 @@ describe("companion tool diagnostics", () => {
       completedAt: 1,
     });
     for (let index = 1; index <= 50; index += 1) {
-      ingestCompanionToolCallEvent({
+      companionDashboard.state.ingestToolCallEvent({
         type: "dhd_tool_call",
         phase: "started",
         callId: `call-${index}`,
@@ -231,7 +228,7 @@ describe("companion tool diagnostics", () => {
   it("exposes the latest per-turn token usage without cumulative thread totals", async () => {
     const { baseUrl } = await openWebServer();
 
-    ingestCompanionTokenUsageEvent({
+    companionDashboard.state.ingestTokenUsageEvent({
       type: "dhd_token_usage",
       threadId: "thread-usage",
       turnId: "turn-usage",

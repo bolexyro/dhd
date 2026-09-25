@@ -4,13 +4,9 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  dashboardToolResponse,
-  decodeImage,
-  loadConnection,
-  phoneSnapshot,
-  toJsonValue,
-} from "../src/companion-web/server.js";
+import { loadConnection } from "../src/dashboard/server/settings-store.js";
+import { phoneSnapshot } from "../src/dashboard/server/status-check.js";
+import { ToolCallStore, decodeImage, toJsonValue } from "../src/dashboard/server/tool-call-store.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -186,6 +182,8 @@ describe("dashboard value helpers", () => {
 
   it("stores tool images outside the dashboard response", () => {
     const image = Buffer.from("image").toString("base64");
+    const store = new ToolCallStore();
+    const dashboardToolResponse = store.toolResponse.bind(store);
 
     expect(dashboardToolResponse("call-1", null)).toBeUndefined();
     expect(

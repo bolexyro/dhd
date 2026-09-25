@@ -17,7 +17,8 @@ vi.mock("../src/phone/bridge-client.js", async () => {
   return { ...actual, requestBridge: requestBridgeMock };
 });
 
-const { createCompanionWebServer } = await import("../src/companion-web/server.js");
+const { companionDashboard } = await import("../src/dashboard/server/dashboard.js");
+const { createCompanionWebServer } = await import("../src/dashboard/server/routes.js");
 
 const corsHeaders = {
   "access-control-allow-origin": "*",
@@ -31,11 +32,11 @@ const noCacheHeaders = {
   expires: "0",
 };
 
-let server: ReturnType<typeof createCompanionWebServer>;
+let server: import("node:http").Server;
 let baseUrl: string;
 
 beforeEach(async () => {
-  server = createCompanionWebServer();
+  server = createCompanionWebServer(companionDashboard);
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => resolve());

@@ -25,7 +25,8 @@ vi.mock("../src/phone/bridge-client.js", async () => {
   return { ...actual, requestBridge: requestBridgeMock };
 });
 
-const { createCompanionWebServer } = await import("../src/companion-web/server.js");
+const { companionDashboard } = await import("../src/dashboard/server/dashboard.js");
+const { createCompanionWebServer } = await import("../src/dashboard/server/routes.js");
 
 const openServers: ReturnType<typeof createCompanionWebServer>[] = [];
 
@@ -48,7 +49,7 @@ afterEach(async () => {
 });
 
 async function openWebServer(): Promise<string> {
-  const server = createCompanionWebServer();
+  const server = createCompanionWebServer(companionDashboard);
   openServers.push(server);
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
