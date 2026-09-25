@@ -11,12 +11,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.InetAddress;
@@ -28,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -321,7 +316,7 @@ final class DhdNativeDisplayService implements Closeable {
         if (sfId == null) {
             throw new IOException("SurfaceFlinger did not expose a capture id bound to logical display " + logicalDisplayId + ".");
         }
-        ProcessResult result = run(new String[]{"/system/bin/screencap", "-d", sfId, "-p"}, COMMAND_TIMEOUT_MS);
+        ShellProcess.Result result = run(new String[]{"/system/bin/screencap", "-d", sfId, "-p"}, COMMAND_TIMEOUT_MS);
         if (result.exitCode != 0 || result.stdout.length == 0) {
             throw new IOException("DHD display capture failed: " + result.stderr);
         }
@@ -479,75 +474,18 @@ final class DhdNativeDisplayService implements Closeable {
     }
 
     private static String runText(String[] command) throws Exception {
-        ProcessResult result = run(command, COMMAND_TIMEOUT_MS);
+        ShellProcess.Result result = run(command, COMMAND_TIMEOUT_MS);
         if (result.exitCode != 0) throw new IOException(result.stderr);
         return new String(result.stdout, StandardCharsets.UTF_8);
     }
 
-    private static ProcessResult run(String[] command, long timeoutMs) throws Exception {
-        Process process = new ProcessBuilder(command).redirectErrorStream(false).start();
-        Collector stdout = new Collector(process.getInputStream(), DhdMaintenanceProtocol.MAX_OUTPUT_BYTES);
-        Collector stderr = new Collector(process.getErrorStream(), 256 * 1024);
-        Thread stdoutThread = new Thread(stdout, "dhd-display-capture-out");
-        Thread stderrThread = new Thread(stderr, "dhd-display-capture-err");
-        stdoutThread.start();
-        stderrThread.start();
-        boolean finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
-        if (!finished) process.destroyForcibly();
-        stdoutThread.join(1_000L);
-        stderrThread.join(1_000L);
-        return new ProcessResult(
-                finished ? process.exitValue() : DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE,
-                stdout.bytes(), stderr.text());
-    }
-
-    private static final class ProcessResult {
-        final int exitCode;
-        final byte[] stdout;
-        final String stderr;
-
-        ProcessResult(int exitCode, byte[] stdout, String stderr) {
-            this.exitCode = exitCode;
-            this.stdout = stdout;
-            this.stderr = stderr;
-        }
-    }
-
-    private static final class Collector implements Runnable {
-        private final InputStream input;
-        private final int maxBytes;
-        private final ByteArrayOutputStream output = new ByteArrayOutputStream();
-        private volatile boolean overflowed;
-
-        Collector(InputStream input, int maxBytes) {
-            this.input = input;
-            this.maxBytes = maxBytes;
-        }
-
-        @Override
-        public void run() {
-            byte[] buffer = new byte[8192];
-            try {
-                int read;
-                while ((read = input.read(buffer)) != -1) {
-                    if (output.size() + read > maxBytes) {
-                        overflowed = true;
-                        continue;
-                    }
-                    output.write(buffer, 0, read);
-                }
-            } catch (IOException ignored) {
-                // The process can close its pipe while a timeout is terminating it.
-            }
-        }
-
-        byte[] bytes() {
-            return output.toByteArray();
-        }
-
-        String text() {
-            return new String(bytes(), StandardCharsets.UTF_8).trim();
-        }
+    private static ShellProcess.Result run(String[] command, long timeoutMs) throws Exception {
+        return ShellProcess.run(
+                Arrays.asList(command),
+                timeoutMs,
+                256 * 1024,
+                "dhd-display-capture-out",
+                "dhd-display-capture-err");
     }
 
     private static final class DisplaySession implements Closeable {
@@ -702,7 +640,7 @@ final class DhdNativeDisplayService implements Closeable {
                     "/system/bin/am", "start", "-W", "--display", Integer.toString(displayId),
                     "-f", "0x18080000", "-n", component,
             };
-            ProcessResult result = run(launchCommand, COMMAND_TIMEOUT_MS);
+            ShellProcess.Result result = run(launchCommand, COMMAND_TIMEOUT_MS);
             if (result.exitCode != 0 || result.stderr.toLowerCase(Locale.ROOT).contains("error") ||
                     new String(result.stdout, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT).contains("error:")) {
                 throw new IOException("Could not launch " + packageName + " on display " + displayId +
@@ -726,7 +664,7 @@ final class DhdNativeDisplayService implements Closeable {
          */
         private void applyDisplayOverrides() throws Exception {
             if (appDisplayWidth != width || appDisplayHeight != height) {
-                ProcessResult result = run(new String[]{
+                ShellProcess.Result result = run(new String[]{
                         "/system/bin/wm", "size",
                         appDisplayWidth + "x" + appDisplayHeight,
                         "-d", Integer.toString(displayId),
@@ -739,7 +677,7 @@ final class DhdNativeDisplayService implements Closeable {
             }
 
             if (appDensityDpi == densityDpi) return;
-            ProcessResult result = run(new String[]{
+            ShellProcess.Result result = run(new String[]{
                     "/system/bin/wm", "density", Integer.toString(appDensityDpi),
                     "-d", Integer.toString(displayId),
             }, COMMAND_TIMEOUT_MS);
@@ -783,7 +721,7 @@ final class DhdNativeDisplayService implements Closeable {
         }
 
         private String resolveLaunchComponent() throws Exception {
-            ProcessResult result = run(new String[]{
+            ShellProcess.Result result = run(new String[]{
                     "/system/bin/cmd", "package", "resolve-activity", "--brief",
                     "-a", "android.intent.action.MAIN",
                     "-c", "android.intent.category.LAUNCHER",
@@ -804,7 +742,7 @@ final class DhdNativeDisplayService implements Closeable {
             return match.group(1);
         }
 
-        private String diagnostic(ProcessResult result) {
+        private String diagnostic(ShellProcess.Result result) {
             String stderr = result.stderr == null ? "" : result.stderr.trim();
             String stdout = new String(result.stdout, StandardCharsets.UTF_8).trim();
             if (!stderr.isEmpty() && !stdout.isEmpty()) return stderr + " | " + stdout;
