@@ -149,9 +149,9 @@ class MainActivity : ComponentActivity() {
             // A conversation that aged out while the app was not visible is
             // expired immediately. The foreground monitor below handles the
             // separate case where the app stays open across the boundary.
-            it.conversationRepository.expireInactiveConversation()
             conversationExpiryMonitor?.cancel()
             conversationExpiryMonitor = lifecycleScope.launch {
+                it.conversationRepository.expireInactiveConversation()
                 while (isActive) {
                     delay(CONVERSATION_EXPIRY_CHECK_INTERVAL_MS)
                     if (!it.conversationRepository.conversationExpiryPrompt.value) {

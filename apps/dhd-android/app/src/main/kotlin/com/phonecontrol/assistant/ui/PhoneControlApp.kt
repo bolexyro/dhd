@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -62,6 +63,7 @@ import com.phonecontrol.assistant.ui.settings.SettingsScreen
 import com.phonecontrol.assistant.ui.theme.DhdTheme
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.ThemeMode
+import kotlinx.coroutines.launch
 
 @Composable
 fun PhoneControlApp(
@@ -165,6 +167,7 @@ fun PhoneControlApp(
     val coordinator = container.sessionCoordinator
     val coordinatorState by coordinator.state.collectAsState()
     val conversationRepository = container.conversationRepository
+    val conversationScope = rememberCoroutineScope()
     val showConversationExpiryPrompt by conversationRepository.conversationExpiryPrompt.collectAsState()
     val permissions = container.appPermissionRepository
     val developerModeController = container.phoneAccessController
@@ -367,8 +370,8 @@ fun PhoneControlApp(
 
                 if (showConversationExpiryPrompt) {
                     ConversationExpiryDialog(
-                        onKeep = { conversationRepository.keepInactiveConversation() },
-                        onClear = { conversationRepository.expireInactiveConversation() },
+                        onKeep = { conversationScope.launch { conversationRepository.keepInactiveConversation() } },
+                        onClear = { conversationScope.launch { conversationRepository.expireInactiveConversation() } },
                     )
                 }
                 }

@@ -193,7 +193,9 @@ class AppContainer(context: Context) {
      */
     fun startFresh() {
         sessionCoordinator.reset()
-        conversationRepository.deleteConversation(DHD_CONVERSATION_ID)
+        previewScope.launch {
+            conversationRepository.deleteConversation(DHD_CONVERSATION_ID)
+        }
         previewScope.launch {
             taskDisplayBackend.closeAllTaskDisplays(clearRecords = true)
         }

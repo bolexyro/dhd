@@ -179,10 +179,13 @@ class SessionCoordinator(
      * every phone action before execution until its developer-mode connection
      * is ready.
      */
-    fun pendingRequest(): PendingRequest? = synchronized(lock) {
-        val running = _state.value as? SessionState.Running ?: return@synchronized null
-        if (handoff.isClaimed(running.sessionId)) return@synchronized null
-        handoff.requestFor(running)
+    fun pendingRequest(): PendingRequest? {
+        val running = synchronized(lock) {
+            val running = _state.value as? SessionState.Running ?: return null
+            if (handoff.isClaimed(running.sessionId)) return null
+            running
+        }
+        return handoff.requestFor(running)
     }
 
     /** Queue a user instruction for the desktop companion's active Codex turn. */
@@ -238,24 +241,27 @@ class SessionCoordinator(
      * Atomically claim the current phone request. Pollers can pass the session
      * id they observed so a delayed claim cannot attach to a newer request.
      */
-    fun claimRequest(expectedSessionId: String? = null): PendingRequest? = synchronized(lock) {
-        val running = _state.value as? SessionState.Running ?: return@synchronized null
-        if (expectedSessionId != null && expectedSessionId != running.sessionId) {
-            return@synchronized null
+    fun claimRequest(expectedSessionId: String? = null): PendingRequest? {
+        val claimed = synchronized(lock) {
+            val running = _state.value as? SessionState.Running ?: return null
+            if (expectedSessionId != null && expectedSessionId != running.sessionId) {
+                return null
+            }
+            if (handoff.isClaimed(running.sessionId)) return null
+            handoff.claim(running.sessionId)
+            _state.value = running.copy(
+                currentPurpose = CoordinatorCopy.DHD_PLANNING,
+                currentToolMetadataPurpose = null,
+            )
+            taskDisplayBackend?.updatePurposeForRun(running.sessionId, CoordinatorCopy.DHD_PLANNING)
+            appendEvent(
+                ActivityEventKind.SYSTEM,
+                "Desktop Codex companion claimed the request.",
+                sessionId = running.sessionId,
+            )
+            running
         }
-        if (handoff.isClaimed(running.sessionId)) return@synchronized null
-        handoff.claim(running.sessionId)
-        _state.value = running.copy(
-            currentPurpose = CoordinatorCopy.DHD_PLANNING,
-            currentToolMetadataPurpose = null,
-        )
-        taskDisplayBackend?.updatePurposeForRun(running.sessionId, CoordinatorCopy.DHD_PLANNING)
-        appendEvent(
-            ActivityEventKind.SYSTEM,
-            "Desktop Codex companion claimed the request.",
-            sessionId = running.sessionId,
-        )
-        handoff.requestFor(running)
+        return handoff.requestFor(claimed)
     }
 
     /** Release a claim after a desktop-side failure so the user can retry. */
@@ -343,13 +349,16 @@ class SessionCoordinator(
     }
 
     /** Update the assistant message that is visible while Codex emits deltas. */
-    fun streamAgentMessage(sessionId: String, messageId: String, text: String): Boolean = synchronized(lock) {
-        val current = _state.value
-        if (current.sessionIdOrNull != sessionId || !current.isActive) return@synchronized false
-        val safeMessageId = messageId.trim().take(MAX_TEXT_CHARS).ifBlank { return@synchronized false }
-        val safeText = text.replace(Regex("\\r\\n?"), "\n").take(MAX_AGENT_FEEDBACK_CHARS)
-        if (safeText.isBlank()) return@synchronized false
-        conversationStore?.upsertAgentMessage(sessionId, safeMessageId, safeText) ?: true
+    fun streamAgentMessage(sessionId: String, messageId: String, text: String): Boolean {
+        val stored = synchronized(lock) {
+            val current = _state.value
+            if (current.sessionIdOrNull != sessionId || !current.isActive) return false
+            val safeMessageId = messageId.trim().take(MAX_TEXT_CHARS).ifBlank { return false }
+            val safeText = text.replace(Regex("\\r\\n?"), "\n").take(MAX_AGENT_FEEDBACK_CHARS)
+            if (safeText.isBlank()) return false
+            conversationStore?.upsertAgentMessage(sessionId, safeMessageId, safeText) ?: return true
+        }
+        return stored.get()
     }
 
     /** Mark that the user should review the phone without launching an Activity. */

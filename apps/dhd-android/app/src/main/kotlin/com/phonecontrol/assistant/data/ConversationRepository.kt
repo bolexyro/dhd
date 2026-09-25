@@ -11,11 +11,11 @@ import kotlinx.coroutines.flow.update
 internal interface ConversationSource {
     val conversationExpiryPrompt: StateFlow<Boolean>
     fun timeline(conversationId: String): StateFlow<List<TimelineItem>>
-    fun deleteConversation(conversationId: String): Boolean
-    fun promptForInactiveConversation(): Boolean
+    suspend fun deleteConversation(conversationId: String): Boolean
+    suspend fun promptForInactiveConversation(): Boolean
     fun dismissInactiveConversationPrompt()
-    fun keepInactiveConversation(): Boolean
-    fun expireInactiveConversation(): Boolean
+    suspend fun keepInactiveConversation(): Boolean
+    suspend fun expireInactiveConversation(): Boolean
 }
 
 private class StoreConversationSource(private val store: ConversationStore) : ConversationSource {
@@ -24,17 +24,17 @@ private class StoreConversationSource(private val store: ConversationStore) : Co
 
     override fun timeline(conversationId: String): StateFlow<List<TimelineItem>> = store.timeline(conversationId)
 
-    override fun deleteConversation(conversationId: String): Boolean = store.deleteConversation(conversationId)
+    override suspend fun deleteConversation(conversationId: String): Boolean = store.deleteConversation(conversationId)
 
-    override fun promptForInactiveConversation(): Boolean = store.promptForInactiveConversation()
+    override suspend fun promptForInactiveConversation(): Boolean = store.promptForInactiveConversation()
 
     override fun dismissInactiveConversationPrompt() {
         store.dismissInactiveConversationPrompt()
     }
 
-    override fun keepInactiveConversation(): Boolean = store.keepInactiveConversation()
+    override suspend fun keepInactiveConversation(): Boolean = store.keepInactiveConversation()
 
-    override fun expireInactiveConversation(): Boolean = store.expireInactiveConversation()
+    override suspend fun expireInactiveConversation(): Boolean = store.expireInactiveConversation()
 }
 
 class ConversationRepository internal constructor(private val source: ConversationSource) {
@@ -50,18 +50,18 @@ class ConversationRepository internal constructor(private val source: Conversati
         .flatMapLatest { source.timeline(DHD_CONVERSATION_ID) }
         .distinctUntilChanged()
 
-    fun deleteConversation(conversationId: String = DHD_CONVERSATION_ID): Boolean =
+    suspend fun deleteConversation(conversationId: String = DHD_CONVERSATION_ID): Boolean =
         source.deleteConversation(conversationId).also { refreshTimeline() }
 
-    fun promptForInactiveConversation(): Boolean = source.promptForInactiveConversation()
+    suspend fun promptForInactiveConversation(): Boolean = source.promptForInactiveConversation()
 
     fun dismissInactiveConversationPrompt() {
         source.dismissInactiveConversationPrompt()
     }
 
-    fun keepInactiveConversation(): Boolean = source.keepInactiveConversation()
+    suspend fun keepInactiveConversation(): Boolean = source.keepInactiveConversation()
 
-    fun expireInactiveConversation(): Boolean =
+    suspend fun expireInactiveConversation(): Boolean =
         source.expireInactiveConversation().also { expired -> if (expired) refreshTimeline() }
 
     private fun refreshTimeline() {

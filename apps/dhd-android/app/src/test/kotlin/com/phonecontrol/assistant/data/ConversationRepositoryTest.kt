@@ -25,14 +25,14 @@ class ConversationRepositoryTest {
         override fun timeline(conversationId: String): StateFlow<List<TimelineItem>> =
             flows.getOrPut(conversationId) { MutableStateFlow(rows.toList()) }.asStateFlow()
 
-        override fun deleteConversation(conversationId: String): Boolean {
+        override suspend fun deleteConversation(conversationId: String): Boolean {
             rows.clear()
             flows[conversationId]?.value = emptyList()
             flows.remove(conversationId)
             return true
         }
 
-        override fun promptForInactiveConversation(): Boolean {
+        override suspend fun promptForInactiveConversation(): Boolean {
             calls += "prompt"
             prompt.value = true
             return true
@@ -43,14 +43,14 @@ class ConversationRepositoryTest {
             prompt.value = false
         }
 
-        override fun keepInactiveConversation(): Boolean {
+        override suspend fun keepInactiveConversation(): Boolean {
             calls += "keep"
             return true
         }
 
         var expired = false
 
-        override fun expireInactiveConversation(): Boolean {
+        override suspend fun expireInactiveConversation(): Boolean {
             calls += "expire"
             if (!expired) return false
             deleteConversation(DHD_CONVERSATION_ID)
@@ -94,7 +94,7 @@ class ConversationRepositoryTest {
     }
 
     @Test
-    fun `a flow taken from the store before a delete stops updating`() {
+    fun `a flow taken from the store before a delete stops updating`() = runTest {
         val source = CachingSource()
         val stale = source.timeline(DHD_CONVERSATION_ID)
 
@@ -105,7 +105,7 @@ class ConversationRepositoryTest {
     }
 
     @Test
-    fun `expiry calls delegate to the store in order`() {
+    fun `expiry calls delegate to the store in order`() = runTest {
         val source = CachingSource()
         val repository = ConversationRepository(source)
 
