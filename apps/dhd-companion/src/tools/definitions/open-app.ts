@@ -3,7 +3,12 @@ import { z } from "zod";
 
 import { initialPointerPoint } from "../result/markers.js";
 import { PHONE_ACCESS_BRIDGE_OPTIONS, defineDhdTool, displayTarget } from "../definition.js";
-import { displayRefJsonSchema, metadataJsonSchema, objectJsonSchema } from "../json-schema.js";
+import {
+  displayRefJsonSchema,
+  metadataJsonSchema,
+  objectJsonSchema,
+  packageNameJsonSchema,
+} from "../json-schema.js";
 import { createActionMetadataSchema, displayTargetFields, packageNameSchema } from "../schemas.js";
 
 export const openAppTool = defineDhdTool({
@@ -23,7 +28,7 @@ export const openAppTool = defineDhdTool({
     objectJsonSchema(
       {
         displayRef: displayRefJsonSchema,
-        packageName: { type: "string", minLength: 1 },
+        packageName: packageNameJsonSchema(),
         metadata: metadataJsonSchema({ requireObservationId: false, enableGuardRegions: false }),
       },
       ["packageName", "metadata"],

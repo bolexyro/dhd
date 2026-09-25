@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { defineDhdTool } from "../definition.js";
-import { objectJsonSchema } from "../json-schema.js";
+import { objectJsonSchema, packageNameJsonSchema } from "../json-schema.js";
 import { packageNameSchema } from "../schemas.js";
 
 export const setAppDisplayLayoutTool = defineDhdTool({
@@ -18,11 +18,7 @@ export const setAppDisplayLayoutTool = defineDhdTool({
   jsonSchema: () =>
     objectJsonSchema(
       {
-        packageName: {
-          type: "string",
-          minLength: 1,
-          pattern: "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$",
-        },
+        packageName: packageNameJsonSchema(),
         layout: { type: "string", enum: ["standard", "full_size"] },
       },
       ["packageName", "layout"],

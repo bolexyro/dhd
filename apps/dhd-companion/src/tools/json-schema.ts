@@ -12,6 +12,15 @@ export type JsonSchema = Record<string, unknown>;
 
 export const displayRefJsonSchema: JsonSchema = { type: "string", pattern: "^dsp_[a-f0-9]{14}$" };
 
+export function packageNameJsonSchema(): JsonSchema {
+  return {
+    type: "string",
+    minLength: 1,
+    maxLength: 255,
+    pattern: "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$",
+  };
+}
+
 export function textJsonSchema(): JsonSchema {
   return { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS };
 }

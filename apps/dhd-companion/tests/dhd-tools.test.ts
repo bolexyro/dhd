@@ -365,6 +365,7 @@ describe("DHD phone tool contract", () => {
       packageName: {
         type: "string",
         minLength: 1,
+        maxLength: 255,
         pattern: "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$",
       },
       layout: { type: "string", enum: ["standard", "full_size"] },

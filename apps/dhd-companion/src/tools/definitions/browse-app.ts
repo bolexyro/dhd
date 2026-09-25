@@ -14,6 +14,6 @@ export const browseAppTool = defineDhdTool({
       })
       .strict(),
   jsonSchema: () =>
-    objectJsonSchema({ query: { type: "string", minLength: 1, maxLength: 120 } }, ["query"]),
+    objectJsonSchema({ query: { type: "string", minLength: 1, maxLength: 120, pattern: "\\S" } }, ["query"]),
   toBridgeRequest: (input) => ({ type: "browse_apps", query: input.query }),
 });

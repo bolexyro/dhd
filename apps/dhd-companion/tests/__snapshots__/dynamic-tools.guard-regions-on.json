@@ -24,7 +24,8 @@
         "query": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 120
+          "maxLength": 120,
+          "pattern": "\\S"
         }
       },
       "required": [
@@ -43,6 +44,7 @@
         "packageName": {
           "type": "string",
           "minLength": 1,
+          "maxLength": 255,
           "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$"
         },
         "layout": {
@@ -141,7 +143,9 @@
         },
         "packageName": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$"
         },
         "metadata": {
           "type": "object",
