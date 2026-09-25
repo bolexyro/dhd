@@ -382,21 +382,8 @@ class SessionCoordinator(
         val safeActionLabel = actionLabel.trim().take(MAX_TEXT_CHARS)
             .ifBlank { DEFAULT_ATTENTION_ACTION_LABEL }
         val completion = attentionGate.open(sessionId, message)
-        val updated = when (current) {
-            is SessionState.Running -> current.copy(
-                currentPurpose = CoordinatorCopy.NEEDS_ATTENTION,
-                currentToolMetadataPurpose = null,
-                attentionReason = message,
-                attentionActionLabel = safeActionLabel,
-            )
-            is SessionState.Paused -> current.copy(
-                currentPurpose = CoordinatorCopy.NEEDS_ATTENTION,
-                currentToolMetadataPurpose = null,
-                attentionReason = message,
-                attentionActionLabel = safeActionLabel,
-            )
-            else -> return@synchronized null
-        }
+        val updated = SessionStateMachine.withAttention(current, message, safeActionLabel)
+            ?: return@synchronized null
         _state.value = updated
         conversationStore?.setCurrentPurpose(sessionId, CoordinatorCopy.NEEDS_ATTENTION)
         taskDisplayBackend?.updatePurposeForRun(sessionId, CoordinatorCopy.NEEDS_ATTENTION)
@@ -425,21 +412,7 @@ class SessionCoordinator(
             return@synchronized false
         }
         attentionGate.dismissPending()
-        _state.value = when (current) {
-            is SessionState.Running -> current.copy(
-                currentPurpose = CoordinatorCopy.DHD_PLANNING,
-                currentToolMetadataPurpose = null,
-                attentionReason = null,
-                attentionActionLabel = null,
-            )
-            is SessionState.Paused -> current.copy(
-                currentPurpose = "Paused",
-                currentToolMetadataPurpose = null,
-                attentionReason = null,
-                attentionActionLabel = null,
-            )
-            else -> current
-        }
+        _state.value = SessionStateMachine.withoutAttention(current)
         val resumedPurpose = when (val after = _state.value) {
             is SessionState.Running -> after.currentPurpose
             is SessionState.Paused -> after.currentPurpose
@@ -485,17 +458,8 @@ class SessionCoordinator(
             ?.take(MAX_TEXT_CHARS)
             ?.takeIf(String::isNotBlank)
         val current = _state.value
-        val updated = when (current) {
-            is SessionState.Running -> current.copy(
-                currentPurpose = displayPurpose,
-                currentToolMetadataPurpose = safeMetadataPurpose,
-            )
-            is SessionState.Paused -> current.copy(
-                currentPurpose = displayPurpose,
-                currentToolMetadataPurpose = safeMetadataPurpose,
-            )
-            else -> return false
-        }
+        val updated = SessionStateMachine.withPurpose(current, displayPurpose, safeMetadataPurpose)
+            ?: return false
         _state.value = updated
         current.sessionIdOrNull?.let { conversationStore?.setCurrentPurpose(it, displayPurpose) }
         current.sessionIdOrNull?.let { taskDisplayBackend?.updatePurposeForRun(it, displayPurpose) }
@@ -520,17 +484,7 @@ class SessionCoordinator(
             .take(MAX_TEXT_CHARS)
             .ifBlank { return@synchronized false }
         val current = _state.value
-        _state.value = when (current) {
-            is SessionState.Running -> current.copy(
-                currentPurpose = safePurpose,
-                currentToolMetadataPurpose = safePurpose,
-            )
-            is SessionState.Paused -> current.copy(
-                currentPurpose = safePurpose,
-                currentToolMetadataPurpose = safePurpose,
-            )
-            else -> current
-        }
+        _state.value = SessionStateMachine.withPurpose(current, safePurpose, safePurpose) ?: current
         conversationStore?.setCurrentPurpose(sessionId, safePurpose)
         taskDisplayBackend?.updatePurposeForRun(sessionId, safePurpose)
         appendEvent(

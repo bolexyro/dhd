@@ -95,6 +95,52 @@ internal object SessionStateMachine {
         SessionEvent.Reset -> reset(state)
     }
 
+    fun withPurpose(state: SessionState, purpose: String, metadataPurpose: String?): SessionState? =
+        when (state) {
+            is SessionState.Running -> state.copy(
+                currentPurpose = purpose,
+                currentToolMetadataPurpose = metadataPurpose,
+            )
+            is SessionState.Paused -> state.copy(
+                currentPurpose = purpose,
+                currentToolMetadataPurpose = metadataPurpose,
+            )
+            else -> null
+        }
+
+    fun withAttention(state: SessionState, reason: String, actionLabel: String): SessionState? =
+        when (state) {
+            is SessionState.Running -> state.copy(
+                currentPurpose = CoordinatorCopy.NEEDS_ATTENTION,
+                currentToolMetadataPurpose = null,
+                attentionReason = reason,
+                attentionActionLabel = actionLabel,
+            )
+            is SessionState.Paused -> state.copy(
+                currentPurpose = CoordinatorCopy.NEEDS_ATTENTION,
+                currentToolMetadataPurpose = null,
+                attentionReason = reason,
+                attentionActionLabel = actionLabel,
+            )
+            else -> null
+        }
+
+    fun withoutAttention(state: SessionState): SessionState = when (state) {
+        is SessionState.Running -> state.copy(
+            currentPurpose = CoordinatorCopy.DHD_PLANNING,
+            currentToolMetadataPurpose = null,
+            attentionReason = null,
+            attentionActionLabel = null,
+        )
+        is SessionState.Paused -> state.copy(
+            currentPurpose = "Paused",
+            currentToolMetadataPurpose = null,
+            attentionReason = null,
+            attentionActionLabel = null,
+        )
+        else -> state
+    }
+
     private fun start(state: SessionState, event: SessionEvent.Start): SessionTransition? {
         if (event.request.isBlank() || state.isActive) return null
         val normalizedReasoningEffort = ReasoningEffort.fromCodexValue(event.reasoningEffort)?.codexValue
