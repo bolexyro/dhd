@@ -94,13 +94,7 @@ fun ApprovedAppsScreen(
         }
     }
 
-    val filteredApps = remember(apps, searchQuery) {
-        if (searchQuery.isBlank()) apps
-        else apps.filter {
-            it.label.contains(searchQuery, ignoreCase = true) ||
-                    it.packageName.contains(searchQuery, ignoreCase = true)
-        }
-    }
+    val filteredApps = remember(apps, searchQuery) { filterAppsByQuery(apps, searchQuery) }
 
     Scaffold(
         containerColor = colors.background,

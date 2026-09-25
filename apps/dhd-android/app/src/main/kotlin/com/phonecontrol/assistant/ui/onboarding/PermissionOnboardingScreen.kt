@@ -86,6 +86,7 @@ import com.phonecontrol.assistant.overlay.composer.DhdComposerPreview
 import com.phonecontrol.assistant.ui.components.FullAccessConfirmDialog
 import com.phonecontrol.assistant.ui.displays.TaskPointerOverlay
 import com.phonecontrol.assistant.ui.displays.liveDisplayCornerShape
+import com.phonecontrol.assistant.ui.settings.filterAppsByQuery
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.assistantSwitchColors
 import kotlin.math.hypot
@@ -245,13 +246,7 @@ private fun AllowedAppsOnboardingPage(
     var enabledPackages by remember(permissions) { mutableStateOf(permissions.enabledPackages()) }
     var showFullAccessConfirmDialog by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    val filteredApps = remember(apps, searchQuery) {
-        if (searchQuery.isBlank()) apps
-        else apps.filter {
-            it.label.contains(searchQuery, ignoreCase = true) ||
-                it.packageName.contains(searchQuery, ignoreCase = true)
-        }
-    }
+    val filteredApps = remember(apps, searchQuery) { filterAppsByQuery(apps, searchQuery) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
