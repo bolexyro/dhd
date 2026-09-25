@@ -290,13 +290,6 @@ function parseInput<T>(schema: z.ZodType<T>, input: unknown): T {
   });
 }
 
-function observationBytes(
-  service: PhoneControlToolService,
-  result: { data: { observation: ObservationSummary } }
-): Uint8Array | undefined {
-  return service.observationStore.get(result.data.observation.observationId)?.screenshot;
-}
-
 export function toSuccessResponse(
   result: ToolSuccessResult<object>,
   screenshot?: Uint8Array,

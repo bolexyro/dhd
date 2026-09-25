@@ -41,7 +41,6 @@ import type {
   Bounds,
   CloseAppData,
   DeviceInfo,
-  ForegroundState,
   Observation,
   ObservationCapture,
   ObservationMode,

@@ -1,5 +1,3 @@
-import type { PointerEvent } from "@dhd/phone-control";
-
 export interface ViewerGeometry {
   x: number;
   y: number;

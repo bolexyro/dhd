@@ -15,10 +15,6 @@ export interface ScrcpyPathResolutionOptions {
 // resolve the same executable.
 const PACKAGE_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 
-function absoluteCandidate(candidate: string, cwd: string): string {
-  return isAbsolute(candidate) ? candidate : resolve(cwd, candidate);
-}
-
 export function resolveScrcpyPath(
   options: ScrcpyPathResolutionOptions = {}
 ): string {

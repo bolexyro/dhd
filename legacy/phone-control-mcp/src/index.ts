@@ -26,7 +26,7 @@ function createPhoneControlService(
   cwd: string
 ): PhoneControlService {
   const policy = loadPolicy({ env, cwd });
-  const auditLogPath = resolveAuditLogPath(env, cwd);
+  const auditLogPath = resolveAuditLogPath(env);
   const adbPath = resolveAdbPath({ env, cwd });
   return new PhoneControlService({
     adb: new AdbProcessAdapter({ adbPath }),
@@ -36,10 +36,7 @@ function createPhoneControlService(
   });
 }
 
-export function resolveAuditLogPath(
-  env: NodeJS.ProcessEnv = process.env,
-  cwd = process.cwd()
-): string {
+export function resolveAuditLogPath(env: NodeJS.ProcessEnv = process.env): string {
   const configured = env.PHONE_CONTROL_AUDIT_LOG_PATH?.trim();
   const candidate = configured || "logs/phone-control.actions.ndjson";
   if (isAbsolute(candidate)) {

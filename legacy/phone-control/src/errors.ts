@@ -84,7 +84,7 @@ export interface MachineError {
 }
 
 export class PhoneControlError extends Error {
-  public readonly name = "PhoneControlError";
+  public override readonly name = "PhoneControlError";
 
   public constructor(
     public readonly code: PhoneControlErrorCode,
