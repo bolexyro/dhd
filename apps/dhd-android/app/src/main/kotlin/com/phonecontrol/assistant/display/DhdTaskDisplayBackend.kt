@@ -127,14 +127,13 @@ class DhdTaskDisplayBackend internal constructor(
     private val _activeSession = MutableStateFlow<TaskDisplaySession?>(null)
     private val _previewState = MutableStateFlow<TaskPreviewState>(TaskPreviewState.Detached)
     private val _previewStates = MutableStateFlow<Map<String, TaskPreviewState>>(emptyMap())
-    private val _displayRecords = MutableStateFlow<List<TaskDisplayRecord>>(emptyList())
+    private val records = DisplayRecordStore(conversationStore)
     private val expiryJobs = mutableMapOf<String, Job>()
-    private val recordsLock = Any()
     private val reconciliationJob: Job
     private val taskLivenessJob: Job
 
     init {
-        restorePersistedRecords()
+        records.restore(nowEpochMs())
         reconciliationJob = scope.launch { reconcileNativeSessionsWithRetry() }
         taskLivenessJob = scope.launch {
             reconciliationJob.join()
@@ -151,7 +150,7 @@ class DhdTaskDisplayBackend internal constructor(
     /** Per-session preview state used by the full-screen viewer and manager. */
     val previewStates: StateFlow<Map<String, TaskPreviewState>> = _previewStates.asStateFlow()
 
-    override val displayRecords: StateFlow<List<TaskDisplayRecord>> = _displayRecords.asStateFlow()
+    override val displayRecords: StateFlow<List<TaskDisplayRecord>> = records.records
 
     override suspend fun create(
         sessionKey: String,
@@ -218,7 +217,7 @@ class DhdTaskDisplayBackend internal constructor(
                         )
                         // Publish while both locks are held. Stop either
                         // tombstones this owner first or sees the new binding.
-                        publishRecord(record)
+                        records.publish(record)
                         false
                     }
                 }
@@ -294,9 +293,9 @@ class DhdTaskDisplayBackend internal constructor(
     }
 
     private fun publishOpenedApp(session: TaskDisplaySession, packageName: String) {
-        val record = findRecord(session.sessionKey) ?: return
+        val record = records.find(session.sessionKey) ?: return
         if (record.taskId != session.taskId || record.packageName == packageName) return
-        publishRecord(record.withOpenedPackage(packageName))
+        records.publish(record.withOpenedPackage(packageName))
     }
 
     private suspend fun createWithFreshOwner(
@@ -330,7 +329,7 @@ class DhdTaskDisplayBackend internal constructor(
         val boundSessions = stateLock.withLock { sessions.values.toList() }
         return boundSessions.mapNotNull { bound ->
             val session = bound.taskSession
-            val record = findRecord(session.sessionKey) ?: return@mapNotNull null
+            val record = records.find(session.sessionKey) ?: return@mapNotNull null
             val (alreadyBoundToRun, ownerCancelled) = synchronized(bindingsLock) {
                 (runBindings[runSessionKey]?.contains(session.sessionKey) == true) to
                     cancelledKeys.contains(session.sessionKey)
@@ -410,7 +409,7 @@ class DhdTaskDisplayBackend internal constructor(
         val bound = stateLock.withLock {
             sessions.values.firstOrNull { it.taskSession.displayId == displayId }
         }
-        val record = findRecordByDisplayId(displayId)
+        val record = records.findByDisplayId(displayId)
         if (bound == null) {
             return DisplayClaimPolicy.unavailableForRecord(record, nowEpochMs())
         }
@@ -443,7 +442,7 @@ class DhdTaskDisplayBackend internal constructor(
         val now = nowEpochMs()
         val candidates = stateLock.withLock {
             sessions.values.mapNotNull { bound ->
-                val record = findRecordByDisplayId(bound.taskSession.displayId)
+                val record = records.findByDisplayId(bound.taskSession.displayId)
                 val eligible = DisplayClaimPolicy.isDefaultCandidate(record, now)
                 if (eligible) TaskDisplayTarget(
                     bound.taskSession,
@@ -481,7 +480,7 @@ class DhdTaskDisplayBackend internal constructor(
         val ownerKey = target.session.sessionKey
         val operationLock = operationLocks.getOrPut(ownerKey) { Mutex() }
         return operationLock.withLock {
-            val currentRecord = findRecord(ownerKey) ?: target.record
+            val currentRecord = records.find(ownerKey) ?: target.record
             val (alreadyBoundToRun, ownerCancelled) = synchronized(bindingsLock) {
                 (runBindings[runSessionKey]?.contains(ownerKey) == true) to
                     cancelledKeys.contains(ownerKey)
@@ -498,23 +497,15 @@ class DhdTaskDisplayBackend internal constructor(
             bindRunKey(runSessionKey, ownerKey)
             if (currentRecord.status.isTerminal) {
                 expiryJobs.remove(ownerKey)?.cancel()
-                publishRecord(DisplayClaimPolicy.revived(currentRecord))
+                records.publish(DisplayClaimPolicy.revived(currentRecord))
             }
             TaskDisplayResolution.Ready(
                 TaskDisplayTarget(
                     target.session,
-                    findRecord(ownerKey) ?: currentRecord.copy(status = TaskDisplayStatus.RUNNING),
+                    records.find(ownerKey) ?: currentRecord.copy(status = TaskDisplayStatus.RUNNING),
                 ),
             )
         }
-    }
-
-    private fun findRecordByDisplayId(displayId: Int): TaskDisplayRecord? = synchronized(recordsLock) {
-        _displayRecords.value.firstOrNull { it.displayId == displayId }
-    }
-
-    private fun findRecordByDisplayRef(displayRef: String): TaskDisplayRecord? = synchronized(recordsLock) {
-        _displayRecords.value.firstOrNull { it.displayRef == displayRef }
     }
 
     override suspend fun capture(session: TaskDisplaySession): TaskDisplayCapture {
@@ -747,7 +738,7 @@ class DhdTaskDisplayBackend internal constructor(
                 val currentKeys = candidates.mapTo(mutableSetOf()) { it.sessionKey }
                 missingPolls.keys.retainAll(currentKeys)
                 candidates.forEach { session ->
-                    val currentPackage = findRecord(session.sessionKey)?.packageName ?: session.packageName
+                    val currentPackage = records.find(session.sessionKey)?.packageName ?: session.packageName
                     when (ActivityDumpParser.displayTaskPresence(output, session.displayId, currentPackage)) {
                         true -> missingPolls.remove(session.sessionKey)
                         false -> {
@@ -800,7 +791,7 @@ class DhdTaskDisplayBackend internal constructor(
         error: String?,
     ) {
         val bound = stateLock.withLock { sessions[sessionKey] }
-        val existing = findRecord(sessionKey)
+        val existing = records.find(sessionKey)
         if (existing?.status == TaskDisplayStatus.ENDED || existing?.status == TaskDisplayStatus.EXPIRED) {
             return
         }
@@ -814,7 +805,7 @@ class DhdTaskDisplayBackend internal constructor(
             retentionMs = terminalRetentionMs,
             error = error,
         )
-        publishRecord(retained)
+        records.publish(retained)
         scheduleExpiry(retained)
     }
 
@@ -850,9 +841,9 @@ class DhdTaskDisplayBackend internal constructor(
         status: TaskDisplayStatus,
         error: String?,
     ) {
-        val existing = findRecord(sessionKey) ?: return
+        val existing = records.find(sessionKey) ?: return
         if (existing.status.isTerminal && !status.isTerminal) return
-        publishRecord(
+        records.publish(
             existing.copy(
                 status = status,
                 error = error?.trim()?.take(MAX_RECORD_ERROR_CHARS),
@@ -878,8 +869,8 @@ class DhdTaskDisplayBackend internal constructor(
 
     override fun updatePurpose(sessionKey: String, purpose: String) {
         val safePurpose = purpose.trim().take(MAX_RECORD_PURPOSE_CHARS).ifBlank { return }
-        val existing = findRecord(sessionKey) ?: return
-        publishRecord(existing.copy(lastPurpose = safePurpose))
+        val existing = records.find(sessionKey) ?: return
+        records.publish(existing.copy(lastPurpose = safePurpose))
     }
 
     override fun updatePurposeForRun(sessionKey: String, purpose: String) {
@@ -926,9 +917,9 @@ class DhdTaskDisplayBackend internal constructor(
             if (!shouldClose && expected != null) return@withLock
             unbindOwner(sessionKey)
             expiryJobs.remove(sessionKey)?.cancel()
-            val existing = findRecord(sessionKey)
+            val existing = records.find(sessionKey)
             if (existing != null) {
-                publishRecord(DisplayClaimPolicy.ended(existing, nowEpochMs()))
+                records.publish(DisplayClaimPolicy.ended(existing, nowEpochMs()))
             }
             // Publish the local terminal state before talking to the daemon.
             // A restarted/unavailable maintenance service must not make the
@@ -955,9 +946,9 @@ class DhdTaskDisplayBackend internal constructor(
         // that reference first; resolving by displayId alone can select an
         // older persisted record and reject a valid End request as stale.
         val record = if (expectedDisplayRef != null) {
-            findRecordByDisplayRef(expectedDisplayRef)
+            records.findByDisplayRef(expectedDisplayRef)
         } else {
-            findRecordByDisplayId(displayId)
+            records.findByDisplayId(displayId)
         }
             ?: return DisplayClaimPolicy.closeNotFound()
         DisplayClaimPolicy.closeRejection(record, displayId, expectedDisplayRef)?.let { return it }
@@ -971,7 +962,7 @@ class DhdTaskDisplayBackend internal constructor(
             // its exact owner key is still safe and never targets display 0.
             close(record.sessionKey)
         }
-        val closed = findRecord(record.sessionKey) ?: record.copy(
+        val closed = records.find(record.sessionKey) ?: record.copy(
             status = TaskDisplayStatus.ENDED,
             terminalAtEpochMs = record.terminalAtEpochMs ?: nowEpochMs(),
             expiresAtEpochMs = nowEpochMs(),
@@ -985,9 +976,7 @@ class DhdTaskDisplayBackend internal constructor(
         stateLock.withLock {
             allKeys.addAll(sessions.keys)
         }
-        synchronized(recordsLock) {
-            allKeys.addAll(_displayRecords.value.map { it.sessionKey })
-        }
+        allKeys.addAll(records.sessionKeys())
 
         allKeys.forEach { key ->
             cancelledKeys.add(key)
@@ -1021,21 +1010,9 @@ class DhdTaskDisplayBackend internal constructor(
         }
 
         if (clearRecords) {
-            synchronized(recordsLock) {
-                _displayRecords.value = emptyList()
-            }
-            conversationStore?.deleteAllTaskDisplays()
+            records.deleteAll()
         } else {
-            val updatedRecords = synchronized(recordsLock) {
-                _displayRecords.value.map { record ->
-                    if (!DisplayClaimPolicy.isGone(record)) DisplayClaimPolicy.ended(record, now) else record
-                }.also {
-                    _displayRecords.value = sortRecords(it)
-                }
-            }
-            updatedRecords.forEach { record ->
-                conversationStore?.upsertTaskDisplay(record)
-            }
+            records.endAll(now)
         }
 
         runCatching { nativeManager.closeAll() }
@@ -1055,19 +1032,6 @@ class DhdTaskDisplayBackend internal constructor(
             }
             refreshRetainedExpiry(session.sessionKey)
             block()
-        }
-    }
-
-    private fun restorePersistedRecords() {
-        val persisted = conversationStore?.listTaskDisplays().orEmpty()
-        if (persisted.isEmpty()) return
-        val now = nowEpochMs()
-        val restored = persisted.map { record -> DisplayClaimPolicy.restored(record, now) }
-        synchronized(recordsLock) {
-            _displayRecords.value = sortRecords(restored)
-        }
-        restored.zip(persisted).forEach { (next, previous) ->
-            if (next != previous) conversationStore?.upsertTaskDisplay(next)
         }
     }
 
@@ -1103,7 +1067,7 @@ class DhdTaskDisplayBackend internal constructor(
                 // continuation claims a retained display. Re-read the local
                 // record after that wait so an old snapshot cannot overwrite
                 // the newer run's lifecycle state.
-                val record = findRecord(persistedRecord.sessionKey) ?: return@withLock
+                val record = records.find(persistedRecord.sessionKey) ?: return@withLock
                 val nativeSession = native[record.sessionKey]
                 if (nativeSession == null) {
                     removeLocalSession(record.sessionKey, record.taskId)
@@ -1113,7 +1077,7 @@ class DhdTaskDisplayBackend internal constructor(
                         now,
                         terminalRetentionMs,
                     )
-                    if (next != record) publishRecord(next)
+                    if (next != record) records.publish(next)
                     if (!DisplayClaimPolicy.isGone(next)) {
                         scheduleExpiry(next)
                     }
@@ -1144,7 +1108,7 @@ class DhdTaskDisplayBackend internal constructor(
                             terminalRetentionMs,
                         )
                     }
-                    if (next != record) publishRecord(next)
+                    if (next != record) records.publish(next)
                     if (!DisplayClaimPolicy.isGone(next)) {
                         scheduleExpiry(next)
                     }
@@ -1251,7 +1215,7 @@ class DhdTaskDisplayBackend internal constructor(
         val now = nowEpochMs()
         displayRecords.value.forEach { record ->
             val next = DisplayClaimPolicy.withoutNativeSession(record, message, now, terminalRetentionMs)
-            if (next != record) publishRecord(next)
+            if (next != record) records.publish(next)
             if (!DisplayClaimPolicy.isGone(next)) {
                 scheduleExpiry(next)
             }
@@ -1259,9 +1223,9 @@ class DhdTaskDisplayBackend internal constructor(
     }
 
     private fun refreshRetainedExpiry(sessionKey: String) {
-        val record = findRecord(sessionKey) ?: return
+        val record = records.find(sessionKey) ?: return
         val refreshed = DisplayClaimPolicy.refreshedExpiry(record, nowEpochMs(), terminalRetentionMs) ?: return
-        publishRecord(refreshed)
+        records.publish(refreshed)
         scheduleExpiry(refreshed)
     }
 
@@ -1276,7 +1240,7 @@ class DhdTaskDisplayBackend internal constructor(
     }
 
     private suspend fun expire(sessionKey: String, expectedExpiry: Long) {
-        val record = findRecord(sessionKey) ?: return
+        val record = records.find(sessionKey) ?: return
         if (!DisplayClaimPolicy.isExpiryDue(record, expectedExpiry, nowEpochMs())) return
         closeInternal(
             sessionKey,
@@ -1295,7 +1259,7 @@ class DhdTaskDisplayBackend internal constructor(
         val operationLock = operationLocks.getOrPut(sessionKey) { Mutex() }
         operationLock.withLock {
             if (expectedExpiry != null &&
-                !DisplayClaimPolicy.canCloseExpired(findRecord(sessionKey), expectedExpiry, nowEpochMs())
+                !DisplayClaimPolicy.canCloseExpired(records.find(sessionKey), expectedExpiry, nowEpochMs())
             ) {
                 return@withLock
             }
@@ -1325,8 +1289,8 @@ class DhdTaskDisplayBackend internal constructor(
             unbindOwner(sessionKey)
             runCatching { nativeManager.close(sessionKey) }
             expiryJobs.remove(sessionKey)?.cancel()
-            findRecord(sessionKey)?.let { existing ->
-                publishRecord(
+            records.find(sessionKey)?.let { existing ->
+                records.publish(
                     existing.copy(
                         status = finalStatus,
                         terminalAtEpochMs = existing.terminalAtEpochMs ?: nowEpochMs(),
@@ -1337,19 +1301,6 @@ class DhdTaskDisplayBackend internal constructor(
                 )
             }
         }
-    }
-
-    private fun publishRecord(record: TaskDisplayRecord) {
-        synchronized(recordsLock) {
-            val next = _displayRecords.value
-                .filterNot { it.sessionKey == record.sessionKey } + record
-            _displayRecords.value = sortRecords(next)
-            conversationStore?.upsertTaskDisplay(record)
-        }
-    }
-
-    private fun findRecord(sessionKey: String): TaskDisplayRecord? = synchronized(recordsLock) {
-        _displayRecords.value.firstOrNull { it.sessionKey == sessionKey }
     }
 
     /** Keep one native owner associated with at most one logical run. */
@@ -1407,11 +1358,8 @@ class DhdTaskDisplayBackend internal constructor(
         }
     }
 
-    private fun sortRecords(records: List<TaskDisplayRecord>): List<TaskDisplayRecord> =
-        records.sortedWith(compareByDescending<TaskDisplayRecord> { it.createdAtEpochMs }.thenBy { it.sessionKey })
-
     private fun publishPreviewState(sessionKey: String, state: TaskPreviewState) {
-        synchronized(recordsLock) {
+        synchronized(records.lock) {
             publishPreviewStateValue(sessionKey, state)
         }
     }
