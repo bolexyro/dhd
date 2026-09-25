@@ -1,6 +1,11 @@
 package com.phonecontrol.assistant.bridge
 
 import com.phonecontrol.assistant.apps.InstalledUserApp
+import com.phonecontrol.assistant.bridge.protocol.beforeScreenshotOrNull
+import com.phonecontrol.assistant.bridge.protocol.failureCode
+import com.phonecontrol.assistant.bridge.protocol.isSuccessful
+import com.phonecontrol.assistant.bridge.protocol.resultMessage
+import com.phonecontrol.assistant.bridge.protocol.staleDetailsOrNull
 import com.phonecontrol.assistant.core.AndroidBase64Codec
 import com.phonecontrol.assistant.core.Base64Codec
 import com.phonecontrol.assistant.core.BuildDeviceInfo
@@ -1927,7 +1932,7 @@ class DevBridgeServer internal constructor(
                 .put("requestId", requestId)
                 .put("ok", false)
                 .put("action", wireActionName(action))
-                .put("message", result.failureMessage())
+                .put("message", result.resultMessage())
             failureCode?.let { response.put("code", it) }
             addBeforeDebug(
                 response,
@@ -1997,7 +2002,7 @@ class DevBridgeServer internal constructor(
                     .put("requestId", requestId)
                     .put("ok", true)
                     .put("action", wireActionName(action))
-                    .put("message", result.successMessage())
+                    .put("message", result.resultMessage())
                     .put("observation", snapshotJson(captured.snapshot))
                     .put("screenshotBase64", base64.encode(captured.screenshot))
                     .put("screenshotMimeType", "image/png")
@@ -2572,7 +2577,7 @@ class DevBridgeServer internal constructor(
         val openResult = coordinator.executeAction(open, null)
         writeActionResult(writer, request.requestId, "open_app", openResult)
         if (!openResult.isSuccessful()) {
-            failSession(writer, request, openResult.failureMessage())
+            failSession(writer, request, openResult.resultMessage())
             return
         }
 
@@ -2603,7 +2608,7 @@ class DevBridgeServer internal constructor(
         val tapResult = coordinator.executeAction(tap, tapSnapshot)
         writeActionResult(writer, request.requestId, "tap", tapResult)
         if (!tapResult.isSuccessful()) {
-            failSession(writer, request, tapResult.failureMessage())
+            failSession(writer, request, tapResult.resultMessage())
             return
         }
 
@@ -2988,50 +2993,4 @@ private fun buildAppResponse(app: InstalledUserApp, canUse: Boolean? = null): JS
         .put("packageName", app.packageName)
     if (canUse != null) response.put("canUse", canUse)
     return response
-}
-
-private fun ActionExecutionResult.isSuccessful(): Boolean = this is ActionExecutionResult.TransportFinished &&
-    this.result is TransportResult.Succeeded
-
-private fun ActionExecutionResult.beforeScreenshotOrNull(): ByteArray? = when (this) {
-    is ActionExecutionResult.TransportFinished ->
-        (result as? TransportResult.Succeeded)?.beforeScreenshot
-    is ActionExecutionResult.PolicyRejected,
-    ActionExecutionResult.SessionNotRunning -> null
-}
-
-private fun ActionExecutionResult.staleDetailsOrNull(): StaleObservationDiagnostics? = when (this) {
-    is ActionExecutionResult.TransportFinished -> (result as? TransportResult.Rejected)?.details
-    is ActionExecutionResult.PolicyRejected -> details
-    ActionExecutionResult.SessionNotRunning -> null
-}
-
-private fun ActionExecutionResult.failureMessage(): String = when (this) {
-    is ActionExecutionResult.TransportFinished -> when (val result = result) {
-        is TransportResult.Rejected -> result.message
-        is TransportResult.Unsupported -> result.message
-        is TransportResult.Succeeded -> result.message
-    }
-    is ActionExecutionResult.PolicyRejected -> message
-    ActionExecutionResult.SessionNotRunning -> "The phone session is no longer running."
-}
-
-private fun ActionExecutionResult.successMessage(): String = when (this) {
-    is ActionExecutionResult.TransportFinished -> when (val result = result) {
-        is TransportResult.Succeeded -> result.message
-        is TransportResult.Rejected -> result.message
-        is TransportResult.Unsupported -> result.message
-    }
-    is ActionExecutionResult.PolicyRejected -> message
-    ActionExecutionResult.SessionNotRunning -> "The phone session is no longer running."
-}
-
-private fun ActionExecutionResult.failureCode(): String? = when (this) {
-    is ActionExecutionResult.TransportFinished -> when (val result = result) {
-        is TransportResult.Rejected -> result.code.name
-        is TransportResult.Unsupported -> "UNSUPPORTED_ACTION"
-        is TransportResult.Succeeded -> null
-    }
-    is ActionExecutionResult.PolicyRejected -> code
-    ActionExecutionResult.SessionNotRunning -> "SESSION_NOT_RUNNING"
 }

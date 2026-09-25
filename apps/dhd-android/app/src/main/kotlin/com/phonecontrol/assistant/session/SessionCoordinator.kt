@@ -11,6 +11,7 @@ import com.phonecontrol.assistant.domain.TapAction
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.domain.StaleObservationDiagnostics
 import com.phonecontrol.assistant.domain.userFacingActivityLabel
+import com.phonecontrol.assistant.bridge.protocol.resultMessage
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.core.conversationIdOrNull
 import com.phonecontrol.assistant.core.isActive
@@ -1114,7 +1115,7 @@ class SessionCoordinator(
         }
         appendEvent(
             eventKind,
-            transportMessage(result),
+            result.resultMessage(),
             sessionId = running.sessionId,
             actionType = action.type,
             toolName = toolName,
@@ -1254,12 +1255,6 @@ class SessionCoordinator(
         )
         _events.value = (_events.value + event).takeLast(MAX_EVENTS)
         conversationStore?.recordEvent(event)
-    }
-
-    private fun transportMessage(result: TransportResult): String = when (result) {
-        is TransportResult.Rejected -> result.message
-        is TransportResult.Unsupported -> result.message
-        is TransportResult.Succeeded -> result.message
     }
 
     private companion object {

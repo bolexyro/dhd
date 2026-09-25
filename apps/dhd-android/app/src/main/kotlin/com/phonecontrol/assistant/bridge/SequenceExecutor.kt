@@ -11,9 +11,13 @@ import com.phonecontrol.assistant.domain.StaleObservationDiagnostics
 import com.phonecontrol.assistant.domain.TapAction
 import com.phonecontrol.assistant.domain.TypeAction
 import com.phonecontrol.assistant.domain.WaitAction
+import com.phonecontrol.assistant.bridge.protocol.beforeScreenshotOrNull
+import com.phonecontrol.assistant.bridge.protocol.isSuccessful
+import com.phonecontrol.assistant.bridge.protocol.resultMessage
+import com.phonecontrol.assistant.bridge.protocol.sequenceStepFailureCode
+import com.phonecontrol.assistant.bridge.protocol.staleDetailsOrNull
 import com.phonecontrol.assistant.session.ActionExecutionResult
 import com.phonecontrol.assistant.observation.ObservationCaptureResult
-import com.phonecontrol.assistant.execution.TransportResult
 
 internal data class SequenceStepResult(
     val index: Int,
@@ -118,7 +122,7 @@ internal class SequenceExecutor(
                         index = index,
                         action = action.type.name.lowercase(),
                         status = SequenceStepResult.Status.SUCCESS,
-                        message = execution.successMessage(),
+                        message = execution.resultMessage(),
                         observationId = captured.snapshot.id,
                     )
                 }
@@ -137,31 +141,16 @@ internal class SequenceExecutor(
         index: Int,
         action: PhoneAction,
         result: ActionExecutionResult,
-    ): SequenceStepResult {
-        val (code, message) = failureDetails(result)
-        return SequenceStepResult(
-            index = index,
-            action = action.type.name.lowercase(),
-            status = SequenceStepResult.Status.FAILED,
-            message = message,
-            code = code,
-            outcome = "failed",
-            executed = false,
-            details = result.staleDetailsOrNull(),
-        )
-    }
-
-    private fun failureDetails(result: ActionExecutionResult): Pair<String, String> = when (result) {
-        is ActionExecutionResult.TransportFinished -> when (val transportResult = result.result) {
-            is TransportResult.Rejected -> transportResult.code.name to transportResult.message
-            is TransportResult.Unsupported -> "UNSUPPORTED_ACTION" to transportResult.message
-            is TransportResult.Succeeded -> "ACTION_FAILED" to transportResult.message
-        }
-
-        is ActionExecutionResult.PolicyRejected -> "POLICY_REJECTED" to result.message
-        ActionExecutionResult.SessionNotRunning ->
-            "SESSION_NOT_RUNNING" to "The phone session is no longer running."
-    }
+    ): SequenceStepResult = SequenceStepResult(
+        index = index,
+        action = action.type.name.lowercase(),
+        status = SequenceStepResult.Status.FAILED,
+        message = result.resultMessage(),
+        code = result.sequenceStepFailureCode(),
+        outcome = "failed",
+        executed = false,
+        details = result.staleDetailsOrNull(),
+    )
 
     private fun bindObservation(action: PhoneAction, observationId: String): PhoneAction {
         val metadata = action.metadata.copy(observationId = observationId)
@@ -175,31 +164,4 @@ internal class SequenceExecutor(
             is WaitAction -> action.copy(metadata = metadata)
         }
     }
-}
-
-private fun ActionExecutionResult.staleDetailsOrNull(): StaleObservationDiagnostics? = when (this) {
-    is ActionExecutionResult.TransportFinished -> (result as? TransportResult.Rejected)?.details
-    is ActionExecutionResult.PolicyRejected -> details
-    ActionExecutionResult.SessionNotRunning -> null
-}
-
-private fun ActionExecutionResult.beforeScreenshotOrNull(): ByteArray? = when (this) {
-    is ActionExecutionResult.TransportFinished ->
-        (result as? TransportResult.Succeeded)?.beforeScreenshot
-    is ActionExecutionResult.PolicyRejected,
-    ActionExecutionResult.SessionNotRunning -> null
-}
-
-private fun ActionExecutionResult.isSuccessful(): Boolean = this is ActionExecutionResult.TransportFinished &&
-    this.result is TransportResult.Succeeded
-
-private fun ActionExecutionResult.successMessage(): String = when (this) {
-    is ActionExecutionResult.TransportFinished -> when (val result = result) {
-        is TransportResult.Succeeded -> result.message
-        is TransportResult.Rejected -> result.message
-        is TransportResult.Unsupported -> result.message
-    }
-
-    is ActionExecutionResult.PolicyRejected -> message
-    ActionExecutionResult.SessionNotRunning -> "The phone session is no longer running."
 }
