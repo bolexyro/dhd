@@ -13,7 +13,6 @@ import com.phonecontrol.assistant.core.conversationIdOrNull
 import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.ConversationStore
-import com.phonecontrol.assistant.data.RunStatus
 import com.phonecontrol.assistant.policy.PolicyEngine
 import com.phonecontrol.assistant.execution.PhoneActionTransport
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
@@ -141,36 +140,16 @@ class SessionCoordinator(
         reasoningEffort: String = ReasoningEffort.default.codexValue,
         fastMode: Boolean = false,
     ): Boolean = synchronized(lock) {
-        if (request.isBlank() || _state.value.isActive) return false
-
-        val sessionId = UUID.randomUUID().toString()
-        val now = System.currentTimeMillis()
-        val normalizedReasoningEffort = ReasoningEffort.fromCodexValue(reasoningEffort)?.codexValue
-            ?: ReasoningEffort.default.codexValue
-        attentionGate.forgetCompleted()
-        pointerFeedback.clear()
-        val startedRun = conversationStore?.startRun(sessionId, request, conversationId)
-        handoff.release()
-        toolCallLog.clear()
-        _state.value = SessionState.Running(
-            sessionId = sessionId,
-            request = request.trim(),
-            currentPurpose = CoordinatorCopy.PREPARING_REQUEST,
-            startedAtEpochMs = now,
-            conversationId = startedRun?.conversationId ?: conversationId,
-            reasoningEffort = normalizedReasoningEffort,
-            fastMode = fastMode,
-            isContinuation = false,
-            elapsedBeforeStartMs = 0L,
+        transition(
+            SessionEvent.Start(
+                sessionId = UUID.randomUUID().toString(),
+                request = request,
+                conversationId = conversationId,
+                reasoningEffort = reasoningEffort,
+                fastMode = fastMode,
+                nowEpochMs = System.currentTimeMillis(),
+            ),
         )
-        sessionJob?.cancel()
-        sessionJob = SupervisorJob()
-        appendEvent(
-            ActivityEventKind.SESSION_STARTED,
-            "Request accepted. Waiting for the desktop Codex bridge.",
-            sessionId = sessionId,
-        )
-        true
     }
 
     /**
@@ -307,53 +286,11 @@ class SessionCoordinator(
     }
 
     fun pause(): Boolean = synchronized(lock) {
-        val running = _state.value as? SessionState.Running ?: return false
-        val now = System.currentTimeMillis()
-        _state.value = SessionState.Paused(
-            sessionId = running.sessionId,
-            request = running.request,
-            currentPurpose = running.currentPurpose,
-            currentToolMetadataPurpose = running.currentToolMetadataPurpose,
-            startedAtEpochMs = now,
-            conversationId = running.conversationId,
-            reasoningEffort = running.reasoningEffort,
-            fastMode = running.fastMode,
-            isContinuation = running.isContinuation,
-            attentionReason = running.attentionReason,
-            attentionActionLabel = running.attentionActionLabel,
-            elapsedBeforeStartMs = running.elapsedAt(now),
-        )
-        conversationStore?.setRunStatus(running.sessionId, RunStatus.PAUSED)
-        cleanupScope.launch {
-            transport.updateSessionDisplayStatusForRun(running.sessionId, TaskDisplayStatus.PAUSED)
-        }
-        appendEvent(ActivityEventKind.SESSION_PAUSED, "Session paused.", running.sessionId)
-        true
+        transition(SessionEvent.Pause(System.currentTimeMillis()))
     }
 
     fun resume(): Boolean = synchronized(lock) {
-        val paused = _state.value as? SessionState.Paused ?: return false
-        val now = System.currentTimeMillis()
-        _state.value = SessionState.Running(
-            sessionId = paused.sessionId,
-            request = paused.request,
-            currentPurpose = paused.currentPurpose,
-            currentToolMetadataPurpose = paused.currentToolMetadataPurpose,
-            startedAtEpochMs = now,
-            conversationId = paused.conversationId,
-            reasoningEffort = paused.reasoningEffort,
-            fastMode = paused.fastMode,
-            isContinuation = paused.isContinuation,
-            attentionReason = paused.attentionReason,
-            attentionActionLabel = paused.attentionActionLabel,
-            elapsedBeforeStartMs = paused.elapsedBeforeStartMs,
-        )
-        conversationStore?.setRunStatus(paused.sessionId, RunStatus.RUNNING)
-        cleanupScope.launch {
-            transport.updateSessionDisplayStatusForRun(paused.sessionId, TaskDisplayStatus.RUNNING)
-        }
-        appendEvent(ActivityEventKind.SESSION_RESUMED, "Session resumed.", paused.sessionId)
-        true
+        transition(SessionEvent.Resume(System.currentTimeMillis()))
     }
 
     fun togglePause(): Boolean = when (_state.value) {
@@ -364,68 +301,16 @@ class SessionCoordinator(
 
     /** Start a hidden continuation turn in the stopped run's persisted conversation. */
     fun continueStopped(): Boolean = synchronized(lock) {
-        val stopped = _state.value as? SessionState.Stopped ?: return@synchronized false
-        if (_state.value.isActive) return@synchronized false
-
-        val sessionId = UUID.randomUUID().toString()
-        val now = System.currentTimeMillis()
-        val startedRun = conversationStore?.startContinuationRun(
-            runId = sessionId,
-            requestedConversationId = stopped.conversationId,
+        transition(
+            SessionEvent.ContinueStopped(
+                sessionId = UUID.randomUUID().toString(),
+                nowEpochMs = System.currentTimeMillis(),
+            ),
         )
-        attentionGate.forgetCompleted()
-        pointerFeedback.clear()
-        handoff.release()
-        _state.value = SessionState.Running(
-            sessionId = sessionId,
-            request = stopped.request,
-            currentPurpose = "Preparing continuation",
-            startedAtEpochMs = now,
-            conversationId = startedRun?.conversationId ?: stopped.conversationId,
-            reasoningEffort = stopped.reasoningEffort,
-            fastMode = stopped.fastMode,
-            isContinuation = true,
-            elapsedBeforeStartMs = stopped.workedDurationMs,
-        )
-        sessionJob?.cancel()
-        sessionJob = SupervisorJob()
-        appendEvent(
-            ActivityEventKind.SESSION_STARTED,
-            "Continuation accepted. Waiting for the desktop Codex bridge.",
-            sessionId = sessionId,
-        )
-        true
     }
 
     fun stop(reason: String = "Stopped by the user."): Boolean = synchronized(lock) {
-        val current = _state.value
-        val sessionId = current.sessionIdOrNull ?: return false
-        val now = System.currentTimeMillis()
-        val workedDurationMs = current.elapsedAt(now)
-        attentionGate.settle(sessionId)
-        sessionJob?.cancel()
-        sessionJob = null
-        transport.cancelSessionForRun(sessionId)
-        cleanupScope.launch {
-            transport.retainSessionForRun(sessionId, TaskDisplayStatus.STOPPED, reason)
-        }
-        handoff.release()
-        steers.clear(sessionId)
-        val conversationId = current.conversationIdOrNull
-        val continuationSettings = current.continuationSettings()
-        _state.value = SessionState.Stopped(
-            sessionId = sessionId,
-            reason = reason,
-            conversationId = conversationId,
-            reasoningEffort = continuationSettings.first,
-            fastMode = continuationSettings.second,
-            request = current.requestOrNull() ?: "",
-            workedDurationMs = workedDurationMs,
-        )
-        pointerFeedback.clear()
-        conversationStore?.completeRun(sessionId, RunStatus.STOPPED)
-        appendEvent(ActivityEventKind.SESSION_STOPPED, reason, sessionId)
-        true
+        transition(SessionEvent.Stop(reason, System.currentTimeMillis()))
     }
 
     /**
@@ -433,23 +318,7 @@ class SessionCoordinator(
      * Clears all steer instructions, tool calls, pointer events, and timeline events.
      */
     fun reset(): Boolean = synchronized(lock) {
-        val current = _state.value
-        val sessionId = current.sessionIdOrNull
-        attentionGate.cancelAll()
-        sessionJob?.cancel()
-        sessionJob = null
-        if (sessionId != null) {
-            transport.cancelSessionForRun(sessionId)
-            steers.clear(sessionId)
-            conversationStore?.completeRun(sessionId, RunStatus.STOPPED)
-        }
-        steers.clearAll()
-        handoff.release()
-        pointerFeedback.clear()
-        toolCallLog.clear()
-        activityLog.clear()
-        _state.value = SessionState.Idle
-        true
+        transition(SessionEvent.Reset)
     }
 
     /**
@@ -458,41 +327,7 @@ class SessionCoordinator(
      * replayed indefinitely by the polling companion.
      */
     fun fail(reason: String = "The desktop Codex turn failed."): Boolean = synchronized(lock) {
-        val current = _state.value
-        val sessionId = current.sessionIdOrNull ?: return false
-        if (!current.isActive) return false
-        val now = System.currentTimeMillis()
-        val workedDurationMs = current.elapsedAt(now)
-        attentionGate.settle(sessionId)
-        sessionJob?.cancel()
-        sessionJob = null
-        transport.cancelSessionForRun(sessionId)
-        handoff.release()
-        steers.clear(sessionId)
-        val safeReason = reason.trim().take(MAX_AGENT_FEEDBACK_CHARS)
-            .ifBlank { "The desktop Codex turn failed." }
-        cleanupScope.launch {
-            transport.retainSessionForRun(sessionId, TaskDisplayStatus.FAILED, safeReason)
-        }
-        val conversationId = current.conversationIdOrNull
-        val continuationSettings = current.continuationSettings()
-        _state.value = SessionState.Stopped(
-            sessionId = sessionId,
-            reason = "Failed: $safeReason",
-            conversationId = conversationId,
-            reasoningEffort = continuationSettings.first,
-            fastMode = continuationSettings.second,
-            request = current.requestOrNull() ?: "",
-            workedDurationMs = workedDurationMs,
-        )
-        pointerFeedback.clear()
-        conversationStore?.completeRun(
-            sessionId,
-            RunStatus.FAILED,
-            assistantText = null,
-        )
-        appendEvent(ActivityEventKind.AGENT_MESSAGE, "DHD could not complete this request: $safeReason", sessionId)
-        true
+        transition(SessionEvent.Fail(reason, System.currentTimeMillis()))
     }
 
     /**
@@ -505,57 +340,14 @@ class SessionCoordinator(
         agentFeedback: String? = null,
         agentMessageId: String? = null,
     ): Boolean = synchronized(lock) {
-        val current = _state.value
-        val sessionId = current.sessionIdOrNull ?: return false
-        val workedDurationMs = current.elapsedAt(System.currentTimeMillis())
-        attentionGate.settle(sessionId)
-        val feedback = agentFeedback
-            ?.trim()
-            ?.take(MAX_AGENT_FEEDBACK_CHARS)
-            ?.ifBlank { null }
-        val safeAgentMessageId = agentMessageId
-            ?.trim()
-            ?.take(MAX_TEXT_CHARS)
-            ?.ifBlank { null }
-        val displayMessage = feedback ?: message.trim().take(MAX_TEXT_CHARS).ifBlank { "Session completed." }
-        sessionJob?.cancel()
-        sessionJob = null
-        transport.cancelSessionForRun(sessionId)
-        cleanupScope.launch {
-            transport.retainSessionForRun(sessionId, TaskDisplayStatus.COMPLETED)
-        }
-        handoff.release()
-        val conversationId = current.conversationIdOrNull
-        current.sessionIdOrNull?.let(steers::clear)
-        _state.value = SessionState.Completed(
-            sessionId = sessionId,
-            message = displayMessage,
-            conversationId = conversationId,
-            workedDurationMs = workedDurationMs,
+        transition(
+            SessionEvent.Complete(
+                message = message,
+                agentFeedback = agentFeedback,
+                agentMessageId = agentMessageId,
+                nowEpochMs = System.currentTimeMillis(),
+            ),
         )
-        pointerFeedback.clear()
-        // Feedback is emitted as an AGENT_MESSAGE below so the live timeline
-        // and the durable timeline share one row. The fallback completion has
-        // no separate event, so persist it directly here.
-        conversationStore?.completeRun(
-            sessionId,
-            RunStatus.COMPLETED,
-            assistantText = if (feedback == null) displayMessage else null,
-        )
-        if (feedback != null) {
-            appendEvent(
-                ActivityEventKind.AGENT_MESSAGE,
-                feedback,
-                sessionId,
-                eventId = safeAgentMessageId,
-            )
-        }
-        appendEvent(
-            ActivityEventKind.SESSION_COMPLETED,
-            if (feedback != null) "Task completed." else displayMessage,
-            sessionId,
-        )
-        true
     }
 
     /** Update the assistant message that is visible while Codex emits deltas. */
@@ -807,6 +599,63 @@ class SessionCoordinator(
         }
     }
 
+    private fun transition(event: SessionEvent): Boolean {
+        val transition = SessionStateMachine.reduce(_state.value, event) ?: return false
+        var storedConversationId: String? = null
+        transition.effects.forEach { effect ->
+            when (effect) {
+                SessionEffect.CommitState ->
+                    _state.value = transition.state.withStoredConversation(storedConversationId)
+                SessionEffect.ForgetCompletedAttentions -> attentionGate.forgetCompleted()
+                is SessionEffect.SettleAttention -> attentionGate.settle(effect.sessionId)
+                SessionEffect.CancelAllAttention -> attentionGate.cancelAll()
+                SessionEffect.ClearPointer -> pointerFeedback.clear()
+                SessionEffect.ReleaseClaim -> handoff.release()
+                SessionEffect.ClearToolCalls -> toolCallLog.clear()
+                SessionEffect.ClearEvents -> activityLog.clear()
+                is SessionEffect.ClearSteers -> steers.clear(effect.sessionId)
+                SessionEffect.ClearAllSteers -> steers.clearAll()
+                SessionEffect.RestartSessionJob -> {
+                    sessionJob?.cancel()
+                    sessionJob = SupervisorJob()
+                }
+                SessionEffect.CancelSessionJob -> {
+                    sessionJob?.cancel()
+                    sessionJob = null
+                }
+                is SessionEffect.CancelTransport -> transport.cancelSessionForRun(effect.sessionId)
+                is SessionEffect.RetainDisplay -> cleanupScope.launch {
+                    transport.retainSessionForRun(effect.sessionId, effect.status, effect.error)
+                }
+                is SessionEffect.UpdateDisplayStatus -> cleanupScope.launch {
+                    transport.updateSessionDisplayStatusForRun(effect.sessionId, effect.status)
+                }
+                is SessionEffect.OpenRun -> storedConversationId = conversationStore
+                    ?.startRun(effect.sessionId, effect.request, effect.conversationId)
+                    ?.conversationId
+                is SessionEffect.OpenContinuationRun -> storedConversationId = conversationStore
+                    ?.startContinuationRun(
+                        runId = effect.sessionId,
+                        requestedConversationId = effect.conversationId,
+                    )
+                    ?.conversationId
+                is SessionEffect.SetRunStatus -> conversationStore?.setRunStatus(effect.sessionId, effect.status)
+                is SessionEffect.CompleteRun -> conversationStore?.completeRun(
+                    effect.sessionId,
+                    effect.status,
+                    assistantText = effect.assistantText,
+                )
+                is SessionEffect.AppendEvent -> appendEvent(
+                    effect.kind,
+                    effect.message,
+                    effect.sessionId,
+                    eventId = effect.eventId,
+                )
+            }
+        }
+        return true
+    }
+
     private fun sessionStillActive(sessionId: String): Boolean = synchronized(lock) {
         _state.value.sessionIdOrNull == sessionId && _state.value.isActive
     }
@@ -834,30 +683,8 @@ class SessionCoordinator(
     )
 
     private companion object {
-        const val MAX_TEXT_CHARS = 240
-        const val MAX_AGENT_FEEDBACK_CHARS = 4_000
+        const val MAX_TEXT_CHARS = SessionStateMachine.MAX_TEXT_CHARS
+        const val MAX_AGENT_FEEDBACK_CHARS = SessionStateMachine.MAX_AGENT_FEEDBACK_CHARS
         const val DEFAULT_ATTENTION_ACTION_LABEL = "Done"
     }
-}
-
-private fun SessionState.elapsedAt(nowEpochMs: Long): Long = when (this) {
-    is SessionState.Running -> elapsedBeforeStartMs +
-        (nowEpochMs - startedAtEpochMs).coerceAtLeast(0L)
-    is SessionState.Paused -> elapsedBeforeStartMs
-    is SessionState.Stopped -> workedDurationMs
-    is SessionState.Completed -> workedDurationMs
-    SessionState.Idle -> 0L
-}.coerceAtLeast(0L)
-
-private fun SessionState.continuationSettings(): Pair<String, Boolean> = when (this) {
-    is SessionState.Running -> reasoningEffort to fastMode
-    is SessionState.Paused -> reasoningEffort to fastMode
-    else -> ReasoningEffort.default.codexValue to false
-}
-
-private fun SessionState.requestOrNull(): String? = when (this) {
-    is SessionState.Running -> request
-    is SessionState.Paused -> request
-    is SessionState.Stopped -> request
-    else -> null
 }
