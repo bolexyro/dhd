@@ -152,4 +152,17 @@ class DhdTaskDisplayBackendTest {
             ActivityDumpParser.displayTaskPresence(dump, displayId = 7, packageName = "com.example.target"),
         )
     }
+
+    @Test
+    fun `does not match another app whose package ends with the target package`() {
+        val dump = """
+            Display #7 (activities from top to bottom):
+              ActivityRecord{b net.com.example.target/.MainActivity}
+        """.trimIndent()
+
+        assertEquals(
+            false,
+            ActivityDumpParser.displayTaskPresence(dump, displayId = 7, packageName = "com.example.target"),
+        )
+    }
 }

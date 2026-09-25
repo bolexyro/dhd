@@ -40,7 +40,7 @@ internal object ActivityDumpParser {
     ): Boolean? {
         if (displayId <= 0 || packageName.isBlank()) return null
         val packagePattern = Regex(
-            "(?<![A-Za-z0-9_])${Regex.escape(packageName)}(?:/|(?=[^A-Za-z0-9_.]|$))",
+            "(?<![A-Za-z0-9_.])${Regex.escape(packageName)}(?:/|(?=[^A-Za-z0-9_.]|$))",
         )
         var currentDisplay: Int? = null
         var sawDisplay = false
