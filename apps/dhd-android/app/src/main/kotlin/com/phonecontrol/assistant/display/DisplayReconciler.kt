@@ -1,5 +1,6 @@
 package com.phonecontrol.assistant.display
 
+import com.phonecontrol.assistant.core.runCatchingUnlessCancelled
 import com.phonecontrol.assistant.execution.TaskDisplayRecord
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.execution.TaskDisplaySpec
@@ -94,7 +95,7 @@ internal class DisplayReconciler(
                 val ended = record.status == TaskDisplayStatus.ENDED
                 if (!sameIdentity || expired || ended) {
                     host.removeLocalSession(record.sessionKey, record.taskId)
-                    runCatching { nativeManager.close(record.sessionKey) }
+                    runCatchingUnlessCancelled { nativeManager.close(record.sessionKey) }
                     val next = when {
                         expired -> DisplayClaimPolicy.expired(record)
                         ended -> record

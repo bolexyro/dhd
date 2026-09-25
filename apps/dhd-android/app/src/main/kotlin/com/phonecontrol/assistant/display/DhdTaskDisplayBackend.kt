@@ -3,6 +3,7 @@ package com.phonecontrol.assistant.display
 import android.content.Context
 import android.view.Surface
 import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.runCatchingUnlessCancelled
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.observation.ActivityDumpParser
 import com.phonecontrol.assistant.observation.ForegroundAppInfo
@@ -29,6 +30,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * Adapts the shell-UID native display service to the execution-layer contract.
@@ -573,7 +576,7 @@ class DhdTaskDisplayBackend internal constructor(
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
             if (isNativeDisplaySessionMissing(error)) {
-                val reconciled = runCatching {
+                val reconciled = runCatchingUnlessCancelled {
                     reconcileNativeSessionsNow()
                 }.isSuccess
                 if (reconciled) {
@@ -781,44 +784,46 @@ class DhdTaskDisplayBackend internal constructor(
 
     private suspend fun close(sessionKey: String, expected: TaskDisplaySession?) {
         val operationLock = bindings.operationLock(sessionKey)
-        operationLock.withLock {
-            var endedSession: TaskDisplaySession? = null
-            val shouldClose = stateLock.withLock {
-                val current = sessions[sessionKey]
-                if (expected != null && current?.taskSession != expected) {
-                    false
-                } else {
-                    endedSession = sessions.remove(sessionKey)?.taskSession
-                    previews.stopObservingLocked(sessionKey)
-                    previews.removeHandleLocked(sessionKey)?.close()
-                    if (_activeSession.value?.sessionKey == sessionKey) {
-                        _activeSession.value = sessions.values.lastOrNull()?.taskSession
+        withContext(NonCancellable) {
+            operationLock.withLock {
+                var endedSession: TaskDisplaySession? = null
+                val shouldClose = stateLock.withLock {
+                    val current = sessions[sessionKey]
+                    if (expected != null && current?.taskSession != expected) {
+                        false
+                    } else {
+                        endedSession = sessions.remove(sessionKey)?.taskSession
+                        previews.stopObservingLocked(sessionKey)
+                        previews.removeHandleLocked(sessionKey)?.close()
+                        if (_activeSession.value?.sessionKey == sessionKey) {
+                            _activeSession.value = sessions.values.lastOrNull()?.taskSession
+                        }
+                        endedSession?.let { session ->
+                            previews.publish(
+                                sessionKey,
+                                TaskPreviewState.Ended(
+                                    session = session,
+                                    message = "The virtual display ended.",
+                                ),
+                            )
+                        }
+                        true
                     }
-                    endedSession?.let { session ->
-                        previews.publish(
-                            sessionKey,
-                            TaskPreviewState.Ended(
-                                session = session,
-                                message = "The virtual display ended.",
-                            ),
-                        )
-                    }
-                    true
                 }
-            }
-            if (!shouldClose && expected != null) return@withLock
-            bindings.unbind(sessionKey)
-            retention.cancel(sessionKey)
-            val existing = records.find(sessionKey)
-            if (existing != null) {
-                records.publish(DisplayClaimPolicy.ended(existing, nowEpochMs()))
-            }
-            // Publish the local terminal state before talking to the daemon.
-            // A restarted/unavailable maintenance service must not make the
-            // Task Displays End action appear unresponsive. Native close is
-            // still attempted by exact owner key as best effort cleanup.
-            if (shouldClose || expected == null) {
-                runCatching { nativeManager.close(sessionKey) }
+                if (!shouldClose && expected != null) return@withLock
+                bindings.unbind(sessionKey)
+                retention.cancel(sessionKey)
+                val existing = records.find(sessionKey)
+                if (existing != null) {
+                    records.publish(DisplayClaimPolicy.ended(existing, nowEpochMs()))
+                }
+                // Publish the local terminal state before talking to the daemon.
+                // A restarted/unavailable maintenance service must not make the
+                // Task Displays End action appear unresponsive. Native close is
+                // still attempted by exact owner key as best effort cleanup.
+                if (shouldClose || expected == null) {
+                    runCatchingUnlessCancelled { nativeManager.close(sessionKey) }
+                }
             }
         }
     }
@@ -863,49 +868,51 @@ class DhdTaskDisplayBackend internal constructor(
     }
 
     override suspend fun closeAllTaskDisplays(clearRecords: Boolean) {
-        val now = nowEpochMs()
-        val allKeys = mutableSetOf<String>()
-        stateLock.withLock {
-            allKeys.addAll(sessions.keys)
-        }
-        allKeys.addAll(records.sessionKeys())
-
-        allKeys.forEach { key ->
-            bindings.markCancelled(key)
-            nativeManager.cancel(key)
-        }
-
-        stateLock.withLock {
-            sessions.values.forEach { bound ->
-                val sessionKey = bound.taskSession.sessionKey
-                previews.stopObservingLocked(sessionKey)
-                previews.removeHandleLocked(sessionKey)?.close()
-                previews.publish(
-                    sessionKey,
-                    TaskPreviewState.Ended(
-                        session = bound.taskSession,
-                        message = "The virtual display ended.",
-                    ),
-                )
+        withContext(NonCancellable) {
+            val now = nowEpochMs()
+            val allKeys = mutableSetOf<String>()
+            stateLock.withLock {
+                allKeys.addAll(sessions.keys)
             }
-            sessions.clear()
-            _activeSession.value = null
-            previews.resetInlineLocked()
+            allKeys.addAll(records.sessionKeys())
+
+            allKeys.forEach { key ->
+                bindings.markCancelled(key)
+                nativeManager.cancel(key)
+            }
+
+            stateLock.withLock {
+                sessions.values.forEach { bound ->
+                    val sessionKey = bound.taskSession.sessionKey
+                    previews.stopObservingLocked(sessionKey)
+                    previews.removeHandleLocked(sessionKey)?.close()
+                    previews.publish(
+                        sessionKey,
+                        TaskPreviewState.Ended(
+                            session = bound.taskSession,
+                            message = "The virtual display ended.",
+                        ),
+                    )
+                }
+                sessions.clear()
+                _activeSession.value = null
+                previews.resetInlineLocked()
+            }
+
+            bindings.clear()
+
+            allKeys.forEach { key ->
+                retention.cancel(key)
+            }
+
+            if (clearRecords) {
+                records.deleteAll()
+            } else {
+                records.endAll(now)
+            }
+
+            runCatchingUnlessCancelled { nativeManager.closeAll() }
         }
-
-        bindings.clear()
-
-        allKeys.forEach { key ->
-            retention.cancel(key)
-        }
-
-        if (clearRecords) {
-            records.deleteAll()
-        } else {
-            records.endAll(now)
-        }
-
-        runCatching { nativeManager.closeAll() }
     }
 
     /** Serialize preview attach/detach without applying the action tombstone. */
@@ -1016,48 +1023,50 @@ class DhdTaskDisplayBackend internal constructor(
         finalError: String? = null,
     ) {
         val operationLock = bindings.operationLock(sessionKey)
-        operationLock.withLock {
-            if (expectedExpiry != null &&
-                !DisplayClaimPolicy.canCloseExpired(records.find(sessionKey), expectedExpiry, nowEpochMs())
-            ) {
-                return@withLock
-            }
-            bindings.markCancelled(sessionKey)
-            var endedSession: TaskDisplaySession? = null
-            stateLock.withLock {
-                endedSession = sessions.remove(sessionKey)?.taskSession
-                previews.stopObservingLocked(sessionKey)
-                previews.removeHandleLocked(sessionKey)?.close()
-                if (_activeSession.value?.sessionKey == sessionKey) {
-                    _activeSession.value = sessions.values.lastOrNull()?.taskSession
+        withContext(NonCancellable) {
+            operationLock.withLock {
+                if (expectedExpiry != null &&
+                    !DisplayClaimPolicy.canCloseExpired(records.find(sessionKey), expectedExpiry, nowEpochMs())
+                ) {
+                    return@withLock
                 }
-                endedSession?.let { session ->
-                    previews.publish(
-                        sessionKey,
-                        if (finalStatus == TaskDisplayStatus.ENDED) {
-                            TaskPreviewState.Ended(
-                                session = session,
-                                message = finalError ?: "The virtual display ended.",
-                            )
-                        } else {
-                            TaskPreviewState.Detached
-                        },
+                bindings.markCancelled(sessionKey)
+                var endedSession: TaskDisplaySession? = null
+                stateLock.withLock {
+                    endedSession = sessions.remove(sessionKey)?.taskSession
+                    previews.stopObservingLocked(sessionKey)
+                    previews.removeHandleLocked(sessionKey)?.close()
+                    if (_activeSession.value?.sessionKey == sessionKey) {
+                        _activeSession.value = sessions.values.lastOrNull()?.taskSession
+                    }
+                    endedSession?.let { session ->
+                        previews.publish(
+                            sessionKey,
+                            if (finalStatus == TaskDisplayStatus.ENDED) {
+                                TaskPreviewState.Ended(
+                                    session = session,
+                                    message = finalError ?: "The virtual display ended.",
+                                )
+                            } else {
+                                TaskPreviewState.Detached
+                            },
+                        )
+                    }
+                }
+                bindings.unbind(sessionKey)
+                runCatchingUnlessCancelled { nativeManager.close(sessionKey) }
+                retention.cancel(sessionKey)
+                records.find(sessionKey)?.let { existing ->
+                    records.publish(
+                        existing.copy(
+                            status = finalStatus,
+                            terminalAtEpochMs = existing.terminalAtEpochMs ?: nowEpochMs(),
+                            expiresAtEpochMs = existing.expiresAtEpochMs ?: nowEpochMs(),
+                            lastPurpose = finalPurpose ?: existing.lastPurpose,
+                            error = finalError ?: existing.error,
+                        ),
                     )
                 }
-            }
-            bindings.unbind(sessionKey)
-            runCatching { nativeManager.close(sessionKey) }
-            retention.cancel(sessionKey)
-            records.find(sessionKey)?.let { existing ->
-                records.publish(
-                    existing.copy(
-                        status = finalStatus,
-                        terminalAtEpochMs = existing.terminalAtEpochMs ?: nowEpochMs(),
-                        expiresAtEpochMs = existing.expiresAtEpochMs ?: nowEpochMs(),
-                        lastPurpose = finalPurpose ?: existing.lastPurpose,
-                        error = finalError ?: existing.error,
-                    ),
-                )
             }
         }
     }
