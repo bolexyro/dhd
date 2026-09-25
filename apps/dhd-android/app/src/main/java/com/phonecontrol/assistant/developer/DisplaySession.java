@@ -99,7 +99,7 @@ final class DisplaySession implements Closeable {
         stream.close();
         encoder.close();
         overrides.reset(displayId);
-        if (displayBridge != null && displayId > 0) displayBridge.releaseVirtualDisplay();
+        if (displayBridge != null) displayBridge.releaseVirtualDisplay();
         displayId = -1;
         executor.shutdownNow();
     }

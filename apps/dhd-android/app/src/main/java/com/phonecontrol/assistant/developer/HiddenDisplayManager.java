@@ -79,14 +79,43 @@ final class HiddenDisplayManager {
             throw new UnsupportedOperationException(
                     "DHD native display service returned an unsupported createVirtualDisplay signature.");
         }
-        Object result = create.invoke(service, config, callback, null, SHELL_PACKAGE);
-        displayId = ((Integer) result).intValue();
-        if (displayId <= 0) throw new IOException("Android rejected the task virtual display.");
-        // Android otherwise routes IME windows to the default display. The
-        // local policy is part of the task-display contract; fail creation
-        // if this privileged shell-side call is unavailable.
-        setDisplayImePolicyMethod.invoke(windowService, displayId, 0 /* DISPLAY_IME_POLICY_LOCAL */);
-        return displayId;
+        return createConfigured(
+                () -> {
+                    Object result = create.invoke(service, config, callback, null, SHELL_PACKAGE);
+                    displayId = ((Integer) result).intValue();
+                    if (displayId <= 0) throw new IOException("Android rejected the task virtual display.");
+                    return displayId;
+                },
+                // Android otherwise routes IME windows to the default display. The
+                // local policy is part of the task-display contract; fail creation
+                // if this privileged shell-side call is unavailable.
+                createdId -> setDisplayImePolicyMethod.invoke(
+                        windowService, createdId, 0 /* DISPLAY_IME_POLICY_LOCAL */),
+                this::releaseVirtualDisplay
+        );
+    }
+
+    interface DisplayCreation {
+        int create() throws Exception;
+    }
+
+    interface DisplayConfiguration {
+        void configure(int displayId) throws Exception;
+    }
+
+    static int createConfigured(
+            DisplayCreation creation,
+            DisplayConfiguration configuration,
+            Runnable release
+    ) throws Exception {
+        int createdId = creation.create();
+        try {
+            configuration.configure(createdId);
+        } catch (Throwable error) {
+            release.run();
+            throw error;
+        }
+        return createdId;
     }
 
     void releaseVirtualDisplay() {
