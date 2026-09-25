@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "displayRef": "dsp_00000000000000",
+    "requestId": "req-close_display",
+    "type": "close_display"
+  },
+  "response": [
+    {
+      "message": "close_display accepted by the phone.",
+      "requestId": "req-close_display",
+      "type": "accepted"
+    },
+    {
+      "code": "DISPLAY_NOT_FOUND",
+      "message": "No task display matches the supplied displayRef. Call dhd_list_displays to see the available displays.",
+      "ok": false,
+      "requestId": "req-close_display",
+      "type": "error"
+    }
+  ]
+}

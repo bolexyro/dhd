@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-stop_session",
+    "type": "stop_session"
+  },
+  "response": [
+    {
+      "message": "stop_session accepted by the phone.",
+      "requestId": "req-stop_session",
+      "type": "accepted"
+    },
+    {
+      "message": "Stopped by the desktop assistant.",
+      "ok": true,
+      "requestId": "req-stop_session",
+      "type": "stopped",
+      "wasActive": false
+    }
+  ]
+}

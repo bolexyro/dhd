@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-request_attention",
+    "type": "request_attention"
+  },
+  "response": [
+    {
+      "message": "request_attention accepted by the phone.",
+      "requestId": "req-request_attention",
+      "type": "accepted"
+    },
+    {
+      "code": "DISPLAY_EXPIRED",
+      "message": "The retained task display expired.",
+      "ok": false,
+      "requestId": "req-request_attention",
+      "type": "error"
+    }
+  ]
+}

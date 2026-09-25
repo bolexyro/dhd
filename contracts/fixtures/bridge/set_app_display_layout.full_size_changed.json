@@ -1,0 +1,31 @@
+{
+  "peer": "loopback",
+  "request": {
+    "layout": "full_size",
+    "packageName": "com.example.shop",
+    "requestId": "req-set_app_display_layout",
+    "type": "set_app_display_layout"
+  },
+  "response": [
+    {
+      "message": "set_app_display_layout accepted by the phone.",
+      "requestId": "req-set_app_display_layout",
+      "type": "accepted"
+    },
+    {
+      "appLabel": "Shop",
+      "appliesNextOpen": true,
+      "changed": true,
+      "currentDisplayUnchanged": true,
+      "displayGeometryUnchanged": true,
+      "fullSizeLayoutEnabled": true,
+      "layout": "full_size",
+      "message": "full-size app layout saved for Shop. The next dhd_open_app call without displayRef will use a fresh DHD task display with this layout.",
+      "ok": true,
+      "packageName": "com.example.shop",
+      "requestId": "req-set_app_display_layout",
+      "requiresFreshDisplay": true,
+      "type": "app_display_layout_updated"
+    }
+  ]
+}

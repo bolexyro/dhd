@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "reason": "Codex crashed.",
+    "requestId": "req-fail_session",
+    "sessionId": "{{sessionId}}",
+    "type": "fail_session"
+  },
+  "response": [
+    {
+      "message": "fail_session accepted by the phone.",
+      "requestId": "req-fail_session",
+      "type": "accepted"
+    },
+    {
+      "message": "Codex crashed.",
+      "ok": true,
+      "requestId": "req-fail_session",
+      "type": "session_failed"
+    }
+  ]
+}

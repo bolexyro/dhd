@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "displayRef": "dsp_f8f137e6086916",
+    "requestId": "req-close_display",
+    "type": "close_display"
+  },
+  "response": [
+    {
+      "message": "close_display accepted by the phone.",
+      "requestId": "req-close_display",
+      "type": "accepted"
+    },
+    {
+      "code": "DISPLAY_IN_USE",
+      "message": "The selected task display is being used by an active DHD run. Stop the active run first, then close the display.",
+      "ok": false,
+      "requestId": "req-close_display",
+      "type": "error"
+    }
+  ]
+}

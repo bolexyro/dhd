@@ -1,0 +1,8 @@
+packages:
+  - phone-control
+  - phone-control-mcp
+  - phone-viewer
+
+allowBuilds:
+  electron: true
+  esbuild: true

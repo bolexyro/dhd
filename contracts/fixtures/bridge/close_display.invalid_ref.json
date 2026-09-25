@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "displayRef": "display-7",
+    "requestId": "req-close_display",
+    "type": "close_display"
+  },
+  "response": [
+    {
+      "message": "close_display accepted by the phone.",
+      "requestId": "req-close_display",
+      "type": "accepted"
+    },
+    {
+      "code": "INVALID_DISPLAY_REF",
+      "message": "displayRef must match dsp_ followed by 14 lowercase hexadecimal characters.",
+      "ok": false,
+      "requestId": "req-close_display",
+      "type": "error"
+    }
+  ]
+}

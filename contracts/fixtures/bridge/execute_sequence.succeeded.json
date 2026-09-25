@@ -1,0 +1,96 @@
+{
+  "peer": "loopback",
+  "request": {
+    "actions": [
+      {
+        "metadata": {
+          "purpose": "Tap the search field",
+          "targetDescription": "Search field"
+        },
+        "type": "tap",
+        "x": 100,
+        "y": 200
+      },
+      {
+        "metadata": {
+          "purpose": "Type milk",
+          "targetDescription": "Search field"
+        },
+        "text": "milk",
+        "type": "type"
+      }
+    ],
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "tool": "dhd_execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "beforeObservation": {
+        "activityName": "com.example.shop.MainActivity",
+        "displayRef": "dsp_f8f137e6086916",
+        "height": 1560,
+        "id": "obs-1",
+        "packageName": "com.example.shop",
+        "rotation": 0,
+        "screenProtection": {
+          "reason": null,
+          "requiresUserAttention": false,
+          "signals": [],
+          "status": "visible"
+        },
+        "screenshotFingerprint": "fp-obs-1",
+        "width": 720
+      },
+      "beforeScreenshotBase64": "YmVmb3Jl",
+      "beforeScreenshotMimeType": "image/png",
+      "completedSteps": 2,
+      "message": "Executed 2 typed phone actions and returned a fresh observation.",
+      "observation": {
+        "activityName": "com.example.shop.MainActivity",
+        "displayRef": "dsp_f8f137e6086916",
+        "height": 1560,
+        "id": "obs-3",
+        "packageName": "com.example.shop",
+        "rotation": 0,
+        "screenProtection": {
+          "reason": null,
+          "requiresUserAttention": false,
+          "signals": [],
+          "status": "visible"
+        },
+        "screenshotFingerprint": "fp-obs-3",
+        "width": 720
+      },
+      "ok": true,
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 2,
+      "screenshotBase64": "iVBORw==",
+      "screenshotMimeType": "image/png",
+      "steps": [
+        {
+          "action": "tap",
+          "index": 0,
+          "message": "Tapped the search field.",
+          "observationId": "obs-2",
+          "status": "success"
+        },
+        {
+          "action": "type",
+          "index": 1,
+          "message": "Typed milk.",
+          "observationId": "obs-3",
+          "status": "success"
+        }
+      ],
+      "type": "completed"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "peer": "loopback",
+  "request": {
+    "actions": [
+      {
+        "metadata": {
+          "purpose": "Tap the search field",
+          "targetDescription": "Search field"
+        },
+        "type": "tap",
+        "x": 100,
+        "y": 200
+      },
+      {
+        "metadata": {
+          "purpose": "Type milk",
+          "targetDescription": "Search field"
+        },
+        "text": "milk",
+        "type": "type"
+      }
+    ],
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "tool": "dhd_execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "code": "POST_OBSERVATION_FAILED",
+      "completedSteps": 0,
+      "executed": "unknown",
+      "failedStep": 0,
+      "message": "The action may have run, but the phone could not produce a post-action observation: screencap failed",
+      "ok": false,
+      "outcome": "unknown",
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 2,
+      "steps": [
+        {
+          "action": "tap",
+          "code": "POST_OBSERVATION_FAILED",
+          "index": 0,
+          "message": "The action may have run, but the phone could not produce a post-action observation: screencap failed",
+          "outcome": "unknown",
+          "status": "failed"
+        }
+      ],
+      "type": "completed"
+    }
+  ]
+}

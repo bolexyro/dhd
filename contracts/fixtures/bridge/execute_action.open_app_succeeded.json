@@ -1,0 +1,59 @@
+{
+  "peer": "loopback",
+  "request": {
+    "action": {
+      "metadata": {
+        "purpose": "Open the shop",
+        "targetDescription": "Shop app"
+      },
+      "packageName": "com.example.shop",
+      "type": "open_app"
+    },
+    "requestId": "req-execute_action",
+    "tool": "dhd_open_app",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "action": "open_app",
+      "message": "Opened Shop.",
+      "ok": true,
+      "requestId": "req-execute_action",
+      "type": "action_result"
+    },
+    {
+      "action": "open_app",
+      "initialPointer": {
+        "x": "{{calibrationX}}",
+        "y": "{{calibrationY}}"
+      },
+      "message": "Opened Shop.",
+      "observation": {
+        "activityName": "com.example.shop.MainActivity",
+        "displayRef": "{{sessionIdDisplayRef@7}}",
+        "height": 1560,
+        "id": "obs-open",
+        "packageName": "com.example.shop",
+        "rotation": 0,
+        "screenProtection": {
+          "reason": null,
+          "requiresUserAttention": false,
+          "signals": [],
+          "status": "visible"
+        },
+        "screenshotFingerprint": "fp-obs-open",
+        "width": 720
+      },
+      "ok": true,
+      "requestId": "req-execute_action",
+      "screenshotBase64": "iVBORw==",
+      "screenshotMimeType": "image/png",
+      "type": "completed"
+    }
+  ]
+}

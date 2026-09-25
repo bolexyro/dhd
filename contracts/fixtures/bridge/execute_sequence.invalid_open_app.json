@@ -1,0 +1,59 @@
+{
+  "peer": "loopback",
+  "request": {
+    "actions": [
+      {
+        "metadata": {
+          "purpose": "Tap the search field",
+          "targetDescription": "Search field"
+        },
+        "type": "tap",
+        "x": 100,
+        "y": 200
+      },
+      {
+        "metadata": {
+          "purpose": "Open",
+          "targetDescription": "Shop"
+        },
+        "packageName": "com.example.shop",
+        "type": "open_app"
+      }
+    ],
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "tool": "dhd_execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "code": "INVALID_PAYLOAD",
+      "completedSteps": 0,
+      "executed": false,
+      "failedStep": 1,
+      "message": "dhd_execute_sequence does not support open_app; use dhd_open_app first.",
+      "ok": false,
+      "outcome": "failed",
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 2,
+      "steps": [
+        {
+          "action": "open_app",
+          "code": "INVALID_PAYLOAD",
+          "executed": false,
+          "index": 1,
+          "message": "dhd_execute_sequence does not support open_app; use dhd_open_app first.",
+          "outcome": "failed",
+          "status": "failed"
+        }
+      ],
+      "type": "completed"
+    }
+  ]
+}

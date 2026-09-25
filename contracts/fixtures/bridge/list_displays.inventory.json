@@ -1,0 +1,68 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-list_displays",
+    "type": "list_displays"
+  },
+  "response": [
+    {
+      "message": "list_displays accepted by the phone.",
+      "requestId": "req-list_displays",
+      "type": "accepted"
+    },
+    {
+      "count": 3,
+      "displays": [
+        {
+          "appLabel": "Shop",
+          "createdAtEpochMs": 1749999000000,
+          "densityDpi": 420,
+          "displayRef": "dsp_f8f137e6086916",
+          "error": null,
+          "expiresAtEpochMs": null,
+          "height": 1560,
+          "lastPurpose": "Checking the cart",
+          "packageName": "com.example.shop",
+          "remainingRetentionMs": null,
+          "status": "running",
+          "terminalAtEpochMs": null,
+          "width": 720
+        },
+        {
+          "appLabel": "Shop",
+          "createdAtEpochMs": 1749999000000,
+          "densityDpi": 420,
+          "displayRef": "dsp_f5948bdce477d1",
+          "error": null,
+          "expiresAtEpochMs": 1750000240000,
+          "height": 1560,
+          "lastPurpose": "Task complete",
+          "packageName": "com.example.shop",
+          "remainingRetentionMs": 240000,
+          "status": "completed",
+          "terminalAtEpochMs": 1749999940000,
+          "width": 720
+        },
+        {
+          "appLabel": "com.example.unlabelled",
+          "createdAtEpochMs": 1749999000000,
+          "densityDpi": 420,
+          "displayRef": "dsp_e5b4ec50871278",
+          "error": "The app crashed.",
+          "expiresAtEpochMs": 1750000001000,
+          "height": 1560,
+          "lastPurpose": "Checking the cart",
+          "packageName": "com.example.unlabelled",
+          "remainingRetentionMs": 1000,
+          "status": "failed",
+          "terminalAtEpochMs": 1749999999000,
+          "width": 720
+        }
+      ],
+      "message": "Returned active and retained task displays.",
+      "ok": true,
+      "requestId": "req-list_displays",
+      "type": "displays"
+    }
+  ]
+}

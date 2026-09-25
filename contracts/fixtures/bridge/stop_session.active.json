@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "reason": "User changed their mind.",
+    "requestId": "req-stop_session",
+    "type": "stop_session"
+  },
+  "response": [
+    {
+      "message": "stop_session accepted by the phone.",
+      "requestId": "req-stop_session",
+      "type": "accepted"
+    },
+    {
+      "message": "User changed their mind.",
+      "ok": true,
+      "requestId": "req-stop_session",
+      "type": "stopped",
+      "wasActive": true
+    }
+  ]
+}

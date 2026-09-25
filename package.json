@@ -10,11 +10,9 @@
   },
   "scripts": {
     "build": "pnpm --recursive --if-present --sort build",
-    "typecheck": "pnpm --filter @dhd/screenshot-markers build && pnpm --filter @dhd/phone-control build && pnpm --recursive --if-present --sort typecheck",
-    "test": "pnpm --filter @dhd/screenshot-markers build && pnpm --filter @dhd/phone-control build && pnpm --recursive --if-present --sort test",
-    "phone-control-mcp:start": "pnpm --filter @dhd/phone-control-mcp start",
-    "phone-control-mcp:dev": "pnpm --filter @dhd/phone-control-mcp dev",
-    "phone-control-viewer:start": "pnpm --filter @dhd/phone-viewer start",
+    "typecheck": "pnpm --filter @dhd/screenshot-markers build && pnpm --recursive --if-present --sort typecheck",
+    "lint": "eslint .",
+    "test": "pnpm --filter @dhd/screenshot-markers build && pnpm --recursive --if-present --sort test",
     "dhd:setup": "node scripts/setup-dhd.mjs",
     "companion:build": "pnpm --filter @dhd/dhd-companion build",
     "companion:dashboard": "pnpm companion:build && pnpm --filter @dhd/dhd-companion dashboard",
@@ -23,9 +21,13 @@
     "companion:bridge-demo": "pnpm --filter @dhd/dhd-companion bridge-demo"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "22.15.21",
+    "eslint": "^9.39.5",
+    "globals": "^17.12.0",
     "tsx": "^4.23.12",
     "typescript": "5.8.3",
+    "typescript-eslint": "^8.70.1",
     "vitest": "3.2.4"
   }
 }

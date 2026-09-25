@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-close_display",
+    "type": "close_display"
+  },
+  "response": [
+    {
+      "message": "close_display accepted by the phone.",
+      "requestId": "req-close_display",
+      "type": "accepted"
+    },
+    {
+      "code": "DISPLAY_REFERENCE_REQUIRED",
+      "message": "displayRef is required to close a display safely. Call dhd_list_displays first and use the matching displayRef.",
+      "ok": false,
+      "requestId": "req-close_display",
+      "type": "error"
+    }
+  ]
+}

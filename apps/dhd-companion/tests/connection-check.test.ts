@@ -7,25 +7,27 @@ const discoverPhonesMock = vi.hoisted(() => vi.fn());
 const requestPairingApprovalMock = vi.hoisted(() => vi.fn());
 const writeFileMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mkdirMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const renameMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock("node:fs/promises", async () => {
   const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
-  return { ...actual, writeFile: writeFileMock, mkdir: mkdirMock };
+  return { ...actual, writeFile: writeFileMock, mkdir: mkdirMock, rename: renameMock };
 });
 
-vi.mock("../src/pairing.js", async () => {
-  const actual = await vi.importActual<typeof import("../src/pairing.js")>("../src/pairing.js");
+vi.mock("../src/phone/pairing.js", async () => {
+  const actual = await vi.importActual<typeof import("../src/phone/pairing.js")>("../src/phone/pairing.js");
   return { ...actual, discoverPhones: discoverPhonesMock, requestPairingApproval: requestPairingApprovalMock };
 });
 
-vi.mock("../src/phone-assistant-bridge.js", async () => {
-  const actual = await vi.importActual<typeof import("../src/phone-assistant-bridge.js")>(
-    "../src/phone-assistant-bridge.js"
+vi.mock("../src/phone/bridge-client.js", async () => {
+  const actual = await vi.importActual<typeof import("../src/phone/bridge-client.js")>(
+    "../src/phone/bridge-client.js"
   );
   return { ...actual, requestBridge: requestBridgeMock };
 });
 
-const { createCompanionWebServer } = await import("../src/companion-web/server.js");
+const { companionDashboard } = await import("../src/dashboard/server/dashboard.js");
+const { createCompanionWebServer } = await import("../src/dashboard/server/routes.js");
 
 const openServers: ReturnType<typeof createCompanionWebServer>[] = [];
 
@@ -48,7 +50,7 @@ afterEach(async () => {
 });
 
 async function openWebServer(): Promise<string> {
-  const server = createCompanionWebServer();
+  const server = createCompanionWebServer(companionDashboard);
   openServers.push(server);
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);

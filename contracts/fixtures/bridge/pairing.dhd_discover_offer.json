@@ -1,0 +1,22 @@
+{
+  "port": 8766,
+  "request": {
+    "requestId": "discover-1",
+    "type": "dhd_discover_request",
+    "version": 1
+  },
+  "response": {
+    "addresses": [
+      "192.168.1.42"
+    ],
+    "deviceId": "7d3c6a52-4f1b-4a8e-9c2d-5b6e7f8a9b0c",
+    "deviceName": "samsung SM-S911B",
+    "model": "SM-S911B",
+    "pairingNonce": "0000000000000dd00000000000000001",
+    "port": 8765,
+    "requestId": "discover-1",
+    "type": "dhd_discover_offer",
+    "version": 1
+  },
+  "transport": "udp"
+}

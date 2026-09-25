@@ -1,0 +1,125 @@
+{
+  "peer": "loopback",
+  "request": {
+    "action": {
+      "metadata": {
+        "observationId": "obs-1",
+        "purpose": "Tap the cart button",
+        "targetDescription": "Cart button"
+      },
+      "type": "tap",
+      "x": 100,
+      "y": 200
+    },
+    "requestId": "req-execute_action",
+    "tool": "dhd_execute",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "action": "tap",
+      "approvedObservationId": "obs-1",
+      "code": "STALE_OBSERVATION",
+      "currentObservationId": "obs-live",
+      "inputSent": false,
+      "message": "The screen changed before the tap.",
+      "ok": false,
+      "reasons": [
+        {
+          "approved": null,
+          "code": "GUARD_REGION_CHANGED",
+          "current": null,
+          "guardRegion": {
+            "bottom": 220,
+            "left": 10,
+            "right": 110,
+            "top": 20
+          }
+        },
+        {
+          "approved": {
+            "height": 1560,
+            "width": 720
+          },
+          "code": "DISPLAY_SIZE_CHANGED",
+          "current": {
+            "height": 720,
+            "width": 1560
+          }
+        },
+        {
+          "approved": "com.example.shop",
+          "code": "PACKAGE_CHANGED",
+          "current": "com.example.mail"
+        },
+        {
+          "approved": 0,
+          "code": "ROTATION_CHANGED",
+          "current": 1
+        },
+        {
+          "approved": null,
+          "code": "TASK_SESSION_CHANGED",
+          "current": "other-run"
+        }
+      ],
+      "requestId": "req-execute_action",
+      "type": "action_result"
+    },
+    {
+      "action": "tap",
+      "approvedObservationId": "obs-1",
+      "code": "STALE_OBSERVATION",
+      "currentObservationId": "obs-live",
+      "inputSent": false,
+      "message": "The screen changed before the tap.",
+      "ok": false,
+      "reasons": [
+        {
+          "approved": null,
+          "code": "GUARD_REGION_CHANGED",
+          "current": null,
+          "guardRegion": {
+            "bottom": 220,
+            "left": 10,
+            "right": 110,
+            "top": 20
+          }
+        },
+        {
+          "approved": {
+            "height": 1560,
+            "width": 720
+          },
+          "code": "DISPLAY_SIZE_CHANGED",
+          "current": {
+            "height": 720,
+            "width": 1560
+          }
+        },
+        {
+          "approved": "com.example.shop",
+          "code": "PACKAGE_CHANGED",
+          "current": "com.example.mail"
+        },
+        {
+          "approved": 0,
+          "code": "ROTATION_CHANGED",
+          "current": 1
+        },
+        {
+          "approved": null,
+          "code": "TASK_SESSION_CHANGED",
+          "current": "other-run"
+        }
+      ],
+      "requestId": "req-execute_action",
+      "type": "completed"
+    }
+  ]
+}

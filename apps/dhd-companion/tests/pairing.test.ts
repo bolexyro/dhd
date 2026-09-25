@@ -4,7 +4,7 @@ import dgram from "node:dgram";
 import {
   discoverPhones,
   requestPairingApproval,
-} from "../src/pairing.js";
+} from "../src/phone/pairing.js";
 
 describe("phone pairing discovery", () => {
   it("lists multiple phones using metadata without exposing bridge tokens", async () => {

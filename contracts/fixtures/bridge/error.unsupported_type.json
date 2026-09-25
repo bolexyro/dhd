@@ -1,0 +1,20 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-bogus",
+    "type": "bogus"
+  },
+  "response": [
+    {
+      "message": "bogus accepted by the phone.",
+      "requestId": "req-bogus",
+      "type": "accepted"
+    },
+    {
+      "message": "Unsupported bridge request type.",
+      "ok": false,
+      "requestId": "req-bogus",
+      "type": "error"
+    }
+  ]
+}

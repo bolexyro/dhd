@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-list_displays",
+    "type": "list_displays"
+  },
+  "response": [
+    {
+      "message": "list_displays accepted by the phone.",
+      "requestId": "req-list_displays",
+      "type": "accepted"
+    },
+    {
+      "count": 0,
+      "displays": [],
+      "message": "No task displays are available.",
+      "ok": true,
+      "requestId": "req-list_displays",
+      "type": "displays"
+    }
+  ]
+}

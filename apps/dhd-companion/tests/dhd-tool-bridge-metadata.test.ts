@@ -5,7 +5,7 @@ const bridge = vi.hoisted(() => ({
   requestBridge: vi.fn(async () => ({ type: "completed", ok: true }))
 }));
 
-vi.mock("../src/phone-assistant-bridge.js", () => bridge);
+vi.mock("../src/phone/bridge-client.js", () => bridge);
 
 import { invokeDhdTool } from "../src/dhd-tools.js";
 
@@ -73,7 +73,7 @@ describe("DHD bridge tool metadata", () => {
       const call = bridge.requestBridge.mock.calls.find(([request]) => request.tool === tool);
       expect(call?.[1]).toEqual({
         timeoutMs: 45_000,
-        keepOpenAfterAccepted: true,
+        acceptedTimeoutMs: 600_000,
       });
     }
     const attentionCall = bridge.requestBridge.mock.calls.find(

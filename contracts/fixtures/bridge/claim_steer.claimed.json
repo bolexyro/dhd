@@ -1,0 +1,24 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-claim_steer",
+    "sessionId": "{{sessionId}}",
+    "steerId": "{{steerId}}",
+    "type": "claim_steer"
+  },
+  "response": [
+    {
+      "message": "claim_steer accepted by the phone.",
+      "requestId": "req-claim_steer",
+      "type": "accepted"
+    },
+    {
+      "ok": true,
+      "requestId": "req-claim_steer",
+      "sessionId": "{{sessionId}}",
+      "steerId": "{{steerId}}",
+      "text": "Use the blue one",
+      "type": "steer_claimed"
+    }
+  ]
+}

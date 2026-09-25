@@ -2,7 +2,9 @@ FROM ghcr.io/cirruslabs/android-sdk:35
 
 WORKDIR /workspace
 
-COPY . .
+COPY contracts ./contracts
+COPY apps/dhd-android ./apps/dhd-android
 
-RUN chmod +x gradlew && \
-    ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+WORKDIR /workspace/apps/dhd-android
+
+RUN ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug

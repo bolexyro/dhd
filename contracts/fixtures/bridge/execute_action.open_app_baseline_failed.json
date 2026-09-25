@@ -1,0 +1,33 @@
+{
+  "peer": "loopback",
+  "request": {
+    "action": {
+      "metadata": {
+        "purpose": "Open the shop",
+        "targetDescription": "Shop app"
+      },
+      "packageName": "com.example.shop",
+      "type": "open_app"
+    },
+    "requestId": "req-execute_action",
+    "tool": "dhd_open_app",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "action": "open_app",
+      "code": "OBSERVATION_FAILED",
+      "executed": false,
+      "message": "Could not establish a launch baseline; the app was not opened: Phone access is no longer available; the observation was not captured.",
+      "ok": false,
+      "outcome": "failed",
+      "requestId": "req-execute_action",
+      "type": "completed"
+    }
+  ]
+}

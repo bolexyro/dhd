@@ -1,0 +1,36 @@
+{
+  "peer": "loopback",
+  "request": {
+    "action": {
+      "metadata": {
+        "observationId": "obs-1",
+        "purpose": "Tap the cart button",
+        "targetDescription": "Cart button"
+      },
+      "type": "tap",
+      "x": 100,
+      "y": 200
+    },
+    "displayRef": "dsp_00000000000000",
+    "requestId": "req-execute_action",
+    "tool": "dhd_execute",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "action": "tap",
+      "code": "DISPLAY_NOT_FOUND",
+      "executed": false,
+      "message": "No task display matches the supplied displayRef. Call dhd_list_displays to see the available displays.",
+      "ok": false,
+      "outcome": "failed",
+      "requestId": "req-execute_action",
+      "type": "completed"
+    }
+  ]
+}

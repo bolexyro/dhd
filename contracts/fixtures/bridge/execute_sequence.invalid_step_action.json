@@ -1,0 +1,50 @@
+{
+  "peer": "loopback",
+  "request": {
+    "actions": [
+      {
+        "key": "volume_up",
+        "metadata": {
+          "purpose": "Tap the cart button",
+          "targetDescription": "Cart button"
+        },
+        "type": "keypress"
+      }
+    ],
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "tool": "dhd_execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "code": "INVALID_PAYLOAD",
+      "completedSteps": 0,
+      "executed": false,
+      "failedStep": 0,
+      "message": "Sequence action 0 is invalid: Unsupported enum value: volume_up",
+      "ok": false,
+      "outcome": "failed",
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 1,
+      "steps": [
+        {
+          "action": "keypress",
+          "code": "INVALID_PAYLOAD",
+          "executed": false,
+          "index": 0,
+          "message": "Sequence action 0 is invalid: Unsupported enum value: volume_up",
+          "outcome": "failed",
+          "status": "failed"
+        }
+      ],
+      "type": "completed"
+    }
+  ]
+}

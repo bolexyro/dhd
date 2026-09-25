@@ -1,0 +1,24 @@
+{
+  "peer": "loopback",
+  "request": {
+    "messageId": "message-1",
+    "requestId": "req-stream_agent_message",
+    "sessionId": "{{sessionId}}",
+    "text": "Looking for milk",
+    "type": "stream_agent_message"
+  },
+  "response": [
+    {
+      "message": "stream_agent_message accepted by the phone.",
+      "requestId": "req-stream_agent_message",
+      "type": "accepted"
+    },
+    {
+      "messageId": "message-1",
+      "ok": true,
+      "requestId": "req-stream_agent_message",
+      "sessionId": "{{sessionId}}",
+      "type": "agent_message_streamed"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "port": 8766,
+  "request": {
+    "desktopName": "Studio Mac",
+    "deviceId": "7d3c6a52-4f1b-4a8e-9c2d-5b6e7f8a9b0c",
+    "pairingNonce": "0000000000000dd00000000000000001",
+    "requestId": "pair-1",
+    "type": "dhd_pair_approval_request",
+    "version": 1
+  },
+  "response": {
+    "deviceId": "7d3c6a52-4f1b-4a8e-9c2d-5b6e7f8a9b0c",
+    "message": "This discovery request has expired. Refresh the phone list and try again.",
+    "requestId": "pair-1",
+    "type": "dhd_pair_approval_rejected",
+    "version": 1
+  },
+  "transport": "udp"
+}

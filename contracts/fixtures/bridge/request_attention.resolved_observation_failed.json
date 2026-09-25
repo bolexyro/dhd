@@ -1,0 +1,24 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-request_attention",
+    "type": "request_attention"
+  },
+  "response": [
+    {
+      "message": "request_attention accepted by the phone.",
+      "requestId": "req-request_attention",
+      "type": "accepted"
+    },
+    {
+      "acknowledged": true,
+      "message": "The user confirmed that the attention step is complete. Observe the phone before taking the next action.",
+      "observationError": "The task display is gone.",
+      "observationErrorCode": "TASK_DISPLAY_UNAVAILABLE",
+      "ok": true,
+      "requestId": "req-request_attention",
+      "sessionId": "{{sessionId}}",
+      "type": "attention_resolved"
+    }
+  ]
+}

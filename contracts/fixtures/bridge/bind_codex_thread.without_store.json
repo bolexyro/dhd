@@ -1,0 +1,23 @@
+{
+  "peer": "loopback",
+  "request": {
+    "codexThreadId": "thread-1",
+    "conversationId": "conversation-1",
+    "requestId": "req-bind_codex_thread",
+    "type": "bind_codex_thread"
+  },
+  "response": [
+    {
+      "message": "bind_codex_thread accepted by the phone.",
+      "requestId": "req-bind_codex_thread",
+      "type": "accepted"
+    },
+    {
+      "codexThreadId": "thread-1",
+      "conversationId": "conversation-1",
+      "ok": false,
+      "requestId": "req-bind_codex_thread",
+      "type": "codex_thread_bound"
+    }
+  ]
+}

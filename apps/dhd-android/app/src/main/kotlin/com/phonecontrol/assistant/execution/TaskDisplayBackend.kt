@@ -1,5 +1,7 @@
 package com.phonecontrol.assistant.execution
 
+import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.observation.ForegroundAppInfo
 import android.view.Surface
 import kotlinx.coroutines.flow.StateFlow
 
@@ -105,7 +107,7 @@ data class TaskDisplayRecord(
     val createdAtEpochMs: Long,
     val terminalAtEpochMs: Long? = null,
     val expiresAtEpochMs: Long? = null,
-    val lastPurpose: String = "Preparing request",
+    val lastPurpose: String = CoordinatorCopy.PREPARING_REQUEST,
     val error: String? = null,
     /** Original package owned by the native session when this display later opens another app. */
     val ownerPackageName: String? = null,
@@ -216,7 +218,7 @@ fun TaskDisplayRecord.terminalized(
         terminalAtEpochMs = firstTerminalAt,
         expiresAtEpochMs = expiresAt,
         lastPurpose = lastPurpose
-            .takeIf { it.isNotBlank() && it != "Preparing request" }
+            .takeIf { it.isNotBlank() && it != CoordinatorCopy.PREPARING_REQUEST }
             ?: status.terminalPurpose(),
         error = error?.trim()?.take(MAX_TASK_DISPLAY_ERROR_CHARS),
     )
@@ -228,7 +230,7 @@ private fun TaskDisplayStatus.terminalPurpose(): String = when (this) {
     TaskDisplayStatus.STOPPED -> "Task stopped"
     TaskDisplayStatus.ENDED -> "Display ended"
     TaskDisplayStatus.EXPIRED -> "Display expired"
-    else -> "Preparing request"
+    else -> CoordinatorCopy.PREPARING_REQUEST
 }
 
 private const val MAX_TASK_DISPLAY_ERROR_CHARS = 4_000
@@ -272,10 +274,6 @@ data class TaskDisplayCapture(
 interface TaskDisplayBackend {
     /** All known display records, ordered newest first. */
     val displayRecords: StateFlow<List<TaskDisplayRecord>>
-
-    /** Alias used by display-manager consumers. */
-    val taskDisplays: StateFlow<List<TaskDisplayRecord>>
-        get() = displayRecords
 
     /** Create and launch [packageName] on a display owned by [sessionKey]. */
     suspend fun create(
@@ -347,9 +345,6 @@ interface TaskDisplayBackend {
 
     /** Restart decoding on the currently attached preview surface after an error. */
     suspend fun retryLiveSurface(sessionKey: String) = Unit
-
-    /** Refresh retained-display expiry after a user or agent actually uses it. */
-    suspend fun touch(sessionKey: String) = Unit
 
     /** Invalidate agent work immediately while leaving the display viewable. */
     fun cancel(sessionKey: String)

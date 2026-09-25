@@ -1,0 +1,59 @@
+{
+  "peer": "loopback",
+  "request": {
+    "actions": [
+      {
+        "metadata": {
+          "purpose": "Tap the search field",
+          "targetDescription": "Search field"
+        },
+        "type": "tap",
+        "x": 100,
+        "y": 200
+      },
+      {
+        "metadata": {
+          "purpose": "Type milk",
+          "targetDescription": "Search field"
+        },
+        "text": "milk",
+        "type": "type"
+      }
+    ],
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "tool": "dhd_execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "code": "SECURE_SCREEN_REQUIRES_USER",
+      "completedSteps": 0,
+      "executed": false,
+      "failedStep": 0,
+      "message": "The payment screen is protected. Call dhd_request_attention and wait for the user's Done acknowledgement.",
+      "ok": false,
+      "outcome": "failed",
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 2,
+      "steps": [
+        {
+          "action": "tap",
+          "code": "SECURE_SCREEN_REQUIRES_USER",
+          "executed": false,
+          "index": 0,
+          "message": "The payment screen is protected. Call dhd_request_attention and wait for the user's Done acknowledgement.",
+          "outcome": "failed",
+          "status": "failed"
+        }
+      ],
+      "type": "completed"
+    }
+  ]
+}

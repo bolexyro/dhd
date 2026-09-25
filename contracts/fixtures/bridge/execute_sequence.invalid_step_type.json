@@ -1,0 +1,42 @@
+{
+  "peer": "loopback",
+  "request": {
+    "actions": [
+      "back"
+    ],
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "code": "INVALID_PAYLOAD",
+      "completedSteps": 0,
+      "executed": false,
+      "failedStep": 0,
+      "message": "Sequence action 0 must be an object.",
+      "ok": false,
+      "outcome": "failed",
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 1,
+      "steps": [
+        {
+          "action": "unknown",
+          "code": "INVALID_PAYLOAD",
+          "executed": false,
+          "index": 0,
+          "message": "Sequence action 0 must be an object.",
+          "outcome": "failed",
+          "status": "failed"
+        }
+      ],
+      "type": "completed"
+    }
+  ]
+}

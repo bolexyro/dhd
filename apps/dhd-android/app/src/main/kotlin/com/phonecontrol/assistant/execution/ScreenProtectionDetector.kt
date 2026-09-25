@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.phonecontrol.assistant.domain.ScreenProtection
 import com.phonecontrol.assistant.domain.ScreenProtectionStatus
+import com.phonecontrol.assistant.observation.ActivityDumpParser
 
 private const val WINDOW_FLAG_SECURE = 0x00002000L
 
@@ -90,7 +91,7 @@ internal fun parseWindowSecuritySignals(
     val signals = linkedSetOf<String>()
 
     for (block in windowBlocks(windowDump)) {
-        val component = COMPONENT_REGEX.find(block)?.let { match ->
+        val component = ActivityDumpParser.COMPONENT_REGEX.find(block)?.let { match ->
             val blockPackage = match.groupValues[1]
             val rawActivity = match.groupValues[2]
             blockPackage to normalizeActivityName(rawActivity, blockPackage)
@@ -273,7 +274,6 @@ private val SAMSUNG_FINGERPRINT_WINDOW_HINTS = setOf(
 )
 
 private val WINDOW_HEADER_REGEX = Regex("^\\s*Window #\\d+\\b.*Window\\{", RegexOption.MULTILINE)
-private val COMPONENT_REGEX = Regex("\\b([A-Za-z][A-Za-z0-9_.$]*)/(\\.?[A-Za-z0-9_.$]+)")
 private val DISPLAY_ID_REGEX = Regex("\\b(?:mDisplayId|displayId)\\s*[=:]\\s*(\\d+)\\b", RegexOption.IGNORE_CASE)
 // Samsung's `dumpsys window` prints flags as `fl=81812100` (hex without the
 // 0x prefix), while AOSP/OEM variants may include `fl=0x00002000`.

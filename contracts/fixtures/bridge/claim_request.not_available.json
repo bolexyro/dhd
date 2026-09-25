@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-claim_request",
+    "sessionId": "missing",
+    "type": "claim_request"
+  },
+  "response": [
+    {
+      "message": "claim_request accepted by the phone.",
+      "requestId": "req-claim_request",
+      "type": "accepted"
+    },
+    {
+      "code": "REQUEST_NOT_AVAILABLE",
+      "message": "No unclaimed running phone request matched the supplied sessionId.",
+      "ok": false,
+      "requestId": "req-claim_request",
+      "type": "error"
+    }
+  ]
+}

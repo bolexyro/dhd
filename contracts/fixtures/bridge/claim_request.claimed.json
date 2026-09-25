@@ -1,0 +1,28 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-claim_request",
+    "sessionId": "{{sessionId}}",
+    "type": "claim_request"
+  },
+  "response": [
+    {
+      "message": "claim_request accepted by the phone.",
+      "requestId": "req-claim_request",
+      "type": "accepted"
+    },
+    {
+      "codexThreadId": null,
+      "continuation": false,
+      "conversationId": "conversation-1",
+      "fastMode": false,
+      "message": "Phone request claimed by the desktop Codex companion.",
+      "ok": true,
+      "reasoningEffort": "high",
+      "request": "Buy milk",
+      "requestId": "req-claim_request",
+      "sessionId": "{{sessionId}}",
+      "type": "request_claimed"
+    }
+  ]
+}

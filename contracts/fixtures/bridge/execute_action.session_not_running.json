@@ -1,0 +1,41 @@
+{
+  "peer": "loopback",
+  "request": {
+    "action": {
+      "metadata": {
+        "observationId": "obs-1",
+        "purpose": "Tap the cart button",
+        "targetDescription": "Cart button"
+      },
+      "type": "tap",
+      "x": 100,
+      "y": 200
+    },
+    "requestId": "req-execute_action",
+    "tool": "dhd_execute",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "action": "tap",
+      "code": "SESSION_NOT_RUNNING",
+      "message": "The phone session is no longer running.",
+      "ok": false,
+      "requestId": "req-execute_action",
+      "type": "action_result"
+    },
+    {
+      "action": "tap",
+      "code": "SESSION_NOT_RUNNING",
+      "message": "The phone session is no longer running.",
+      "ok": false,
+      "requestId": "req-execute_action",
+      "type": "completed"
+    }
+  ]
+}

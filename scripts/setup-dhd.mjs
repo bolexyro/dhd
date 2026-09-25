@@ -4,6 +4,8 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { codexShellCommand } from "../apps/dhd-companion/scripts/codex-command.mjs";
+
 const configuredHome = process.env.PHONE_ASSISTANT_CODEX_HOME?.trim();
 const configuredRuntime = process.env.PHONE_ASSISTANT_CODEX_CWD?.trim();
 const dhdRoot = join(homedir(), ".dhd");
@@ -14,6 +16,7 @@ const runtimeCwd = resolve(
 const skipLogin = process.argv.includes("--skip-login");
 const deviceAuth = process.argv.includes("--device-auth");
 const codexCommand = process.env.PHONE_ASSISTANT_CODEX_BIN?.trim() || "codex";
+const shellCodexCommand = codexShellCommand(codexCommand);
 const childEnvironment = {
   ...process.env,
   CODEX_HOME: codexHome,
@@ -53,7 +56,7 @@ if (skipLogin) {
   process.exit(0);
 }
 
-const status = spawnSync(codexCommand, ["login", "status"], childOptions);
+const status = spawnSync(shellCodexCommand, ["login", "status"], childOptions);
 if (status.error) {
   console.error(
     `Could not run '${codexCommand}'. Install the Codex CLI and make sure it is on PATH.`,
@@ -83,7 +86,7 @@ if (deviceAuth) {
 
 const loginArguments = ["login"];
 if (deviceAuth) loginArguments.push("--device-auth");
-const login = spawnSync(codexCommand, loginArguments, childOptions);
+const login = spawnSync(shellCodexCommand, loginArguments, childOptions);
 if (login.error) {
   console.error(login.error.message);
   process.exit(1);

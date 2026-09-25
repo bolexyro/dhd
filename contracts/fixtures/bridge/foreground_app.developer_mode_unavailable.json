@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-foreground_app",
+    "type": "foreground_app"
+  },
+  "response": [
+    {
+      "message": "foreground_app accepted by the phone.",
+      "requestId": "req-foreground_app",
+      "type": "accepted"
+    },
+    {
+      "code": "DEVELOPER_MODE_UNAVAILABLE",
+      "message": "Phone access is no longer available; DHD could not check the phone.",
+      "ok": false,
+      "requestId": "req-foreground_app",
+      "type": "error"
+    }
+  ]
+}

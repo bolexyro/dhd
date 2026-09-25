@@ -1,6 +1,7 @@
 package com.phonecontrol.assistant.data
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -16,28 +17,30 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.ActivityEventKind
+import com.phonecontrol.assistant.core.CoordinatorCopy
+import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.domain.ActionType
 import com.phonecontrol.assistant.execution.TaskDisplayRecord
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
+import java.util.UUID
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.FutureTask
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.util.UUID
+import kotlinx.coroutines.withContext
 
 const val DHD_CONVERSATION_ID = "dhd-assistant"
+internal const val CONVERSATION_DATABASE_NAME = "dhd-conversations.db"
 const val DHD_THREAD_INACTIVITY_MS = 3 * 60 * 60 * 1000L
 
 internal fun hasDhdConversationExpired(lastActivityEpochMs: Long, nowEpochMs: Long): Boolean =
     nowEpochMs - lastActivityEpochMs >= DHD_THREAD_INACTIVITY_MS
 
-const val DHD_LIST_ALLOWED_APPS_TOOL = "dhd_list_allowed_apps"
-const val DHD_FOREGROUND_APP_TOOL = "dhd_get_foreground_app"
-const val DHD_EXECUTE_TOOL = "dhd_execute"
-const val DHD_EXECUTE_SEQUENCE_TOOL = "dhd_execute_sequence"
-const val DHD_OPEN_APP_TOOL = "dhd_open_app"
-const val DHD_BROWSE_APP_TOOL = "dhd_browse_app"
-const val DHD_SET_APP_DISPLAY_LAYOUT_TOOL = "dhd_set_app_display_layout"
-const val DHD_OBSERVE_TOOL = "dhd_observe"
 
 /** Local, app-private conversation metadata. Codex remains the remote context source of truth. */
 @Entity(tableName = "conversations")
@@ -192,14 +195,8 @@ interface ConversationDao {
     @Query("SELECT * FROM task_displays ORDER BY createdAtEpochMs DESC, sessionKey ASC")
     fun listTaskDisplays(): List<TaskDisplayEntity>
 
-    @Query("SELECT * FROM task_displays WHERE sessionKey = :sessionKey LIMIT 1")
-    fun findTaskDisplay(sessionKey: String): TaskDisplayEntity?
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertTaskDisplay(display: TaskDisplayEntity)
-
-    @Query("DELETE FROM task_displays WHERE sessionKey = :sessionKey")
-    fun deleteTaskDisplay(sessionKey: String)
 
     @Query("DELETE FROM task_displays")
     fun deleteAllTaskDisplays()
@@ -214,7 +211,7 @@ interface ConversationDao {
         TaskDisplayEntity::class,
     ],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AssistantDatabase : RoomDatabase() {
     abstract fun conversationDao(): ConversationDao
@@ -317,46 +314,60 @@ data class StartedRun(
     val userMessageId: String,
 )
 
+private fun openConversationDatabase(context: Context): AssistantDatabase = Room.databaseBuilder(
+    context.applicationContext,
+    AssistantDatabase::class.java,
+    CONVERSATION_DATABASE_NAME,
+)
+    .addMigrations(AssistantDatabase.MIGRATION_1_2, AssistantDatabase.MIGRATION_2_3)
+    .build()
+
 /**
  * A deliberately small local store. The data is safe presentation history:
  * requests, assistant messages, purposes and statuses only. Screenshots,
  * typed payloads, raw arguments and private reasoning never enter this store.
- *
- * v0 uses Room's synchronous DAO calls because the coordinator is already a
- * process-local serialized runtime. The database is app-private and bounded
- * by the same text limits as the phone policy layer.
  */
-class ConversationStore(context: Context) {
-    private val database = Room.databaseBuilder(
-        context.applicationContext,
-        AssistantDatabase::class.java,
-        "dhd-conversations.db",
-    )
-        .addMigrations(AssistantDatabase.MIGRATION_1_2, AssistantDatabase.MIGRATION_2_3)
-        .allowMainThreadQueries()
-        .build()
-    private val dao = database.conversationDao()
-    private val lock = Any()
-    private val _conversations = MutableStateFlow<List<ConversationSummary>>(emptyList())
-    private val timelineFlows = mutableMapOf<String, MutableStateFlow<List<TimelineItem>>>()
+class ConversationStore internal constructor(
+    private val dao: ConversationDao,
+    private val runInTransaction: (() -> Unit) -> Unit,
+    private val writer: Executor,
+    private val onWriteFailure: (Throwable) -> Unit,
+    private val nowEpochMs: () -> Long = System::currentTimeMillis,
+) {
+    constructor(context: Context) : this(openConversationDatabase(context))
 
-    val conversations: StateFlow<List<ConversationSummary>> = _conversations.asStateFlow()
+    private constructor(database: AssistantDatabase) : this(
+        dao = database.conversationDao(),
+        runInTransaction = { block -> database.runInTransaction(block) },
+        writer = Executors.newSingleThreadExecutor { task -> Thread(task, WRITER_THREAD_NAME) },
+        onWriteFailure = { error -> Log.w(LOG_TAG, "Conversation write failed", error) },
+    )
+
+    private val writerDispatcher = writer.asCoroutineDispatcher()
+    private val onWriterThread = ThreadLocal<Boolean>()
+    private val timelineFlows = mutableMapOf<String, MutableStateFlow<List<TimelineItem>>>()
+    private val dirtyTimelines = linkedSetOf<String>()
+    private var refreshScheduled = false
     private val _conversationExpiryPrompt = MutableStateFlow(false)
     val conversationExpiryPrompt: StateFlow<Boolean> = _conversationExpiryPrompt.asStateFlow()
 
     init {
-        refreshConversations()
+        timeline(DHD_CONVERSATION_ID)
     }
 
-    fun timeline(conversationId: String = DHD_CONVERSATION_ID): StateFlow<List<TimelineItem>> = synchronized(lock) {
+    fun timeline(conversationId: String = DHD_CONVERSATION_ID): StateFlow<List<TimelineItem>> {
         val canonicalId = canonicalConversationId(conversationId)
-        timelineFlows.getOrPut(canonicalId) {
-            MutableStateFlow(loadTimeline(canonicalId))
+        return synchronized(timelineFlows) {
+            timelineFlows.getOrPut(canonicalId) {
+                MutableStateFlow<List<TimelineItem>>(emptyList()).also {
+                    enqueue { publishTimeline(canonicalId) }
+                }
+            }
         }.asStateFlow()
     }
 
     /** Report whether the DHD conversation should ask the user before expiring. */
-    fun promptForInactiveConversation(nowEpochMs: Long = System.currentTimeMillis()): Boolean = synchronized(lock) {
+    suspend fun promptForInactiveConversation(nowEpochMs: Long = nowEpochMs()): Boolean = onWriter {
         val existing = dao.findConversation(DHD_CONVERSATION_ID)
         val shouldPrompt = existing != null &&
             hasDhdConversationExpired(existing.updatedAtEpochMs, nowEpochMs)
@@ -364,19 +375,16 @@ class ConversationStore(context: Context) {
         shouldPrompt
     }
 
-    fun dismissInactiveConversationPrompt() = synchronized(lock) {
-        _conversationExpiryPrompt.value = false
+    fun dismissInactiveConversationPrompt() {
+        enqueue { _conversationExpiryPrompt.value = false }
     }
 
     /** Keep a stale conversation and restart its inactivity window. */
-    fun keepInactiveConversation(nowEpochMs: Long = System.currentTimeMillis()): Boolean = synchronized(lock) {
-        val existing = dao.findConversation(DHD_CONVERSATION_ID) ?: run {
+    suspend fun keepInactiveConversation(nowEpochMs: Long = nowEpochMs()): Boolean = onWriter {
+        val existing = dao.findConversation(DHD_CONVERSATION_ID)
+        if (existing == null || !hasDhdConversationExpired(existing.updatedAtEpochMs, nowEpochMs)) {
             _conversationExpiryPrompt.value = false
-            return@synchronized false
-        }
-        if (!hasDhdConversationExpired(existing.updatedAtEpochMs, nowEpochMs)) {
-            _conversationExpiryPrompt.value = false
-            return@synchronized false
+            return@onWriter false
         }
 
         dao.updateConversation(
@@ -386,32 +394,32 @@ class ConversationStore(context: Context) {
             ),
         )
         _conversationExpiryPrompt.value = false
-        refreshConversations()
         true
     }
 
     /** Clear the DHD conversation once it has been inactive for the full window. */
-    fun expireInactiveConversation(nowEpochMs: Long = System.currentTimeMillis()): Boolean = synchronized(lock) {
-        val existing = dao.findConversation(DHD_CONVERSATION_ID) ?: run {
+    suspend fun expireInactiveConversation(nowEpochMs: Long = nowEpochMs()): Boolean = onWriter {
+        val existing = dao.findConversation(DHD_CONVERSATION_ID)
+        if (existing == null || !hasDhdConversationExpired(existing.updatedAtEpochMs, nowEpochMs)) {
             _conversationExpiryPrompt.value = false
-            return@synchronized false
-        }
-        if (!hasDhdConversationExpired(existing.updatedAtEpochMs, nowEpochMs)) {
-            _conversationExpiryPrompt.value = false
-            return@synchronized false
+            return@onWriter false
         }
 
         clearConversationRows(DHD_CONVERSATION_ID)
         _conversationExpiryPrompt.value = false
-        refreshConversations()
         true
     }
 
-    fun startRun(runId: String, request: String, requestedConversationId: String? = null): StartedRun = synchronized(lock) {
-        val now = System.currentTimeMillis()
+    fun startRun(runId: String, request: String, requestedConversationId: String? = null): StartedRun {
+        val now = nowEpochMs()
         val safeRequest = request.trim().take(MAX_MESSAGE_CHARS)
         require(safeRequest.isNotEmpty()) { "A request is required." }
+        val messageId = UUID.randomUUID().toString()
+        enqueue { insertRun(runId, safeRequest, messageId, now) }
+        return StartedRun(DHD_CONVERSATION_ID, runId, messageId)
+    }
 
+    private fun insertRun(runId: String, safeRequest: String, messageId: String, now: Long) {
         // DHD is one assistant, not a collection of user-facing chats. Keep a
         // stable local conversation row until it has been inactive long enough
         // to require a full fresh conversation.
@@ -441,7 +449,6 @@ class ConversationStore(context: Context) {
         if (existing == null || resetConversation) dao.insertConversation(conversation)
         else dao.updateConversation(conversation)
 
-        val messageId = UUID.randomUUID().toString()
         dao.insertMessage(
             MessageEntity(
                 id = messageId,
@@ -458,85 +465,98 @@ class ConversationStore(context: Context) {
                 conversationId = conversation.id,
                 userMessageId = messageId,
                 status = RunStatus.RUNNING.name,
-                currentPurpose = "Preparing request",
+                currentPurpose = CoordinatorCopy.PREPARING_REQUEST,
                 startedAtEpochMs = now,
             ),
         )
-        refresh(conversation.id)
-        StartedRun(DHD_CONVERSATION_ID, runId, messageId)
+        scheduleRefresh(conversation.id)
     }
 
     /** Start a hidden local run for a Codex continuation with no local user message. */
-    fun startContinuationRun(runId: String, requestedConversationId: String? = null): StartedRun? = synchronized(lock) {
-        val now = System.currentTimeMillis()
+    fun startContinuationRun(runId: String, requestedConversationId: String? = null): StartedRun {
+        val now = nowEpochMs()
         val conversationId = canonicalConversationId(requestedConversationId)
-        val existing = dao.findConversation(conversationId) ?: return@synchronized null
-        val conversation = existing.copy(
-            updatedAtEpochMs = now,
-            deleted = false,
-        )
-        dao.updateConversation(conversation)
-        dao.insertRun(
-            AgentRunEntity(
-                id = runId,
-                conversationId = conversation.id,
-                userMessageId = "",
-                status = RunStatus.RUNNING.name,
-                currentPurpose = "Preparing request",
-                startedAtEpochMs = now,
-            ),
-        )
-        refresh(conversation.id)
-        StartedRun(conversation.id, runId, "")
-    }
-
-    fun setCurrentPurpose(runId: String, purpose: String) = synchronized(lock) {
-        val run = dao.findRun(runId) ?: return@synchronized
-        val safePurpose = purpose.trim().take(MAX_PURPOSE_CHARS).ifBlank { return@synchronized }
-        dao.updateRun(run.copy(currentPurpose = safePurpose))
-        touchConversation(run.conversationId)
-        refresh(run.conversationId)
-    }
-
-    fun setRunStatus(runId: String, status: RunStatus, error: String? = null) = synchronized(lock) {
-        val run = dao.findRun(runId) ?: return@synchronized
-        val endedAt = when (status) {
-            RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.STOPPED -> System.currentTimeMillis()
-            else -> null
-        }
-        dao.updateRun(run.copy(status = status.name, endedAtEpochMs = endedAt, error = error?.take(MAX_MESSAGE_CHARS)))
-        touchConversation(run.conversationId)
-        refresh(run.conversationId)
-    }
-
-    fun completeRun(runId: String, status: RunStatus, assistantText: String? = null) = synchronized(lock) {
-        val run = dao.findRun(runId) ?: return@synchronized
-        val now = System.currentTimeMillis()
-        dao.updateRun(run.copy(status = status.name, endedAtEpochMs = now, error = null))
-        val safeText = assistantText?.trim()?.take(MAX_AGENT_MESSAGE_CHARS)?.ifBlank { null }
-        if (safeText != null) {
-            dao.insertMessage(
-                MessageEntity(
-                    id = UUID.randomUUID().toString(),
-                    conversationId = run.conversationId,
-                    runId = runId,
-                    role = ROLE_ASSISTANT,
-                    text = safeText,
-                    createdAtEpochMs = now,
+        enqueue {
+            val existing = dao.findConversation(conversationId) ?: return@enqueue
+            dao.updateConversation(
+                existing.copy(
+                    updatedAtEpochMs = now,
+                    deleted = false,
                 ),
             )
+            dao.insertRun(
+                AgentRunEntity(
+                    id = runId,
+                    conversationId = existing.id,
+                    userMessageId = "",
+                    status = RunStatus.RUNNING.name,
+                    currentPurpose = CoordinatorCopy.PREPARING_REQUEST,
+                    startedAtEpochMs = now,
+                ),
+            )
+            scheduleRefresh(existing.id)
         }
-        touchConversation(run.conversationId)
-        refresh(run.conversationId)
+        return StartedRun(conversationId, runId, "")
+    }
+
+    fun setCurrentPurpose(runId: String, purpose: String) {
+        val safePurpose = purpose.trim().take(MAX_PURPOSE_CHARS).ifBlank { return }
+        enqueue {
+            val run = dao.findRun(runId) ?: return@enqueue
+            dao.updateRun(run.copy(currentPurpose = safePurpose))
+            touchConversation(run.conversationId)
+            scheduleRefresh(run.conversationId)
+        }
+    }
+
+    fun setRunStatus(runId: String, status: RunStatus, error: String? = null) {
+        val endedAt = when (status) {
+            RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.STOPPED -> nowEpochMs()
+            else -> null
+        }
+        enqueue {
+            val run = dao.findRun(runId) ?: return@enqueue
+            dao.updateRun(run.copy(status = status.name, endedAtEpochMs = endedAt, error = error?.take(MAX_MESSAGE_CHARS)))
+            touchConversation(run.conversationId)
+            scheduleRefresh(run.conversationId)
+        }
+    }
+
+    fun completeRun(runId: String, status: RunStatus, assistantText: String? = null) {
+        val now = nowEpochMs()
+        val safeText = assistantText?.trim()?.take(MAX_AGENT_MESSAGE_CHARS)?.ifBlank { null }
+        val messageId = UUID.randomUUID().toString()
+        enqueue {
+            val run = dao.findRun(runId) ?: return@enqueue
+            dao.updateRun(run.copy(status = status.name, endedAtEpochMs = now, error = null))
+            if (safeText != null) {
+                dao.insertMessage(
+                    MessageEntity(
+                        id = messageId,
+                        conversationId = run.conversationId,
+                        runId = runId,
+                        role = ROLE_ASSISTANT,
+                        text = safeText,
+                        createdAtEpochMs = now,
+                    ),
+                )
+            }
+            touchConversation(run.conversationId)
+            scheduleRefresh(run.conversationId)
+        }
     }
 
     /** Insert or update the single assistant message shown while a run streams. */
-    fun upsertAgentMessage(runId: String, messageId: String, text: String): Boolean = synchronized(lock) {
-        val run = dao.findRun(runId) ?: return@synchronized false
-        val safeId = messageId.trim().take(MAX_MESSAGE_ID_CHARS).ifBlank { return@synchronized false }
+    fun upsertAgentMessage(runId: String, messageId: String, text: String): Future<Boolean> {
+        val safeId = messageId.trim().take(MAX_MESSAGE_ID_CHARS)
         val safeText = text.replace(Regex("\\r\\n?"), "\n").take(MAX_AGENT_MESSAGE_CHARS)
-        if (safeText.isBlank()) return@synchronized false
+        if (safeId.isBlank() || safeText.isBlank()) return CompletableFuture.completedFuture(false)
+        val createdAt = nowEpochMs()
+        return submit { storeAgentMessage(runId, safeId, safeText, createdAt) }
+    }
 
+    private fun storeAgentMessage(runId: String, safeId: String, safeText: String, createdAt: Long): Boolean {
+        val run = dao.findRun(runId) ?: return false
         val existing = dao.findMessage(safeId)
         if (existing == null) {
             dao.insertMessage(
@@ -546,7 +566,7 @@ class ConversationStore(context: Context) {
                     runId = runId,
                     role = ROLE_ASSISTANT,
                     text = safeText,
-                    createdAtEpochMs = System.currentTimeMillis(),
+                    createdAtEpochMs = createdAt,
                 ),
             )
         } else {
@@ -554,45 +574,53 @@ class ConversationStore(context: Context) {
                 existing.runId != runId ||
                 existing.role != ROLE_ASSISTANT
             ) {
-                return@synchronized false
+                return false
             }
             dao.updateMessage(existing.copy(text = safeText))
         }
         touchConversation(run.conversationId)
-        refresh(run.conversationId)
-        true
+        scheduleRefresh(run.conversationId)
+        return true
     }
 
     /** Persist a user steering instruction alongside the run it modifies. */
-    fun recordSteer(steerId: String, runId: String, text: String) = synchronized(lock) {
-        val run = dao.findRun(runId) ?: return@synchronized
-        val safeText = text.trim().take(MAX_AGENT_MESSAGE_CHARS).ifBlank { return@synchronized }
-        if (dao.findMessage(steerId) == null) {
-            dao.insertMessage(
-                MessageEntity(
-                    id = steerId,
-                    conversationId = run.conversationId,
-                    runId = runId,
-                    role = ROLE_STEER,
-                    text = safeText,
-                    createdAtEpochMs = System.currentTimeMillis(),
-                ),
-            )
+    fun recordSteer(steerId: String, runId: String, text: String) {
+        val safeText = text.trim().take(MAX_AGENT_MESSAGE_CHARS).ifBlank { return }
+        val createdAt = nowEpochMs()
+        enqueue {
+            val run = dao.findRun(runId) ?: return@enqueue
+            if (dao.findMessage(steerId) == null) {
+                dao.insertMessage(
+                    MessageEntity(
+                        id = steerId,
+                        conversationId = run.conversationId,
+                        runId = runId,
+                        role = ROLE_STEER,
+                        text = safeText,
+                        createdAtEpochMs = createdAt,
+                    ),
+                )
+            }
+            touchConversation(run.conversationId)
+            scheduleRefresh(run.conversationId)
         }
-        touchConversation(run.conversationId)
-        refresh(run.conversationId)
     }
 
-    fun recordEvent(event: ActivityEvent) = synchronized(lock) {
-        val runId = event.sessionId ?: return@synchronized
-        val run = dao.findRun(runId) ?: return@synchronized
+    fun recordEvent(event: ActivityEvent) {
+        val runId = event.sessionId ?: return
+        enqueue { storeEvent(runId, event) }
+    }
+
+    private fun storeEvent(runId: String, event: ActivityEvent) {
+        val run = dao.findRun(runId) ?: return
         val purpose = event.purpose
             ?.trim()
             ?.take(MAX_PURPOSE_CHARS)
             ?.ifBlank { null }
         if (purpose != null && event.kind in PURPOSE_EVENT_KINDS) {
             val actionName = event.actionType?.name
-            val existing = dao.listActivities(runId).lastOrNull {
+            val activities = dao.listActivities(runId)
+            val existing = activities.lastOrNull {
                 it.purpose == purpose &&
                     it.actionType == actionName &&
                     // A new proposal starts a new stack row even when the
@@ -610,16 +638,16 @@ class ConversationStore(context: Context) {
                         id = event.id,
                         conversationId = run.conversationId,
                         runId = runId,
-                        sequence = dao.listActivities(runId).size.toLong(),
+                        sequence = activities.size.toLong(),
                         purpose = purpose,
                         targetDescription = event.targetDescription?.trim()?.take(MAX_PURPOSE_CHARS),
                         // Action lifecycle events are emitted by the DHD tool
                         // boundary. Keep the public tool name so the UI can
                         // distinguish real tool calls from system activity.
                         toolName = event.toolName ?: when (event.actionType) {
-                            ActionType.OPEN_APP -> DHD_OPEN_APP_TOOL
+                            ActionType.OPEN_APP -> ToolNames.OPEN_APP
                             null -> null
-                            else -> DHD_EXECUTE_TOOL
+                            else -> ToolNames.EXECUTE
                         },
                         actionType = actionName,
                         status = status,
@@ -680,55 +708,41 @@ class ConversationStore(context: Context) {
             }
         }
         touchConversation(run.conversationId)
-        refresh(run.conversationId)
+        scheduleRefresh(run.conversationId)
     }
 
     /** Return the durable task-display registry, newest display first. */
-    fun listTaskDisplays(): List<TaskDisplayRecord> = synchronized(lock) {
+    fun listTaskDisplays(): List<TaskDisplayRecord> = readBlocking {
         dao.listTaskDisplays().mapNotNull { it.toTaskDisplayRecord() }
     }
 
-    fun findTaskDisplay(sessionKey: String): TaskDisplayRecord? = synchronized(lock) {
-        dao.findTaskDisplay(sessionKey)?.toTaskDisplayRecord()
-    }
-
-    fun currentPurpose(runId: String): String? = synchronized(lock) {
+    fun currentPurpose(runId: String): String? = readBlocking {
         dao.findRun(runId)?.currentPurpose
     }
 
     /** Insert or replace one display's metadata without storing frames. */
-    fun upsertTaskDisplay(record: TaskDisplayRecord) = synchronized(lock) {
-        dao.insertTaskDisplay(record.toEntity())
+    fun upsertTaskDisplay(record: TaskDisplayRecord) {
+        val entity = record.toEntity()
+        enqueue { dao.insertTaskDisplay(entity) }
     }
 
-    fun deleteTaskDisplay(sessionKey: String) = synchronized(lock) {
-        dao.deleteTaskDisplay(sessionKey)
+    fun deleteAllTaskDisplays() {
+        enqueue { dao.deleteAllTaskDisplays() }
     }
 
-    fun deleteAllTaskDisplays() = synchronized(lock) {
-        dao.deleteAllTaskDisplays()
+    fun bindCodexThread(conversationId: String, codexThreadId: String) {
+        val updatedAt = nowEpochMs()
+        enqueue {
+            val conversation = dao.findConversation(canonicalConversationId(conversationId)) ?: return@enqueue
+            dao.updateConversation(conversation.copy(codexThreadId = codexThreadId, updatedAtEpochMs = updatedAt))
+        }
     }
 
-    fun bindCodexThread(conversationId: String, codexThreadId: String) = synchronized(lock) {
-        val conversation = dao.findConversation(canonicalConversationId(conversationId)) ?: return@synchronized
-        dao.updateConversation(conversation.copy(codexThreadId = codexThreadId, updatedAtEpochMs = System.currentTimeMillis()))
-        refreshConversations()
-    }
-
-    fun codexThreadId(conversationId: String?): String? = synchronized(lock) {
+    fun codexThreadId(conversationId: String?): String? = readBlocking {
         dao.findConversation(canonicalConversationId(conversationId))?.codexThreadId
     }
 
-    fun renameConversation(conversationId: String, title: String): Boolean = synchronized(lock) {
-        val conversation = dao.findConversation(conversationId) ?: return@synchronized false
-        val safeTitle = title.trim().replace(Regex("\\s+"), " ").take(MAX_TITLE_CHARS)
-        if (safeTitle.isBlank()) return@synchronized false
-        dao.updateConversation(conversation.copy(title = safeTitle, updatedAtEpochMs = System.currentTimeMillis()))
-        refresh(conversationId)
-        true
-    }
-
-    fun deleteConversation(conversationId: String): Boolean = synchronized(lock) {
+    suspend fun deleteConversation(conversationId: String): Boolean = onWriter {
         val canonicalId = canonicalConversationId(conversationId)
         clearConversationRows(canonicalId)
         if (canonicalId == DHD_CONVERSATION_ID) {
@@ -737,40 +751,39 @@ class ConversationStore(context: Context) {
         // Keep the flow instance that Compose is already collecting alive and
         // publish the empty state before dropping it from the cache. A
         // collector must not stay stuck displaying the deleted timeline.
-        timelineFlows[canonicalId]?.value = emptyList()
-        timelineFlows.remove(canonicalId)
-        refreshConversations()
+        synchronized(timelineFlows) {
+            timelineFlows[canonicalId]?.value = emptyList()
+            timelineFlows.remove(canonicalId)
+        }
         true
     }
 
     private fun clearConversationRows(conversationId: String) {
-        database.runInTransaction {
+        runInTransaction {
             dao.deleteActivities(conversationId)
             dao.deleteMessages(conversationId)
             dao.deleteRuns(conversationId)
             dao.deleteConversation(conversationId)
         }
-        timelineFlows[conversationId]?.value = emptyList()
+        dirtyTimelines.remove(conversationId)
+        synchronized(timelineFlows) { timelineFlows[conversationId] }?.value = emptyList()
     }
 
-    private fun refresh(conversationId: String) {
-        refreshConversations()
-        timelineFlows[conversationId]?.value = loadTimeline(conversationId)
-    }
-
-    private fun refreshConversations() {
-        val records = dao.listConversations().filter { it.id == DHD_CONVERSATION_ID }.map { conversation ->
-            val latestMessage = dao.listMessages(conversation.id).lastOrNull()
-            val latestRun = dao.listRuns(conversation.id).firstOrNull()
-            ConversationSummary(
-                id = conversation.id,
-                title = conversation.title,
-                preview = latestMessage?.text.orEmpty(),
-                updatedAtEpochMs = conversation.updatedAtEpochMs,
-                status = latestRun?.status?.let { runStatusOrNull(it) },
-            )
+    private fun scheduleRefresh(conversationId: String) {
+        dirtyTimelines += conversationId
+        if (refreshScheduled) return
+        refreshScheduled = true
+        enqueue {
+            refreshScheduled = false
+            val conversationIds = dirtyTimelines.toList()
+            dirtyTimelines.clear()
+            conversationIds.forEach(::publishTimeline)
         }
-        _conversations.value = records
+    }
+
+    private fun publishTimeline(conversationId: String) {
+        val flow = synchronized(timelineFlows) { timelineFlows[conversationId] } ?: return
+        flow.value = loadTimeline(conversationId)
     }
 
     private fun loadTimeline(conversationId: String): List<TimelineItem> {
@@ -778,7 +791,7 @@ class ConversationStore(context: Context) {
             TimelineItem.Message(it.id, it.runId, it.role, it.text, it.createdAtEpochMs)
         }
         val activities = dao.listConversationActivities(conversationId)
-            .filterNot { it.toolName.equals("dhd_close_display", ignoreCase = true) || it.toolName.equals("close_display", ignoreCase = true) }
+            .filterNot { ToolNames.isCloseDisplay(it.toolName) }
             .map {
             TimelineItem.Activity(
                 id = it.id,
@@ -798,10 +811,37 @@ class ConversationStore(context: Context) {
 
     private fun touchConversation(conversationId: String) {
         val conversation = dao.findConversation(conversationId) ?: return
-        dao.updateConversation(conversation.copy(updatedAtEpochMs = System.currentTimeMillis()))
+        dao.updateConversation(conversation.copy(updatedAtEpochMs = nowEpochMs()))
     }
 
-    private fun runStatusOrNull(value: String): RunStatus? = runCatching { RunStatus.valueOf(value) }.getOrNull()
+    private fun enqueue(block: () -> Unit) {
+        writer.execute {
+            runMarked {
+                try {
+                    block()
+                } catch (error: Throwable) {
+                    onWriteFailure(error)
+                }
+            }
+        }
+    }
+
+    private fun <T> submit(block: () -> T): Future<T> =
+        FutureTask { runMarked(block) }.also(writer::execute)
+
+    private fun <T> readBlocking(block: () -> T): T =
+        if (onWriterThread.get() == true) block() else submit(block).get()
+
+    private suspend fun <T> onWriter(block: () -> T): T = withContext(writerDispatcher) { runMarked(block) }
+
+    private fun <T> runMarked(block: () -> T): T {
+        onWriterThread.set(true)
+        try {
+            return block()
+        } finally {
+            onWriterThread.set(false)
+        }
+    }
 
     private fun titleFor(request: String): String = request
         .replace(Regex("\\s+"), " ")
@@ -811,7 +851,7 @@ class ConversationStore(context: Context) {
     private fun canonicalConversationId(@Suppress("UNUSED_PARAMETER") requestedId: String?): String =
         DHD_CONVERSATION_ID
 
-    private companion object {
+    internal companion object {
         const val ROLE_USER = "user"
         const val ROLE_STEER = "steer"
         const val ROLE_ASSISTANT = "assistant"
@@ -829,10 +869,12 @@ class ConversationStore(context: Context) {
             ActivityEventKind.SYSTEM,
         )
         val ACTIVE_ACTIVITY_STATUSES = setOf("proposed", "running")
+        const val WRITER_THREAD_NAME = "dhd-conversation-db"
+        const val LOG_TAG = "DhdConversationStore"
     }
 }
 
-private fun ActivityEventKind.activityStatus(): String = when (this) {
+internal fun ActivityEventKind.activityStatus(): String = when (this) {
     ActivityEventKind.ACTION_PROPOSED -> "proposed"
     ActivityEventKind.ACTION_STARTED -> "running"
     ActivityEventKind.ACTION_SUCCEEDED -> "completed"

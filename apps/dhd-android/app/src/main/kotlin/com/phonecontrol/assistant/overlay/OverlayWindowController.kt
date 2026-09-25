@@ -2,10 +2,8 @@ package com.phonecontrol.assistant.overlay
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
-import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
@@ -16,31 +14,36 @@ import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.phonecontrol.assistant.MainActivity
+import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
-import com.phonecontrol.assistant.developer.DeveloperModeStatus
-import com.phonecontrol.assistant.developer.TaskPreviewState
+import com.phonecontrol.assistant.adb.DeveloperModeStatus
+import com.phonecontrol.assistant.data.UiPreferencesRepository
+import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.execution.TaskDisplaySession
+import com.phonecontrol.assistant.overlay.bubble.BubblePosition
+import com.phonecontrol.assistant.overlay.bubble.bubblePositionForHorizontalSwipe
+import com.phonecontrol.assistant.overlay.bubble.bubblePositionOnNearestEdge
+import com.phonecontrol.assistant.overlay.bubble.clampBubblePosition
+import com.phonecontrol.assistant.overlay.effects.OverlayGlow
 import com.phonecontrol.assistant.session.AssistantForegroundService
+import com.phonecontrol.assistant.session.SessionCommands
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
-import com.phonecontrol.assistant.ui.DarkAssistantColors
-import com.phonecontrol.assistant.ui.AppRoutes
-import com.phonecontrol.assistant.ui.LightAssistantColors
-import com.phonecontrol.assistant.ui.LocalAssistantColors
-import com.phonecontrol.assistant.ui.ThemeMode
+import com.phonecontrol.assistant.ui.navigation.AppRoutes
+import com.phonecontrol.assistant.ui.theme.DarkAssistantColors
+import com.phonecontrol.assistant.ui.theme.LightAssistantColors
+import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
+import com.phonecontrol.assistant.ui.theme.ThemeMode
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,12 +60,14 @@ class OverlayWindowController(
     private val taskDisplaySession: StateFlow<TaskDisplaySession?>,
     private val onTaskPreviewSurfaceAvailable: (TaskDisplaySession, Surface) -> Unit,
     private val onTaskPreviewSurfaceDestroyed: (TaskDisplaySession, Surface, () -> Unit) -> Unit,
+    private val uiPreferences: UiPreferencesRepository,
 ) {
     private companion object {
         const val BUBBLE_SIZE_DP = 56
     }
 
     private val appContext = context.applicationContext
+    private val sessionCommands = SessionCommands(appContext)
     private val windowManager = appContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val _panelMode = MutableStateFlow(OverlayPanelMode.BUBBLE)
     private val _resultMessage = MutableStateFlow<String?>(null)
@@ -128,20 +133,20 @@ class OverlayWindowController(
     fun onSessionState(state: SessionState) {
         val previousState = lastState
         lastState = state
-        val isActive = state.isActiveForOverlay()
+        val isActive = state.isActive
         val nextMode = nextOverlayPanelMode(_panelMode.value, previousState, state)
 
         if (isActive) {
             _resultMessage.value = null
-        } else if (previousState.isActiveForOverlay() && state is SessionState.Completed) {
+        } else if (previousState.isActive && state is SessionState.Completed) {
             _resultMessage.value = state.message
-        } else if (previousState.isActiveForOverlay() && state is SessionState.Stopped) {
+        } else if (previousState.isActive && state is SessionState.Stopped) {
             // A user stop is a control action, not an assistant result. Keep the
             // overlay quiet and return to the composer (or the collapsed bubble).
             _resultMessage.value = null
         }
         if (state is SessionState.Completed || state is SessionState.Stopped) {
-            if (previousState.isActiveForOverlay()) {
+            if (previousState.isActive) {
                 setPanelMode(nextMode)
             }
         } else if (isActive) {
@@ -151,7 +156,7 @@ class OverlayWindowController(
 
     fun openComposer() {
         val state = coordinator.state.value
-        if (state.isActiveForOverlay()) {
+        if (state.isActive) {
             setPanelMode(overlayPanelModeForUserExpand(state))
             return
         }
@@ -270,7 +275,6 @@ class OverlayWindowController(
         params.x = position.x
         params.y = position.y
         runCatching { panelView?.let { windowManager.updateViewLayout(it, params) } }
-        OverlayPreferences.setBubblePosition(appContext, position)
     }
 
     fun snapBubbleToNearestEdge() {
@@ -350,7 +354,6 @@ class OverlayWindowController(
 
     private fun createViews() {
         if (!Settings.canDrawOverlays(appContext)) return
-        val colors = assistantColors()
         val lifecycleOwner = OverlayViewTreeOwner()
         val initialVisibility = if (hidden) View.GONE else View.VISIBLE
         val panel = ComposeView(appContext).apply {
@@ -372,7 +375,7 @@ class OverlayWindowController(
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             setContent {
-                CompositionLocalProvider(LocalAssistantColors provides colors) {
+                OverlayTheme {
                     OverlayPanel(
                         sessionState = coordinator.state,
                         toolCalls = coordinator.toolCalls,
@@ -402,6 +405,7 @@ class OverlayWindowController(
                         overlayHidden = visibilityGate.hidden,
                         onTaskPreviewSurfaceAvailable = onTaskPreviewSurfaceAvailable,
                         onTaskPreviewSurfaceDestroyed = onTaskPreviewSurfaceDestroyed,
+                        preferences = uiPreferences,
                     )
                 }
             }
@@ -421,7 +425,7 @@ class OverlayWindowController(
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             setContent {
-                CompositionLocalProvider(LocalAssistantColors provides colors) {
+                OverlayTheme {
                     OverlayGlow(
                         sessionState = coordinator.state,
                         panelMode = panelMode,
@@ -617,7 +621,7 @@ class OverlayWindowController(
     }
 
     private fun canAcceptTextInput(): Boolean =
-        !coordinator.state.value.isActiveForOverlay() &&
+        !coordinator.state.value.isActive &&
             _panelMode.value in setOf(OverlayPanelMode.COMPOSER, OverlayPanelMode.RESULT)
 
     private fun setPanelFocusable(focusable: Boolean) {
@@ -650,26 +654,14 @@ class OverlayWindowController(
 
     private fun submitRequest(request: String) {
         _resultMessage.value = null
-        val prefs = appContext.getSharedPreferences(OverlayPreferences.PREFS_NAME, Context.MODE_PRIVATE)
-        val reasoningEffort = ReasoningEffort.fromStorage(
-            prefs.getString(OverlayPreferences.KEY_REASONING_EFFORT, ReasoningEffort.default.storageValue),
-        )?.codexValue ?: ReasoningEffort.default.codexValue
-        val fastMode = prefs.getBoolean(OverlayPreferences.KEY_FAST_MODE, false)
-        val intent = android.content.Intent(appContext, AssistantForegroundService::class.java)
-            .setAction(AssistantForegroundService.ACTION_START)
-            .putExtra(AssistantForegroundService.EXTRA_REQUEST, request)
-            .putExtra(AssistantForegroundService.EXTRA_CONVERSATION_ID, DHD_CONVERSATION_ID)
-            .putExtra(AssistantForegroundService.EXTRA_REASONING_EFFORT, reasoningEffort)
-            .putExtra(AssistantForegroundService.EXTRA_FAST_MODE, fastMode)
-        ContextCompat.startForegroundService(appContext, intent)
+        val preferences = uiPreferences.current()
+        val reasoningEffort = ReasoningEffort.fromStorage(preferences.reasoningEffort).codexValue
+        sessionCommands.start(request, DHD_CONVERSATION_ID, reasoningEffort, preferences.fastMode)
         setPanelMode(OverlayPanelMode.WORKING)
     }
 
     private fun stopSession() {
-        appContext.startService(
-            android.content.Intent(appContext, AssistantForegroundService::class.java)
-                .setAction(AssistantForegroundService.ACTION_STOP_USER),
-        )
+        sessionCommands.stop()
     }
 
     private fun acknowledgeAttention(): Boolean {
@@ -728,17 +720,12 @@ class OverlayWindowController(
         }
     }
 
-    private fun assistantColors(): com.phonecontrol.assistant.ui.AssistantColorScheme {
-        val prefs = appContext.getSharedPreferences(OverlayPreferences.PREFS_NAME, Context.MODE_PRIVATE)
-        val mode = ThemeMode.fromStorage(prefs.getString(OverlayPreferences.KEY_THEME_MODE, "dark"))
-        val isSystemDark = (appContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
-            Configuration.UI_MODE_NIGHT_NO
-        val isDark = when (mode) {
-            ThemeMode.SYSTEM -> isSystemDark
-            ThemeMode.LIGHT -> false
-            ThemeMode.DARK -> true
-        }
-        return if (isDark) DarkAssistantColors else LightAssistantColors
+    @Composable
+    private fun OverlayTheme(content: @Composable () -> Unit) {
+        val preferences by uiPreferences.state.collectAsState()
+        val isDark = ThemeMode.fromStorage(preferences.themeMode).isDark(isSystemInDarkTheme())
+        val colors = if (isDark) DarkAssistantColors else LightAssistantColors
+        CompositionLocalProvider(LocalAssistantColors provides colors, content = content)
     }
 
     private fun dp(value: Int): Int =
@@ -757,151 +744,4 @@ private data class BubbleInsets(
         val top: Int = 0,
         val bottom: Int = 0,
     )
-}
-
-private class OverlayViewTreeOwner : SavedStateRegistryOwner {
-    private val lifecycleRegistry = LifecycleRegistry(this)
-    private val savedStateRegistryController = SavedStateRegistryController.create(this)
-
-    override val lifecycle: Lifecycle = lifecycleRegistry
-    override val savedStateRegistry: SavedStateRegistry
-        get() = savedStateRegistryController.savedStateRegistry
-
-    init {
-        savedStateRegistryController.performAttach()
-        savedStateRegistryController.performRestore(Bundle())
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-    }
-
-    fun destroy() {
-        if (lifecycleRegistry.currentState != Lifecycle.State.DESTROYED) {
-            savedStateRegistryController.performSave(Bundle())
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        }
-    }
-}
-
-private fun SessionState.isActiveForOverlay(): Boolean =
-    this is SessionState.Running || this is SessionState.Paused
-
-private fun SessionState.needsAttention(): Boolean =
-    when (this) {
-        is SessionState.Running -> currentPurpose.equals("Needs your attention", ignoreCase = true)
-        is SessionState.Paused -> currentPurpose.equals("Needs your attention", ignoreCase = true)
-        else -> false
-    }
-
-private fun SessionState.overlaySessionIdOrNull(): String? = when (this) {
-    is SessionState.Running -> sessionId
-    is SessionState.Paused -> sessionId
-    is SessionState.Stopped -> sessionId
-    is SessionState.Completed -> sessionId
-    SessionState.Idle -> null
-}
-
-internal fun nextOverlayPanelMode(
-    currentMode: OverlayPanelMode,
-    previousState: SessionState,
-    state: SessionState,
-): OverlayPanelMode {
-    val wasActive = previousState.isActiveForOverlay()
-    val isActive = state.isActiveForOverlay()
-    if (isActive) {
-        val newSession = !wasActive ||
-            previousState.overlaySessionIdOrNull() != state.overlaySessionIdOrNull()
-        val attentionStarted = state.needsAttention() && !previousState.needsAttention()
-        return when {
-            attentionStarted -> OverlayPanelMode.ATTENTION
-            newSession -> if (state.needsAttention()) {
-                OverlayPanelMode.ATTENTION
-            } else {
-                OverlayPanelMode.WORKING
-            }
-            currentMode == OverlayPanelMode.BUBBLE -> OverlayPanelMode.BUBBLE
-            state.needsAttention() -> OverlayPanelMode.ATTENTION
-            else -> OverlayPanelMode.WORKING
-        }
-    }
-    return if (wasActive) {
-        when (state) {
-            is SessionState.Completed -> OverlayPanelMode.RESULT
-            is SessionState.Stopped -> if (currentMode == OverlayPanelMode.BUBBLE) {
-                OverlayPanelMode.BUBBLE
-            } else {
-                OverlayPanelMode.COMPOSER
-            }
-            else -> currentMode
-        }
-    } else {
-        currentMode
-    }
-}
-
-internal fun overlayPanelModeForUserExpand(state: SessionState): OverlayPanelMode =
-    if (state.isActiveForOverlay()) {
-        if (state.needsAttention()) OverlayPanelMode.ATTENTION else OverlayPanelMode.WORKING
-    } else {
-        OverlayPanelMode.COMPOSER
-    }
-
-internal fun shouldShowOverlayGlow(
-    mode: OverlayPanelMode,
-    state: SessionState,
-    hidden: Boolean,
-): Boolean = !hidden && mode == OverlayPanelMode.COMPOSER && !state.isActiveForOverlay()
-
-internal fun bubblePositionForHorizontalSwipe(
-    direction: OverlaySwipeDirection,
-    currentPosition: BubblePosition,
-    displayWidth: Int,
-    displayHeight: Int,
-    bubbleWidth: Int,
-    bubbleHeight: Int,
-    topInset: Int = 0,
-    bottomInset: Int = 0,
-): BubblePosition {
-    val edgeX = when (direction) {
-        OverlaySwipeDirection.LEFT -> 12
-        OverlaySwipeDirection.RIGHT -> displayWidth - bubbleWidth - 12
-    }
-    return clampBubblePosition(
-        x = edgeX,
-        y = currentPosition.y,
-        displayWidth = displayWidth,
-        displayHeight = displayHeight,
-        bubbleWidth = bubbleWidth,
-        bubbleHeight = bubbleHeight,
-        topInset = topInset,
-        bottomInset = bottomInset,
-    )
-}
-
-internal fun bubblePositionOnNearestEdge(
-    currentPosition: BubblePosition,
-    displayWidth: Int,
-    displayHeight: Int,
-    bubbleWidth: Int,
-    bubbleHeight: Int,
-    topInset: Int = 0,
-    bottomInset: Int = 0,
-    margin: Int = 12,
-): BubblePosition {
-    val clamped = clampBubblePosition(
-        x = currentPosition.x,
-        y = currentPosition.y,
-        displayWidth = displayWidth,
-        displayHeight = displayHeight,
-        bubbleWidth = bubbleWidth,
-        bubbleHeight = bubbleHeight,
-        topInset = topInset,
-        bottomInset = bottomInset,
-        margin = margin,
-    )
-    val rightX = (displayWidth - bubbleWidth - margin).coerceAtLeast(margin)
-    val edgeX = if (clamped.x + bubbleWidth / 2 <= displayWidth / 2) margin else rightX
-    return BubblePosition(edgeX, clamped.y)
 }

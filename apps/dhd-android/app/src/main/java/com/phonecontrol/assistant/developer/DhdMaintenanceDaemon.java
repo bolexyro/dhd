@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.developer;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -13,7 +12,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Long-lived DHD process started by app_process as the ADB shell user.
@@ -29,7 +27,7 @@ public final class DhdMaintenanceDaemon {
     private static final long COMMAND_TIMEOUT_MS = 15_000L;
     /** Bumped when the long-lived daemon gains logical app-canvas profiles. */
     static final String CAPABILITIES =
-            "DHD-MAINTENANCE/10 display-lifecycle=1 live-avc=1 display-capture=1 " +
+            "DHD-MAINTENANCE/11 display-lifecycle=1 live-avc=1 display-capture=1 " +
                     "display-density-override=1 display-reconciliation=1 display-logical-canvas=1";
     private static final Set<String> ALLOWED_EXECUTABLES = new HashSet<>(Arrays.asList(
             "am",
@@ -70,7 +68,7 @@ public final class DhdMaintenanceDaemon {
         }
     }
 
-    private static void handleClient(
+    static void handleClient(
             Socket client,
             String expectedToken,
             DhdNativeDisplayService displayService
@@ -101,7 +99,7 @@ public final class DhdMaintenanceDaemon {
         output.flush();
     }
 
-    private static CommandResult execute(
+    static CommandResult execute(
             List<String> command,
             boolean binaryOutput,
             DhdNativeDisplayService displayService
@@ -124,40 +122,30 @@ public final class DhdMaintenanceDaemon {
         List<String> normalized = new ArrayList<>(command);
         normalized.set(0, "/system/bin/" + executable);
         try {
-            Process process = new ProcessBuilder(normalized)
-                    .redirectErrorStream(false)
-                    .start();
-            Collector stdout = new Collector(process.getInputStream());
-            Collector stderr = new Collector(process.getErrorStream());
-            Thread stdoutThread = new Thread(stdout, "dhd-maintenance-stdout");
-            Thread stderrThread = new Thread(stderr, "dhd-maintenance-stderr");
-            stdoutThread.start();
-            stderrThread.start();
-
-            boolean finished = process.waitFor(COMMAND_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-            }
-            stdoutThread.join(1_000L);
-            stderrThread.join(1_000L);
-
-            if (!finished) {
+            ShellProcess.Result result = ShellProcess.run(
+                    normalized,
+                    COMMAND_TIMEOUT_MS,
+                    DhdMaintenanceProtocol.MAX_OUTPUT_BYTES,
+                    "dhd-maintenance-stdout",
+                    "dhd-maintenance-stderr"
+            );
+            if (result.timedOut) {
                 return new CommandResult(
                         DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE,
                         true,
-                        stdout.bytes(),
+                        result.stdout,
                         "DHD maintenance command timed out."
                 );
             }
-            if (stdout.overflowed || stderr.overflowed) {
+            if (result.overflowed) {
                 return new CommandResult(
-                        DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE,
+                        DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED,
                         false,
-                        stdout.bytes(),
+                        result.stdout,
                         "DHD maintenance command output was too large."
                 );
             }
-            return new CommandResult(process.exitValue(), false, stdout.bytes(), stderr.text());
+            return new CommandResult(result.exitCode, false, result.stdout, result.stderr);
         } catch (Throwable error) {
             String message = error.getMessage();
             return CommandResult.failure(
@@ -185,45 +173,7 @@ public final class DhdMaintenanceDaemon {
         return null;
     }
 
-    private static final class Collector implements Runnable {
-        private final java.io.InputStream input;
-        private final ByteArrayOutputStream output = new ByteArrayOutputStream();
-        private volatile boolean overflowed;
-
-        Collector(java.io.InputStream input) {
-            this.input = input;
-        }
-
-        @Override
-        public void run() {
-            byte[] buffer = new byte[8192];
-            try {
-                int read;
-                while ((read = input.read(buffer)) != -1) {
-                    if (output.size() + read > DhdMaintenanceProtocol.MAX_OUTPUT_BYTES) {
-                        overflowed = true;
-                        // Keep draining so the child cannot block on a full
-                        // pipe before its command timeout is reached.
-                        continue;
-                    }
-                    output.write(buffer, 0, read);
-                }
-            } catch (IOException ignored) {
-                // The process may close its stream while the timeout handler
-                // is terminating it; the captured bytes remain useful.
-            }
-        }
-
-        byte[] bytes() {
-            return output.toByteArray();
-        }
-
-        String text() {
-            return new String(bytes(), StandardCharsets.UTF_8).trim();
-        }
-    }
-
-    private static final class CommandResult {
+    static final class CommandResult {
         final int exitCode;
         final boolean timedOut;
         final byte[] stdout;
@@ -238,7 +188,7 @@ public final class DhdMaintenanceDaemon {
 
         static CommandResult failure(String message) {
             return new CommandResult(
-                    DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE,
+                    DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED,
                     false,
                     new byte[0],
                     message

@@ -1,0 +1,27 @@
+{
+  "peer": "loopback",
+  "request": {
+    "action": {
+      "metadata": {
+        "purpose": "Tap the cart button",
+        "targetDescription": "Cart button"
+      },
+      "type": "pinch"
+    },
+    "requestId": "req-execute_action",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "message": "The phone bridge failed: Unsupported action type. Use open_app, tap, type, swipe, back, keypress, or wait.",
+      "ok": false,
+      "requestId": "req-execute_action",
+      "type": "error"
+    }
+  ]
+}

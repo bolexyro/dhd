@@ -1,0 +1,42 @@
+{
+  "peer": "loopback",
+  "request": {
+    "action": {
+      "metadata": {
+        "observationId": "obs-1",
+        "purpose": "Tap the cart button",
+        "targetDescription": "Cart button"
+      },
+      "type": "tap",
+      "x": 100,
+      "y": 200
+    },
+    "requestId": "req-execute_action",
+    "tool": "dhd_execute",
+    "type": "execute_action"
+  },
+  "response": [
+    {
+      "message": "execute_action accepted by the phone.",
+      "requestId": "req-execute_action",
+      "type": "accepted"
+    },
+    {
+      "action": "tap",
+      "message": "Executed tap.",
+      "ok": true,
+      "requestId": "req-execute_action",
+      "type": "action_result"
+    },
+    {
+      "action": "tap",
+      "code": "POST_OBSERVATION_FAILED",
+      "executed": "unknown",
+      "message": "The action may have run, but the phone could not produce a post-action observation: screencap failed",
+      "ok": false,
+      "outcome": "unknown",
+      "requestId": "req-execute_action",
+      "type": "completed"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-foreground_app",
+    "tool": "dhd_get_foreground_app",
+    "type": "foreground_app"
+  },
+  "response": [
+    {
+      "message": "foreground_app accepted by the phone.",
+      "requestId": "req-foreground_app",
+      "type": "accepted"
+    },
+    {
+      "activityName": "com.example.shop.CartActivity",
+      "displayRef": "dsp_f8f137e6086916",
+      "height": 1560,
+      "message": "The current foreground app is com.example.shop.",
+      "ok": true,
+      "packageName": "com.example.shop",
+      "requestId": "req-foreground_app",
+      "rotation": 0,
+      "screenProtection": {
+        "reason": null,
+        "requiresUserAttention": false,
+        "signals": [
+          "BLANK_FRAME",
+          "NO_WINDOW"
+        ],
+        "status": "blank_unknown"
+      },
+      "type": "foreground_app",
+      "width": 720
+    }
+  ]
+}

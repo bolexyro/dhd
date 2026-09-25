@@ -3,6 +3,7 @@ package com.phonecontrol.assistant.ui
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import com.phonecontrol.assistant.ui.displays.surface.PreviewLifecycleBinding
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

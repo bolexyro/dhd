@@ -16,9 +16,13 @@ import androidx.core.content.ContextCompat
 import com.phonecontrol.assistant.MainActivity
 import com.phonecontrol.assistant.PhoneControlApplication
 import com.phonecontrol.assistant.R
+import com.phonecontrol.assistant.core.conversationIdOrNull
+import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.overlay.OverlayPreferences
 import com.phonecontrol.assistant.overlay.OverlayWindowController
+import com.phonecontrol.assistant.session.service.completionNotificationPreview
+import com.phonecontrol.assistant.session.service.foregroundNotificationStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,30 +33,31 @@ import kotlinx.coroutines.launch
 class AssistantForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val coordinator: SessionCoordinator
-        get() = (application as PhoneControlApplication).sessionCoordinator
+        get() = (application as PhoneControlApplication).container.sessionCoordinator
     private lateinit var overlayWindowController: OverlayWindowController
     private var foregroundNotificationActive = false
     private val overlayVisibilityGate
-        get() = (application as PhoneControlApplication).overlayVisibilityGate
+        get() = (application as PhoneControlApplication).container.overlayVisibilityGate
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        val application = application as PhoneControlApplication
+        val container = (application as PhoneControlApplication).container
         overlayWindowController = OverlayWindowController(
             context = this,
             coordinator = coordinator,
             visibilityGate = overlayVisibilityGate,
-            developerStatus = application.developerModeController.status,
-            companionConnected = application.devBridgeServer.companionConnected,
-            taskPreviewState = application.taskDisplayBackend.previewState,
-            taskDisplaySession = application.taskDisplayBackend.activeSession,
+            developerStatus = container.phoneAccessController.status,
+            companionConnected = container.companionBridgeServer.companionConnected,
+            taskPreviewState = container.taskDisplayBackend.previewState,
+            taskDisplaySession = container.taskDisplayBackend.activeSession,
             onTaskPreviewSurfaceAvailable = { session, surface ->
-                application.attachTaskPreview(session, surface)
+                container.attachTaskPreview(session, surface)
             },
             onTaskPreviewSurfaceDestroyed = { _, surface, release ->
-                application.detachTaskPreview(surface, release)
+                container.detachTaskPreview(surface, release)
             },
+            uiPreferences = container.uiPreferencesRepository,
         )
         serviceScope.launch {
             coordinator.state.collectLatest { state ->
@@ -86,7 +91,7 @@ class AssistantForegroundService : Service() {
 
             ACTION_DISABLE_OVERLAY -> {
                 overlayWindowController.hide()
-                if (!coordinator.state.value.isActiveForService()) {
+                if (!coordinator.state.value.isActive) {
                     stopForegroundIfNeeded()
                     stopSelfResult(startId)
                 }
@@ -95,7 +100,7 @@ class AssistantForegroundService : Service() {
             ACTION_REFRESH -> {
                 if (overlayEnabledAndPermitted()) {
                     overlayWindowController.show()
-                } else if (!coordinator.state.value.isActiveForService()) {
+                } else if (!coordinator.state.value.isActive) {
                     overlayWindowController.hide()
                     stopForegroundIfNeeded()
                     stopSelfResult(startId)
@@ -105,7 +110,7 @@ class AssistantForegroundService : Service() {
             }
 
             ACTION_SESSION_ENDED -> {
-                if (!overlayEnabledAndPermitted() && !coordinator.state.value.isActiveForService()) {
+                if (!overlayEnabledAndPermitted() && !coordinator.state.value.isActive) {
                     overlayWindowController.hide()
                     stopForegroundIfNeeded()
                     stopSelfResult(startId)
@@ -126,7 +131,7 @@ class AssistantForegroundService : Service() {
             ACTION_STOP -> stopSession("Stopped from the notification.", startId)
             ACTION_STOP_USER -> stopSession("Stopped by the user.", startId)
             ACTION_START_FRESH -> {
-                coordinator.reset()
+                (application as PhoneControlApplication).container.startFresh()
                 removeAttentionNotification(this)
                 removeCompletionNotification(this)
                 if (!overlayEnabledAndPermitted()) {
@@ -184,7 +189,7 @@ class AssistantForegroundService : Service() {
     }
 
     private fun syncForegroundNotification(state: SessionState) {
-        if (state.isActiveForService()) {
+        if (state.isActive) {
             val notification = buildNotification(state)
             if (foregroundNotificationActive) {
                 getSystemService(NotificationManager::class.java)
@@ -204,7 +209,7 @@ class AssistantForegroundService : Service() {
     }
 
     private fun buildNotification(state: SessionState, starting: Boolean = false): Notification {
-        val isActive = state.isActiveForService() || starting
+        val isActive = state.isActive || starting
         val status = if (starting) "Starting DHD…" else {
             state.foregroundNotificationStatus(coordinator.toolCalls.value)
         }
@@ -212,7 +217,7 @@ class AssistantForegroundService : Service() {
             this,
             REQUEST_OPEN_APP,
             Intent(this, MainActivity::class.java).apply {
-                putExtra(MainActivity.EXTRA_CONVERSATION_ID, state.conversationIdOrNull())
+                putExtra(MainActivity.EXTRA_CONVERSATION_ID, state.conversationIdOrNull)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or pendingIntentImmutableFlag(),
         )
@@ -274,27 +279,21 @@ class AssistantForegroundService : Service() {
         const val EXTRA_REASONING_EFFORT = "com.phonecontrol.assistant.extra.REASONING_EFFORT"
         const val EXTRA_FAST_MODE = "com.phonecontrol.assistant.extra.FAST_MODE"
 
-        private const val CHANNEL_ID = "assistant_sessions"
-        private const val RESULT_CHANNEL_ID = "assistant_results"
-        private const val ATTENTION_CHANNEL_ID = "assistant_attention"
-        private const val NOTIFICATION_ID = 4201
-        private const val REQUEST_OPEN_APP = 4202
-        private const val REQUEST_STOP = 4204
-        private const val COMPLETION_NOTIFICATION_ID = 4205
-        private const val ATTENTION_NOTIFICATION_ID = 4206
+        internal const val CHANNEL_ID = "assistant_sessions"
+        internal const val RESULT_CHANNEL_ID = "assistant_results"
+        internal const val ATTENTION_CHANNEL_ID = "assistant_attention"
+        internal const val NOTIFICATION_ID = 4201
+        internal const val REQUEST_OPEN_APP = 4202
+        internal const val REQUEST_STOP = 4204
+        internal const val COMPLETION_NOTIFICATION_ID = 4205
+        internal const val ATTENTION_NOTIFICATION_ID = 4206
         private const val MAX_NOTIFICATION_TEXT_CHARS = 240
-
-        /** Remove the in-progress notification when a bridge-owned run ends. */
-        fun removeSessionNotification(context: Context) {
-            context.getSystemService(NotificationManager::class.java)
-                .cancel(NOTIFICATION_ID)
-        }
 
         /** Keep the foreground service only for an active task. The idle overlay host stays started normally. */
         fun reconcileLifetime(context: Context) {
             val appContext = context.applicationContext
-            val application = appContext as? PhoneControlApplication ?: return
-            val active = application.sessionCoordinator.state.value.isActiveForService()
+            val container = (appContext as? PhoneControlApplication)?.containerOrNull ?: return
+            val active = container.sessionCoordinator.state.value.isActive
             val overlayAvailable = OverlayPreferences.isEnabled(appContext) && Settings.canDrawOverlays(appContext)
             if (!overlayAvailable && !active) {
                 appContext.stopService(Intent(appContext, AssistantForegroundService::class.java))
@@ -309,8 +308,8 @@ class AssistantForegroundService : Service() {
 
         /** Post a result notification without bringing the assistant to the foreground. */
         fun showCompletionNotification(context: Context, message: String, conversationId: String? = null) {
-            val application = context.applicationContext as? PhoneControlApplication
-            if (application?.notificationVisibility?.shouldSuppressCompletionNotification() == true) return
+            val container = (context.applicationContext as? PhoneControlApplication)?.containerOrNull
+            if (container?.notificationVisibility?.shouldSuppressCompletionNotification() == true) return
             createNotificationChannels(context)
             val preview = completionNotificationPreview(message)
             val notification = NotificationCompat.Builder(context, RESULT_CHANNEL_ID)
@@ -329,8 +328,8 @@ class AssistantForegroundService : Service() {
 
         /** Notify the user without launching an Activity or interrupting Watch mode. */
         fun showAttentionNotification(context: Context, reason: String, conversationId: String? = null) {
-            val application = context.applicationContext as? PhoneControlApplication
-            if (application?.notificationVisibility?.shouldSuppressAttentionNotification() == true) return
+            val container = (context.applicationContext as? PhoneControlApplication)?.containerOrNull
+            if (container?.notificationVisibility?.shouldSuppressAttentionNotification() == true) return
             createNotificationChannels(context)
             val safeReason = reason.trim()
                 .ifBlank { "The phone assistant needs your attention." }
@@ -405,66 +404,3 @@ class AssistantForegroundService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
     }
 }
-
-private fun SessionState.conversationIdOrNull(): String? = when (this) {
-    SessionState.Idle -> null
-    is SessionState.Running -> conversationId
-    is SessionState.Paused -> conversationId
-    is SessionState.Stopped -> conversationId
-    is SessionState.Completed -> conversationId
-}
-
-internal fun SessionState.isActiveForService(): Boolean =
-    this is SessionState.Running || this is SessionState.Paused
-
-internal fun SessionState.foregroundNotificationStatus(toolCalls: List<DhdToolCall>): String = when (this) {
-    SessionState.Idle -> "Ready"
-    is SessionState.Running -> notificationPurpose(
-        preferredNotificationPurpose(toolCalls) ?: currentPurpose,
-    )
-    is SessionState.Paused -> "Paused · ${notificationPurpose(preferredNotificationPurpose(toolCalls) ?: currentPurpose)}"
-    is SessionState.Stopped -> "Stopped"
-    is SessionState.Completed -> "Completed"
-}
-
-private fun SessionState.preferredNotificationPurpose(toolCalls: List<DhdToolCall>): String? {
-    val currentPurpose = when (this) {
-        is SessionState.Running -> currentPurpose
-        is SessionState.Paused -> currentPurpose
-        else -> return null
-    }
-    if (currentPurpose.equals("Needs your attention", ignoreCase = true)) return null
-
-    val metadataPurpose = when (this) {
-        is SessionState.Running -> currentToolMetadataPurpose
-        is SessionState.Paused -> currentToolMetadataPurpose
-        else -> null
-    }?.trim()?.takeIf(String::isNotBlank)
-    return metadataPurpose ?: activeToolPurpose(toolCalls)
-}
-
-internal fun notificationPurpose(purpose: String): String = when {
-    purpose.equals("Preparing request", ignoreCase = true) -> "Connecting to Codex…"
-    purpose.equals("Codex is planning", ignoreCase = true) || purpose.equals("DHD is planning", ignoreCase = true) -> "DHD-ing…"
-    purpose.equals("Waiting for desktop Codex bridge", ignoreCase = true) -> "Companion not connected"
-    purpose.equals("Needs your attention", ignoreCase = true) -> "DHD needs your attention"
-    else -> purpose
-}
-
-internal fun SessionState.activeToolPurpose(toolCalls: List<DhdToolCall>): String? {
-    val activeSessionId = when (this) {
-        is SessionState.Running -> sessionId
-        is SessionState.Paused -> sessionId
-        else -> return null
-    }
-    return toolCalls.lastOrNull {
-        it.sessionId == activeSessionId && it.status == DhdToolCallStatus.RUNNING
-    }?.purpose
-        ?.replace(Regex("\\s+"), " ")
-        ?.trim()
-        ?.take(MAX_NOTIFICATION_PURPOSE_CHARS)
-        ?.trimEnd()
-        ?.takeIf(String::isNotBlank)
-}
-
-private const val MAX_NOTIFICATION_PURPOSE_CHARS = 160

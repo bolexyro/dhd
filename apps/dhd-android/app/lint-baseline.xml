@@ -1,0 +1,832 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.9.2" type="baseline" client="gradle" dependencies="false" name="AGP (8.9.2)" variant="all" version="8.9.2">
+
+    <issue
+        id="MissingPermission"
+        message="Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with `checkPermission`) or explicitly handle a potential `SecurityException`"
+        errorLine1="        NotificationManagerCompat.from(this).notify("
+        errorLine2="        ^">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbPairingService.kt"
+            line="150"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="MissingPermission"
+        message="Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with `checkPermission`) or explicitly handle a potential `SecurityException`"
+        errorLine1="        NotificationManagerCompat.from(context).notify("
+        errorLine2="        ^">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="132"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="MissingPermission"
+        message="Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with `checkPermission`) or explicitly handle a potential `SecurityException`"
+        errorLine1="        NotificationManagerCompat.from(context).notify("
+        errorLine2="        ^">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="132"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="ImplicitSamInstance"
+        message="This argument is a new instance so `stopService` will not remove anything"
+        errorLine1="                appContext.stopService(Intent(appContext, AssistantForegroundService::class.java))"
+        errorLine2="                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            line="304"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="ImplicitSamInstance"
+        message="This argument is a new instance so `stopService` will not remove anything"
+        errorLine1="        appContext.stopService(Intent(appContext, DhdAdbPairingService::class.java))"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/PhoneAccessController.kt"
+            line="195"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 33 (current min is 26): `java.math.BigInteger#TWO`"
+        errorLine1="    TWO_TO_RSA_BITS.modPow(BigInteger.TWO, modulus).toLittleEndianWords().forEach(buffer::putInt)"
+        errorLine2="                           ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbKey.kt"
+            line="263"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="`android:windowLightNavigationBar` requires API level 27 (current min is 26)"
+        errorLine1="        &lt;item name=&quot;android:windowLightNavigationBar&quot;>false&lt;/item>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="8"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        errorLine1="        targetSdk = 35"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="16"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> serviceManager = Class.forName(&quot;android.os.ServiceManager&quot;);"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="30"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> stub = Class.forName(&quot;android.hardware.display.IDisplayManager$Stub&quot;);"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="34"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> displayManager = Class.forName(&quot;android.hardware.display.IDisplayManager&quot;);"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="36"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> callbackType = Class.forName(&quot;android.hardware.display.IVirtualDisplayCallback&quot;);"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="37"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> windowStub = Class.forName(&quot;android.view.IWindowManager$Stub&quot;);"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="52"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> windowManager = Class.forName(&quot;android.view.IWindowManager&quot;);"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="55"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> callbackType = Class.forName(&quot;android.hardware.display.IVirtualDisplayCallback&quot;);"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="70"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Class&lt;?> projectionType = Class.forName(&quot;android.media.projection.IMediaProjection&quot;);"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="71"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        Method create = Class.forName(&quot;android.hardware.display.IDisplayManager&quot;).getMethod("
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/phonecontrol/assistant/developer/HiddenDisplayManager.java"
+            line="77"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `enableOnBackInvokedCallback` is only used in API level 33 and higher (current min is 26)"
+        errorLine1="        android:enableOnBackInvokedCallback=&quot;true&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="21"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.activity:activity-compose than 1.10.1 is available: 1.13.0"
+        errorLine1="activity = &quot;1.10.1&quot;"
+        errorLine2="           ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="6"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.activity:activity-ktx than 1.10.1 is available: 1.13.0"
+        errorLine1="activity = &quot;1.10.1&quot;"
+        errorLine2="           ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="6"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.core:core-ktx than 1.16.0 is available: 1.19.1"
+        errorLine1="coreKtx = &quot;1.16.0&quot;"
+        errorLine2="          ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="7"
+            column="11"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="8"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.8.7 is available: 2.11.0"
+        errorLine1="lifecycle = &quot;2.8.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="8"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.navigation:navigation-compose than 2.9.8 is available: 2.10.2"
+        errorLine1="navigation = &quot;2.9.8&quot;"
+        errorLine2="             ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="9"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-runtime than 2.8.4 is available: 2.8.5"
+        errorLine1="room = &quot;2.8.4&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="10"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-ktx than 2.8.4 is available: 2.8.5"
+        errorLine1="room = &quot;2.8.4&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="10"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.room:room-compiler than 2.8.4 is available: 2.8.5"
+        errorLine1="room = &quot;2.8.4&quot;"
+        errorLine2="       ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="10"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="LockedOrientationActivity"
+        message="Expecting `android:screenOrientation=&quot;unspecified&quot;` or `&quot;fullSensor&quot;` for this activity so the user can use the application in any orientation and provide a great experience on Chrome OS devices"
+        errorLine1="            android:screenOrientation=&quot;portrait&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="31"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier,"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/recovery/RecoveryCards.kt"
+            line="43"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier,"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/recovery/RecoveryCards.kt"
+            line="75"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier,"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/timeline/ConversationTimeline.kt"
+            line="61"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedBoxWithConstraintsScope"
+        message="BoxWithConstraints scope is not used"
+        errorLine1="        ) {"
+        errorLine2="          ^">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/components/reasoning/ReasoningEffortTrack.kt"
+            line="107"
+            column="11"/>
+    </issue>
+
+    <issue
+        id="DiscouragedApi"
+        message="Should not restrict activity to fixed orientation. This may not be suitable for different form factors, causing the app to be letterboxed."
+        errorLine1="            android:screenOrientation=&quot;portrait&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="31"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="TrustAllX509TrustManager"
+        message="`checkServerTrusted` is empty, which could cause insecure network traffic due to trusting arbitrary TLS/SSL certificates presented by peers">
+        <location
+            file="$GRADLE_USER_HOME/caches/modules-2/files-2.1/org.bouncycastle/bcpkix-jdk18on/1.80/5277dfaaef2e92ce1d802499599a0ca7488f86e6/bcpkix-jdk18on-1.80.jar"/>
+    </issue>
+
+    <issue
+        id="DataExtractionRules"
+        message="The attribute `android:allowBackup` is deprecated from Android 12 and higher and may be removed in future versions. Consider adding the attribute `android:dataExtractionRules` specifying an `@xml` resource which configures cloud backups and device transfers on Android 12 and higher."
+        errorLine1="        android:allowBackup=&quot;false&quot;"
+        errorLine2="                             ~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="20"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 26"
+        errorLine1="            if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            line="367"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            line="409"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 26"
+        errorLine1="        if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="33"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="57"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 26"
+        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="215"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="        mutableStateOf(STALE_CONVERSATION_COUNTDOWN_SECONDS)"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/ConversationExpiryDialog.kt"
+            line="36"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var topRecoverySlotHeightPx by remember { mutableStateOf(0) }"
+        errorLine2="                                              ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/ChatScreen.kt"
+            line="157"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="        mutableStateOf(Random.nextInt(THINKING_WORDS.size))"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/status/StatusIndicators.kt"
+            line="112"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
+        errorLine1="        mutableStateOf("
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/status/StatusIndicators.kt"
+            line="224"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var displayedEarlierCount by remember { mutableStateOf(earlierCount) }"
+        errorLine2="                                            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/chat/trace/TraceRows.kt"
+            line="81"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
+        errorLine1="    var nowEpochMs by remember { mutableStateOf(System.currentTimeMillis()) }"
+        errorLine2="                                 ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/displays/TaskDisplaysSheet.kt"
+            line="73"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
+        errorLine1="        return remember(label) { mutableStateOf(0f) }"
+        errorLine2="                                 ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/effects/OverlayGlow.kt"
+            line="50"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var composerOriginX by remember { mutableStateOf(0) }"
+        errorLine2="                                      ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="214"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="        var composerHeightPx by remember { mutableStateOf(0) }"
+        errorLine2="                                           ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="278"
+            column="44"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="        var resultCardHeightPx by remember { mutableStateOf(0) }"
+        errorLine2="                                             ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="279"
+            column="46"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="        var recoveryCardHeightPx by remember { mutableStateOf(0) }"
+        errorLine2="                                               ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="280"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var focusRequestToken by remember { mutableStateOf(0) }"
+        errorLine2="                                        ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/composer/OverlayComposer.kt"
+            line="143"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="MonochromeLauncherIcon"
+        message="The application adaptive icon is missing a monochrome tag"
+        errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
+            line="1"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        preferences.edit().putBoolean(KEY_FULL_ACCESS, enabled).apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/apps/AppPermissionRepository.kt"
+            line="15"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        preferences.edit().putStringSet(KEY_ENABLED_PACKAGES, next).apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/apps/AppPermissionRepository.kt"
+            line="27"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        preferences.edit().putString(key, value).apply()"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/bridge/BridgePlatform.kt"
+            line="48"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                    preferences.edit().putBoolean(KEY_PAIRED, false).apply()"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/PhoneAccessController.kt"
+            line="647"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            preferences.edit().putBoolean(KEY_PAIRED, true).apply()"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/PhoneAccessController.kt"
+            line="679"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        preferences.edit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbKey.kt"
+            line="245"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                preferences.edit().putInt(KEY_MAINTENANCE_PORT, generated).apply()"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/maintenance/DhdMaintenanceBootstrap.kt"
+            line="24"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                preferences.edit().putString(KEY_MAINTENANCE_TOKEN, generated).apply()"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/maintenance/DhdMaintenanceBootstrap.kt"
+            line="35"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                Uri.parse(&quot;package:$packageName&quot;),"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/MainActivity.kt"
+            line="563"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            preferences.edit()"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="130"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        preferences.edit().putBoolean(UiPreferencesRepository.KEY_FAST_MODE, enabled).apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="137"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            preferences.edit().putString(UiPreferencesRepository.KEY_REASONING_EFFORT, effort.storageValue).apply()"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="142"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(KEY_THEME_MODE, mode.storageValue).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/PhoneControlApp.kt"
+            line="239"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putString(KEY_REASONING_EFFORT, reasoningEffort.storageValue).apply()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/PhoneControlApp.kt"
+            line="250"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putString(KEY_REASONING_EFFORT, effort.storageValue).apply()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/PhoneControlApp.kt"
+            line="256"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putBoolean(KEY_FAST_MODE, enabled).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/PhoneControlApp.kt"
+            line="261"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                prefs.edit().putString(KEY_REASONING_EFFORT, fallback.storageValue).apply()"
+        errorLine2="                ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/PhoneControlApp.kt"
+            line="275"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.get` instead?"
+        errorLine1="        val first = bitmap.getPixel(0, 0)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/execution/ScreenProtectionDetector.kt"
+            line="175"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.get` instead?"
+        errorLine1="                val pixel = bitmap.getPixel(x, y)"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/execution/ScreenProtectionDetector.kt"
+            line="181"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        preferences.edit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/execution/TaskDisplayLayoutPreferences.kt"
+            line="37"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="ClickableViewAccessibility"
+        message="`onTouch` lambda should call `View#performClick` when a click is detected"
+        errorLine1="        setOnTouchListener { _, _ -> true }"
+        errorLine2="                           ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/displays/surface/ReadOnlyPreviewTextureView.kt"
+            line="28"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="ClickableViewAccessibility"
+        message="`onTouch` lambda should call `View#performClick` when a click is detected"
+        errorLine1="            setOnTouchListener { _, event ->"
+        errorLine2="                               ^">
+        <location
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayWindowController.kt"
+            line="360"
+            column="32"/>
+    </issue>
+
+</issues>

@@ -1,0 +1,24 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-complete_steer",
+    "sessionId": "{{sessionId}}",
+    "steerId": "missing",
+    "type": "complete_steer"
+  },
+  "response": [
+    {
+      "message": "complete_steer accepted by the phone.",
+      "requestId": "req-complete_steer",
+      "type": "accepted"
+    },
+    {
+      "delivered": false,
+      "ok": false,
+      "requestId": "req-complete_steer",
+      "sessionId": "{{sessionId}}",
+      "steerId": "missing",
+      "type": "steer_completed"
+    }
+  ]
+}

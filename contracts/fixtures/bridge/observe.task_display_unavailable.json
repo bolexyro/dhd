@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-observe",
+    "type": "observe"
+  },
+  "response": [
+    {
+      "message": "observe accepted by the phone.",
+      "requestId": "req-observe",
+      "type": "accepted"
+    },
+    {
+      "code": "TASK_DISPLAY_UNAVAILABLE",
+      "message": "No task display is available.",
+      "ok": false,
+      "requestId": "req-observe",
+      "type": "error"
+    }
+  ]
+}

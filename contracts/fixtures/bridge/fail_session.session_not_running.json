@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-fail_session",
+    "sessionId": "other",
+    "type": "fail_session"
+  },
+  "response": [
+    {
+      "message": "fail_session accepted by the phone.",
+      "requestId": "req-fail_session",
+      "type": "accepted"
+    },
+    {
+      "code": "SESSION_NOT_RUNNING",
+      "message": "The phone session is no longer active.",
+      "ok": false,
+      "requestId": "req-fail_session",
+      "type": "error"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "peer": "loopback",
+  "request": {
+    "actions": [
+      {
+        "metadata": {
+          "purpose": "Tap the search field",
+          "targetDescription": "Search field"
+        },
+        "type": "tap",
+        "x": 100,
+        "y": 200
+      }
+    ],
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "tool": "dhd_execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "code": "DEVELOPER_MODE_UNAVAILABLE",
+      "completedSteps": 0,
+      "executed": false,
+      "failedStep": 0,
+      "message": "Phone access is no longer available; the sequence was not executed.",
+      "ok": false,
+      "outcome": "failed",
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 1,
+      "steps": [
+        {
+          "action": "tap",
+          "code": "DEVELOPER_MODE_UNAVAILABLE",
+          "executed": false,
+          "index": 0,
+          "message": "Phone access is no longer available; the sequence was not executed.",
+          "outcome": "failed",
+          "status": "failed"
+        }
+      ],
+      "type": "completed"
+    }
+  ]
+}

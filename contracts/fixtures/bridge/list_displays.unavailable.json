@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-list_displays",
+    "type": "list_displays"
+  },
+  "response": [
+    {
+      "message": "list_displays accepted by the phone.",
+      "requestId": "req-list_displays",
+      "type": "accepted"
+    },
+    {
+      "code": "TASK_DISPLAY_UNAVAILABLE",
+      "message": "The task display registry is unavailable.",
+      "ok": false,
+      "requestId": "req-list_displays",
+      "type": "error"
+    }
+  ]
+}

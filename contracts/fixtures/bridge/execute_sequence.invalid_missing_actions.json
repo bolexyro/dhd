@@ -1,0 +1,28 @@
+{
+  "peer": "loopback",
+  "request": {
+    "observationId": "obs-1",
+    "requestId": "req-execute_sequence",
+    "type": "execute_sequence"
+  },
+  "response": [
+    {
+      "message": "execute_sequence accepted by the phone.",
+      "requestId": "req-execute_sequence",
+      "type": "accepted"
+    },
+    {
+      "action": "sequence",
+      "code": "INVALID_PAYLOAD",
+      "completedSteps": 0,
+      "executed": false,
+      "message": "actions must be an array.",
+      "ok": false,
+      "outcome": "failed",
+      "requestId": "req-execute_sequence",
+      "requestedSteps": 0,
+      "steps": [],
+      "type": "completed"
+    }
+  ]
+}

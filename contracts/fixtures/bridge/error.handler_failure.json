@@ -1,0 +1,21 @@
+{
+  "peer": "loopback",
+  "request": {
+    "requestId": "req-claim_steer",
+    "steerId": "steer-1",
+    "type": "claim_steer"
+  },
+  "response": [
+    {
+      "message": "claim_steer accepted by the phone.",
+      "requestId": "req-claim_steer",
+      "type": "accepted"
+    },
+    {
+      "message": "The phone bridge failed: sessionId is required.",
+      "ok": false,
+      "requestId": "req-claim_steer",
+      "type": "error"
+    }
+  ]
+}

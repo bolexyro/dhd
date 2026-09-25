@@ -1,0 +1,14 @@
+{
+  "peer": "loopback",
+  "rawRequest": {
+    "line": "not json"
+  },
+  "response": [
+    {
+      "message": "The bridge request must be valid JSON.",
+      "ok": false,
+      "requestId": null,
+      "type": "error"
+    }
+  ]
+}

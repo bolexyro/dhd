@@ -20,8 +20,8 @@ import {
   isGuardRegionsEnabled,
   toMcpResult
 } from "../src/dhd-tools.js";
-import { buildDhdDynamicTools, toDynamicToolResponse } from "../src/assistant-companion.js";
-import { dhdToolDescription } from "../src/dhd-tool-contract.js";
+import { buildDhdDynamicTools, toDynamicToolResponse } from "../src/codex/dynamic-tools.js";
+import { dhdToolDescription } from "../src/tools/registry.js";
 
 const metadata = {
   purpose: "Searching for iced tea",
@@ -365,6 +365,7 @@ describe("DHD phone tool contract", () => {
       packageName: {
         type: "string",
         minLength: 1,
+        maxLength: 255,
         pattern: "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$",
       },
       layout: { type: "string", enum: ["standard", "full_size"] },

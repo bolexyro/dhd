@@ -1,0 +1,22 @@
+{
+  "peer": "loopback",
+  "request": {
+    "displayRef": "dsp_00000000000000",
+    "requestId": "req-close_display",
+    "type": "close_display"
+  },
+  "response": [
+    {
+      "message": "close_display accepted by the phone.",
+      "requestId": "req-close_display",
+      "type": "accepted"
+    },
+    {
+      "code": "TASK_DISPLAY_UNAVAILABLE",
+      "message": "The task display registry is unavailable.",
+      "ok": false,
+      "requestId": "req-close_display",
+      "type": "error"
+    }
+  ]
+}

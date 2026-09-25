@@ -16,8 +16,6 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-static constexpr spake2_role_t kClientRole = spake2_role_alice;
-
 static const uint8_t kClientName[] = "adb pair client";
 static const uint8_t kServerName[] = "adb pair server";
 static constexpr size_t kHkdfKeyLength = 16;

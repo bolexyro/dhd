@@ -1,0 +1,31 @@
+{
+  "peer": "loopback",
+  "request": {
+    "layout": "STANDARD",
+    "packageName": "com.example.shop",
+    "requestId": "req-set_app_display_layout",
+    "type": "set_app_display_layout"
+  },
+  "response": [
+    {
+      "message": "set_app_display_layout accepted by the phone.",
+      "requestId": "req-set_app_display_layout",
+      "type": "accepted"
+    },
+    {
+      "appLabel": "Shop",
+      "appliesNextOpen": true,
+      "changed": false,
+      "currentDisplayUnchanged": true,
+      "displayGeometryUnchanged": true,
+      "fullSizeLayoutEnabled": false,
+      "layout": "standard",
+      "message": "standard app layout is already active for Shop. Future compatible opens may reuse the current DHD task display.",
+      "ok": true,
+      "packageName": "com.example.shop",
+      "requestId": "req-set_app_display_layout",
+      "requiresFreshDisplay": false,
+      "type": "app_display_layout_updated"
+    }
+  ]
+}

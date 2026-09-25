@@ -1,0 +1,713 @@
+{
+  "tools": [
+    {
+      "name": "dhd_list_allowed_apps",
+      "description": "Reports the phone's current app-access mode. In restricted mode, the response includes the explicitly allowed package names. With Full Access, the default response confirms that any launchable app may be used without enumerating every app. Set includeAll=true to list every launchable app available under the current access mode: the complete phone catalog with Full Access, or the complete allowlist in restricted mode.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "includeAll": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_browse_app",
+      "description": "Searches the phone's launchable app catalog by app names or package names and returns each match's app label, package name, and whether DHD can use it. Full Access makes every match usable; restricted mode makes only explicitly allowlisted packages usable. Use this to identify a specific package for dhd_open_app. This tool does not launch or interact with an app.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_set_app_display_layout",
+      "description": "Use this when the app's task-display screenshot shows a clipped, squished, unexpectedly scaled, or large empty area layout. Set layout to full_size to give that app the larger logical canvas, or standard to restore the default. The setting applies the next time the app is opened on a task display; when the setting changes, immediately call dhd_open_app with the packageName and omit displayRef so DHD retires the incompatible display and returns a fresh one. It does not change the fixed screenshot/input pixel geometry. When you notice this scale issue, it's important that you fix it immediately instead of continuing to send input to a mis-scaled display",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "packageName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$"
+          },
+          "layout": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "full_size"
+            ]
+          }
+        },
+        "required": [
+          "packageName",
+          "layout"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_list_displays",
+      "description": "Lists the active and retained DHD virtual displays. Each entry includes a generation-safe displayRef, app label, package, geometry, lifecycle status, current or last purpose, and remaining retention time. Use this when more than one display is available or when a displayRef has expired, ended, or become unavailable.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_close_display",
+      "description": "Ends one DHD virtual display by its displayRef. Use dhd_list_displays first, then pass the exact reference. Closing an active display is rejected until its active DHD run is stopped; this never targets the physical display 0.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "displayRef": {
+            "type": "string",
+            "pattern": "^dsp_[a-f0-9]{14}$"
+          }
+        },
+        "required": [
+          "displayRef"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_get_foreground_app",
+      "description": "Reports the Android package, activity, display context, and screenProtection metadata in a task virtual display. Pass displayRef to choose among multiple displays. If a display is expired, ended, or unavailable, follow the returned recovery message; never fall back to physical display 0. This tool is read-only and does not authorize input.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "displayRef": {
+            "type": "string",
+            "pattern": "^dsp_[a-f0-9]{14}$"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_observe",
+      "description": "Captures a selected task virtual display and returns its screenshot, foreground context, display details, screenProtection metadata, and a new observation ID. Pass displayRef when working with more than one display. If the display is expired, ended, unavailable, or another display must be selected, follow the returned message and use dhd_list_displays or dhd_open_app as directed; DHD never falls back to display 0. If screenProtection.requiresUserAttention is true, call dhd_request_attention and wait for the user's Done acknowledgement before sending more input. Use this when no usable observation is available, after an observation-related failure, or when the screen may have changed independently. Do not call it repeatedly for an unchanged screen or immediately after a successful dhd_open_app, dhd_execute, or dhd_execute_sequence; those tools already return a fresh observation. Screenshots may contain a small blue arrow with a contrasting black or white outline and glow. This arrow is injected by the phone-control tool for coordinate calibration; it is not part of the Android app UI and is not a control. The arrow tip is the exact display-pixel coordinate. On the first screenshot it marks a calibration point. After a successful tap it marks the last executed tap. A coordinate-tap response may also include a compact before-tap evidence crop followed by the full current screenshot; screenshotEvidence gives the crop bounds and tap coordinate. The separate screenshotMarker metadata has only kind, x, y, and coordinateSpace; observationId, displayId, and screenshot dimensions remain in the surrounding observation. Use screenshotMarker and screenshotEvidence for their meaning and coordinates, and ignore the arrow when identifying app controls.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "targetDescription": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "displayRef": {
+            "type": "string",
+            "pattern": "^dsp_[a-f0-9]{14}$"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_open_app",
+      "description": "Launches one Android app on a task virtual display, reusing a valid matching display when possible and creating one when needed, without requiring a caller-supplied observation ID. Pass displayRef to choose a specific retained display. If dhd_set_app_display_layout changed the app layout, omit displayRef so DHD retires the incompatible display and creates a fresh one. If the session limit is reached, the failure response includes the current active and retained displays; close an unused display with dhd_close_display using its exact displayRef (stop its active run first if needed), then retry, or pass a retained displayRef to reuse it. On success, it returns the resulting screenshot and a fresh observation ID. In restricted mode, the requested package must be explicitly allowed; Full Access permits any launchable app. Inspect and reuse the returned observation for the next action unless the screen may have changed after the returned capture. Screenshots may contain a small blue arrow with a contrasting black or white outline and glow. This arrow is injected by the phone-control tool for coordinate calibration; it is not part of the Android app UI and is not a control. The arrow tip is the exact display-pixel coordinate. On the first screenshot it marks a calibration point. After a successful tap it marks the last executed tap. A coordinate-tap response may also include a compact before-tap evidence crop followed by the full current screenshot; screenshotEvidence gives the crop bounds and tap coordinate. The separate screenshotMarker metadata has only kind, x, y, and coordinateSpace; observationId, displayId, and screenshot dimensions remain in the surrounding observation. Use screenshotMarker and screenshotEvidence for their meaning and coordinates, and ignore the arrow when identifying app controls.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "packageName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$"
+          },
+          "displayRef": {
+            "type": "string",
+            "pattern": "^dsp_[a-f0-9]{14}$"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "purpose": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "targetDescription": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              }
+            },
+            "required": [
+              "purpose",
+              "targetDescription"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "packageName",
+          "metadata"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_execute",
+      "description": "Executes one typed phone interaction against the screen identified by metadata.observationId. Optionally pass displayRef to select a display explicitly; the observation must belong to that same display. Supported actions are tap, type, swipe, back, keypress, and wait. Use swipe for scrolling or horizontal paging by choosing startX/startY inside the intended scrollable or carousel region and endX/endY in the desired direction. On success, the response includes the resulting screenshot and a fresh observation ID; inspect and reuse that observation for the next action. If the display is expired, ended, unavailable, or the pre-action state is stale, no input is sent; follow the recovery message and obtain a fresh observation. If the post-action observation fails, the outcome is unknown; call dhd_observe before deciding whether to retry or continue. Raw shell commands are not supported. If an action is rejected with STALE_OBSERVATION, inputSent is false and reasons explain every detected difference. Reasons may include ROTATION_CHANGED, DISPLAY_CHANGED, DISPLAY_SIZE_CHANGED, PACKAGE_CHANGED, ACTIVITY_CHANGED, GUARD_REGION_CHANGED, or OBSERVATION_REPLACED. GUARD_REGION_CHANGED means a configured visual guard fingerprint changed; it does not mean that every screenshot pixel was compared. Refresh the observation before retrying. Screenshots may contain a small blue arrow with a contrasting black or white outline and glow. This arrow is injected by the phone-control tool for coordinate calibration; it is not part of the Android app UI and is not a control. The arrow tip is the exact display-pixel coordinate. On the first screenshot it marks a calibration point. After a successful tap it marks the last executed tap. A coordinate-tap response may also include a compact before-tap evidence crop followed by the full current screenshot; screenshotEvidence gives the crop bounds and tap coordinate. The separate screenshotMarker metadata has only kind, x, y, and coordinateSpace; observationId, displayId, and screenshot dimensions remain in the surrounding observation. Use screenshotMarker and screenshotEvidence for their meaning and coordinates, and ignore the arrow when identifying app controls. When guardRegions are available, include them in the corresponding dhd_execute action or sequence step only when that target must remain visually unchanged; the phone compares them with the preceding observation screenshot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "displayRef": {
+            "type": "string",
+            "pattern": "^dsp_[a-f0-9]{14}$"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "tap"
+                  },
+                  "x": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {
+                      "purpose": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240
+                      },
+                      "targetDescription": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240
+                      },
+                      "observationId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240
+                      },
+                      "guardRegions": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "left": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "top": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "right": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "bottom": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "left",
+                            "top",
+                            "right",
+                            "bottom"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 8,
+                        "default": []
+                      }
+                    },
+                    "required": [
+                      "purpose",
+                      "targetDescription",
+                      "observationId"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "x",
+                  "y",
+                  "metadata"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "type"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "metadata": {
+                    "$ref": "#/properties/action/anyOf/0/properties/metadata"
+                  }
+                },
+                "required": [
+                  "type",
+                  "text",
+                  "metadata"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "swipe"
+                  },
+                  "startX": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "startY": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "endX": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "endY": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "durationMs": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                  },
+                  "metadata": {
+                    "$ref": "#/properties/action/anyOf/0/properties/metadata"
+                  }
+                },
+                "required": [
+                  "type",
+                  "startX",
+                  "startY",
+                  "endX",
+                  "endY",
+                  "metadata"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "back"
+                  },
+                  "metadata": {
+                    "$ref": "#/properties/action/anyOf/0/properties/metadata"
+                  }
+                },
+                "required": [
+                  "type",
+                  "metadata"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "keypress"
+                  },
+                  "key": {
+                    "type": "string",
+                    "enum": [
+                      "BACK",
+                      "HOME",
+                      "ENTER",
+                      "DELETE"
+                    ]
+                  },
+                  "metadata": {
+                    "$ref": "#/properties/action/anyOf/0/properties/metadata"
+                  }
+                },
+                "required": [
+                  "type",
+                  "key",
+                  "metadata"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "wait"
+                  },
+                  "durationMs": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 30000
+                  },
+                  "metadata": {
+                    "$ref": "#/properties/action/anyOf/0/properties/metadata"
+                  }
+                },
+                "required": [
+                  "type",
+                  "durationMs",
+                  "metadata"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_execute_sequence",
+      "description": "Executes up to 16 typed phone interactions serially from one initial observationId. Optionally pass displayRef to select the observation's display explicitly. Each step uses the verified post-action observation from the previous step, so sequence steps must not include observationId. Supported actions are tap, type, swipe, back, keypress, and wait. Swipe can scroll or page by choosing coordinates inside the intended region. open_app, shell commands, semantic targets, and execution modes are not supported. Use this only when every later target is predictable without inspecting intermediate screenshots; use dhd_execute for adaptive or branching work. The phone captures and verifies the screen after every successful step, and the response includes the final screenshot and observation only when the full sequence succeeds. If the display is expired, ended, unavailable, or a post-action observation fails, follow the returned recovery message and call dhd_observe before deciding whether to retry or continue. If an action is rejected with STALE_OBSERVATION, inputSent is false and reasons explain every detected difference. Reasons may include ROTATION_CHANGED, DISPLAY_CHANGED, DISPLAY_SIZE_CHANGED, PACKAGE_CHANGED, ACTIVITY_CHANGED, GUARD_REGION_CHANGED, or OBSERVATION_REPLACED. GUARD_REGION_CHANGED means a configured visual guard fingerprint changed; it does not mean that every screenshot pixel was compared. Refresh the observation before retrying. Screenshots may contain a small blue arrow with a contrasting black or white outline and glow. This arrow is injected by the phone-control tool for coordinate calibration; it is not part of the Android app UI and is not a control. The arrow tip is the exact display-pixel coordinate. On the first screenshot it marks a calibration point. After a successful tap it marks the last executed tap. A coordinate-tap response may also include a compact before-tap evidence crop followed by the full current screenshot; screenshotEvidence gives the crop bounds and tap coordinate. The separate screenshotMarker metadata has only kind, x, y, and coordinateSpace; observationId, displayId, and screenshot dimensions remain in the surrounding observation. Use screenshotMarker and screenshotEvidence for their meaning and coordinates, and ignore the arrow when identifying app controls. When guardRegions are available, include them in the corresponding dhd_execute action or sequence step only when that target must remain visually unchanged; the phone compares them with the preceding observation screenshot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "observationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "displayRef": {
+            "type": "string",
+            "pattern": "^dsp_[a-f0-9]{14}$"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "tap"
+                    },
+                    "x": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "y": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "purpose": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "targetDescription": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "guardRegions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "left": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "top": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "right": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "bottom": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "left",
+                              "top",
+                              "right",
+                              "bottom"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 8,
+                          "default": []
+                        }
+                      },
+                      "required": [
+                        "purpose",
+                        "targetDescription"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "metadata"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "type"
+                    },
+                    "text": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "metadata": {
+                      "$ref": "#/properties/actions/items/anyOf/0/properties/metadata"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "text",
+                    "metadata"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "swipe"
+                    },
+                    "startX": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "startY": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "endX": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "endY": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "durationMs": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 10000
+                    },
+                    "metadata": {
+                      "$ref": "#/properties/actions/items/anyOf/0/properties/metadata"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "startX",
+                    "startY",
+                    "endX",
+                    "endY",
+                    "metadata"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "back"
+                    },
+                    "metadata": {
+                      "$ref": "#/properties/actions/items/anyOf/0/properties/metadata"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "metadata"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "keypress"
+                    },
+                    "key": {
+                      "type": "string",
+                      "enum": [
+                        "BACK",
+                        "HOME",
+                        "ENTER",
+                        "DELETE"
+                      ]
+                    },
+                    "metadata": {
+                      "$ref": "#/properties/actions/items/anyOf/0/properties/metadata"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "key",
+                    "metadata"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "wait"
+                    },
+                    "durationMs": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 30000
+                    },
+                    "metadata": {
+                      "$ref": "#/properties/actions/items/anyOf/0/properties/metadata"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "durationMs",
+                    "metadata"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 16
+          }
+        },
+        "required": [
+          "observationId",
+          "actions"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "dhd_request_attention",
+      "description": "Blocks the Codex turn until the user reviews the selected task display and taps Done in DHD. Pass displayRef when multiple displays exist. Use this when observation.screenProtection.requiresUserAttention is true, when the task preview is blank because of protected content, or when the app requires a biometric, PIN, passcode, or other user-only step. The task display stays alive while waiting. Never guess or send typed input for biometric/PIN authentication. If the display is unavailable, follow the recovery message. After this tool returns, use its fresh observation when present or call dhd_observe before continuing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "displayRef": {
+            "type": "string",
+            "pattern": "^dsp_[a-f0-9]{14}$"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    }
+  ]
+}

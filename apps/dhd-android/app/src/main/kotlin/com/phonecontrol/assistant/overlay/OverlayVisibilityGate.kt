@@ -36,18 +36,6 @@ class OverlayVisibilityGate {
         _hidden.value = activeTokens.isNotEmpty()
     }
 
-    suspend fun <T> withHidden(
-        reason: OverlayHideReason,
-        block: suspend () -> T,
-    ): T {
-        val token = acquire(reason)
-        return try {
-            block()
-        } finally {
-            token.close()
-        }
-    }
-
     class Token internal constructor(
         private val gate: OverlayVisibilityGate,
         private val tokenId: Long,
@@ -61,26 +49,4 @@ class OverlayVisibilityGate {
             gate.release(tokenId)
         }
     }
-}
-
-data class BubblePosition(val x: Int, val y: Int)
-
-fun clampBubblePosition(
-    x: Int,
-    y: Int,
-    displayWidth: Int,
-    displayHeight: Int,
-    bubbleWidth: Int,
-    bubbleHeight: Int,
-    topInset: Int = 0,
-    bottomInset: Int = 0,
-    margin: Int = 12,
-): BubblePosition {
-    val maxX = (displayWidth - bubbleWidth - margin).coerceAtLeast(margin)
-    val minY = (topInset + margin).coerceAtMost(displayHeight - bubbleHeight - margin)
-    val maxY = (displayHeight - bubbleHeight - bottomInset - margin).coerceAtLeast(minY)
-    return BubblePosition(
-        x = x.coerceIn(margin, maxX),
-        y = y.coerceIn(minY, maxY),
-    )
 }

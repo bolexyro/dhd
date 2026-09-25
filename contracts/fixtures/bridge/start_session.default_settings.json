@@ -1,0 +1,26 @@
+{
+  "peer": "loopback",
+  "request": {
+    "reasoningEffort": "turbo",
+    "request": "Buy milk",
+    "requestId": "req-start_session",
+    "type": "start_session"
+  },
+  "response": [
+    {
+      "message": "start_session accepted by the phone.",
+      "requestId": "req-start_session",
+      "type": "accepted"
+    },
+    {
+      "conversationId": null,
+      "fastMode": false,
+      "message": "Phone assistant session started.",
+      "ok": true,
+      "reasoningEffort": "high",
+      "requestId": "req-start_session",
+      "sessionId": "{{sessionId}}",
+      "type": "started"
+    }
+  ]
+}
