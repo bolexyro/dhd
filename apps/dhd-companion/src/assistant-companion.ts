@@ -23,20 +23,9 @@ import {
   type CompanionTokenUsageEvent,
   type CompanionToolCallEvent,
 } from "./companion-events.js";
-import {
-  DHD_ACTION_TYPES,
-  DHD_KEYPRESS_KEYS,
-  DHD_MAX_GUARD_REGIONS,
-  DHD_MAX_SEQUENCE_ACTIONS,
-  DHD_MAX_SWIPE_DURATION_MS,
-  DHD_MAX_TEXT_CHARS,
-  DHD_MAX_TYPE_TEXT_CHARS,
-  DHD_MAX_WAIT_DURATION_MS,
-  dhdToolDescription,
-  isDhdToolName,
-  isGuardRegionsEnabled,
-  type DhdToolName,
-} from "./tools/contract.js";
+import { isGuardRegionsEnabled } from "./config/env.js";
+import { isDhdToolName, type DhdToolName } from "./tools/contract.js";
+import { DHD_TOOL_DEFINITIONS, dhdToolDescription } from "./tools/registry.js";
 import {
   bridgeHost,
   bridgePort,
@@ -1031,257 +1020,13 @@ export function buildDhdDynamicTools(
 ): DynamicToolSpec[] {
   const enableGuardRegions =
     options.enableGuardRegions ?? isGuardRegionsEnabled();
-  const guardRegion = {
-    type: "object",
-    properties: {
-      left: { type: "integer", minimum: 0 },
-      top: { type: "integer", minimum: 0 },
-      right: { type: "integer", minimum: 0 },
-      bottom: { type: "integer", minimum: 0 },
-    },
-    required: ["left", "top", "right", "bottom"],
-    additionalProperties: false,
-  };
-  const baseMetadataProperties: Record<string, unknown> = {
-    purpose: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-    targetDescription: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-    observationId: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-  };
-  const metadataProperties: Record<string, unknown> = {
-    ...baseMetadataProperties,
-  };
-  if (enableGuardRegions) {
-    metadataProperties.guardRegions = {
-      type: "array",
-      maxItems: DHD_MAX_GUARD_REGIONS,
-      items: guardRegion,
-    };
-  }
-  const metadata = {
-    type: "object",
-    properties: metadataProperties,
-    required: ["purpose", "targetDescription", "observationId"],
-    additionalProperties: false,
-  };
-  const sequenceMetadata = {
-    type: "object",
-    properties: {
-      purpose: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-      targetDescription: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-      ...(enableGuardRegions
-        ? { guardRegions: { type: "array", maxItems: DHD_MAX_GUARD_REGIONS, items: guardRegion } }
-        : {}),
-    },
-    required: ["purpose", "targetDescription"],
-    additionalProperties: false,
-  };
-  const openAppMetadata = {
-    type: "object",
-    properties: {
-      purpose: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-      targetDescription: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-    },
-    required: ["purpose", "targetDescription"],
-    additionalProperties: false,
-  };
-  const actionObject = (
-    properties: Record<string, unknown>,
-    required: string[],
-    actionMetadata: Record<string, unknown> = metadata,
-  ) => ({
-    type: "object",
-    properties: { ...properties, metadata: actionMetadata },
-    required: [...required, "metadata"],
-    additionalProperties: false,
-  });
-  const actionVariants = [
-    {
-      properties: {
-        type: { const: DHD_ACTION_TYPES.tap },
-        x: { type: "integer", minimum: 0 },
-        y: { type: "integer", minimum: 0 },
-      },
-      required: ["type", "x", "y"],
-    },
-    {
-      properties: {
-        type: { const: DHD_ACTION_TYPES.type },
-        text: { type: "string", minLength: 1, maxLength: DHD_MAX_TYPE_TEXT_CHARS },
-      },
-      required: ["type", "text"],
-    },
-    {
-      properties: {
-        type: { const: DHD_ACTION_TYPES.swipe },
-        startX: { type: "integer", minimum: 0 },
-        startY: { type: "integer", minimum: 0 },
-        endX: { type: "integer", minimum: 0 },
-        endY: { type: "integer", minimum: 0 },
-        durationMs: { type: "integer", minimum: 1, maximum: DHD_MAX_SWIPE_DURATION_MS },
-      },
-      required: ["type", "startX", "startY", "endX", "endY"],
-    },
-    { properties: { type: { const: DHD_ACTION_TYPES.back } }, required: ["type"] },
-    {
-      properties: {
-        type: { const: DHD_ACTION_TYPES.keypress },
-        key: { type: "string", enum: [...DHD_KEYPRESS_KEYS] },
-      },
-      required: ["type", "key"],
-    },
-    {
-      properties: {
-        type: { const: DHD_ACTION_TYPES.wait },
-        durationMs: { type: "integer", minimum: 1, maximum: DHD_MAX_WAIT_DURATION_MS },
-      },
-      required: ["type", "durationMs"],
-    },
-  ];
-  const createActionSchema = (actionMetadata: Record<string, unknown>) => ({
-    oneOf: actionVariants.map((variant) =>
-      actionObject(variant.properties, variant.required, actionMetadata),
-    ),
-  });
-  const action = createActionSchema(metadata);
-  const sequenceAction = createActionSchema(sequenceMetadata);
-  const displayTargetProperties: Record<string, unknown> = {
-    displayRef: { type: "string", pattern: "^dsp_[a-f0-9]{14}$" },
-  };
-  const observeProperties: Record<string, unknown> = {
-    purpose: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-    targetDescription: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-    ...displayTargetProperties,
-  };
-
-  return [
+  return DHD_TOOL_DEFINITIONS.map((definition) =>
     dynamicTool(
-      "dhd_list_allowed_apps",
-      dhdToolDescription("dhd_list_allowed_apps", enableGuardRegions),
-      {
-        type: "object",
-        properties: { includeAll: { type: "boolean", default: false } },
-        additionalProperties: false,
-      },
+      definition.name,
+      dhdToolDescription(definition.name, enableGuardRegions),
+      definition.jsonSchema(enableGuardRegions),
     ),
-    dynamicTool(
-      "dhd_browse_app",
-      dhdToolDescription("dhd_browse_app", enableGuardRegions),
-      {
-        type: "object",
-        properties: { query: { type: "string", minLength: 1, maxLength: 120 } },
-        required: ["query"],
-        additionalProperties: false,
-      },
-    ),
-    dynamicTool(
-      "dhd_set_app_display_layout",
-      dhdToolDescription("dhd_set_app_display_layout", enableGuardRegions),
-      {
-        type: "object",
-        properties: {
-          packageName: {
-            type: "string",
-            minLength: 1,
-            pattern: "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+$",
-          },
-          layout: { type: "string", enum: ["standard", "full_size"] },
-        },
-        required: ["packageName", "layout"],
-        additionalProperties: false,
-      },
-    ),
-    dynamicTool(
-      "dhd_list_displays",
-      dhdToolDescription("dhd_list_displays", enableGuardRegions),
-      emptySchema(),
-    ),
-    dynamicTool(
-      "dhd_close_display",
-      dhdToolDescription("dhd_close_display", enableGuardRegions),
-      {
-        type: "object",
-        properties: {
-          ...displayTargetProperties,
-        },
-        required: ["displayRef"],
-        additionalProperties: false,
-      },
-    ),
-    dynamicTool(
-      "dhd_get_foreground_app",
-      dhdToolDescription("dhd_get_foreground_app", enableGuardRegions),
-      {
-        type: "object",
-        properties: displayTargetProperties,
-        additionalProperties: false,
-      },
-    ),
-    dynamicTool(
-      "dhd_observe",
-      dhdToolDescription("dhd_observe", enableGuardRegions),
-      {
-        type: "object",
-        properties: observeProperties,
-        additionalProperties: false,
-      },
-    ),
-    dynamicTool(
-      "dhd_open_app",
-      dhdToolDescription("dhd_open_app", enableGuardRegions),
-      {
-        type: "object",
-        properties: {
-          ...displayTargetProperties,
-          packageName: { type: "string", minLength: 1 },
-          metadata: openAppMetadata,
-        },
-        required: ["packageName", "metadata"],
-        additionalProperties: false,
-      },
-    ),
-    dynamicTool(
-      "dhd_execute",
-      dhdToolDescription("dhd_execute", enableGuardRegions),
-      {
-        type: "object",
-        properties: { ...displayTargetProperties, action },
-        required: ["action"],
-        additionalProperties: false,
-      },
-    ),
-    dynamicTool(
-      "dhd_execute_sequence",
-      dhdToolDescription("dhd_execute_sequence", enableGuardRegions),
-      {
-        type: "object",
-        properties: {
-          ...displayTargetProperties,
-          observationId: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-          actions: {
-            type: "array",
-            minItems: 1,
-            maxItems: DHD_MAX_SEQUENCE_ACTIONS,
-            items: sequenceAction,
-          },
-        },
-        required: ["observationId", "actions"],
-        additionalProperties: false,
-      },
-    ),
-    dynamicTool(
-      "dhd_request_attention",
-      dhdToolDescription("dhd_request_attention", enableGuardRegions),
-      {
-        type: "object",
-        properties: {
-          reason: { type: "string", minLength: 1, maxLength: DHD_MAX_TEXT_CHARS },
-          ...displayTargetProperties,
-        },
-        required: ["reason"],
-        additionalProperties: false,
-      },
-    ),
-  ];
+  );
 }
 
 function dynamicTool(
@@ -1290,10 +1035,6 @@ function dynamicTool(
   inputSchema: Record<string, unknown>,
 ): DynamicToolSpec {
   return { type: "function", name, description, inputSchema };
-}
-
-function emptySchema(): Record<string, unknown> {
-  return { type: "object", properties: {}, additionalProperties: false };
 }
 
 interface DynamicToolCallOptions {

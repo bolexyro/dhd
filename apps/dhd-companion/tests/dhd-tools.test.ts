@@ -21,7 +21,7 @@ import {
   toMcpResult
 } from "../src/dhd-tools.js";
 import { buildDhdDynamicTools, toDynamicToolResponse } from "../src/assistant-companion.js";
-import { dhdToolDescription } from "../src/tools/contract.js";
+import { dhdToolDescription } from "../src/tools/registry.js";
 
 const metadata = {
   purpose: "Searching for iced tea",
