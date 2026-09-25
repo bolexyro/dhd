@@ -57,4 +57,24 @@ class UiPreferencesRepositoryTest {
         assertEquals(true, repository.state.value.fastMode)
         assertEquals("light", repository.state.value.themeMode)
     }
+
+    @Test
+    fun `writes that do not change a value are skipped`() {
+        repository.setFastMode(true)
+        repository.setReasoningEffort("low")
+        repository.setBubblePosition(10, 20)
+        repository.setVisibleReasoningEfforts("low,high")
+        val edits = preferences.appliedEdits
+
+        repeat(30) {
+            repository.setFastMode(true)
+            repository.setReasoningEffort("low")
+            repository.setBubblePosition(10, 20)
+            repository.setThemeMode("dark")
+            repository.setOverlayEnabled(false)
+            repository.setVisibleReasoningEfforts("low,high")
+        }
+
+        assertEquals(edits, preferences.appliedEdits)
+    }
 }

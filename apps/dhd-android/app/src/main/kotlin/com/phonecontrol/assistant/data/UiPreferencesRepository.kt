@@ -38,26 +38,33 @@ class UiPreferencesRepository(private val preferences: SharedPreferences) {
     )
 
     fun setThemeMode(storageValue: String) {
+        if (current().themeMode == storageValue) return
         preferences.edit { putString(KEY_THEME_MODE, storageValue) }
     }
 
     fun setReasoningEffort(storageValue: String) {
+        if (current().reasoningEffort == storageValue) return
         preferences.edit { putString(KEY_REASONING_EFFORT, storageValue) }
     }
 
     fun setVisibleReasoningEfforts(storageValue: String) {
+        if (current().visibleReasoningEfforts == storageValue) return
         preferences.edit { putString(KEY_VISIBLE_REASONING_EFFORTS, storageValue) }
     }
 
     fun setFastMode(enabled: Boolean) {
+        if (current().fastMode == enabled) return
         preferences.edit { putBoolean(KEY_FAST_MODE, enabled) }
     }
 
     fun setOverlayEnabled(enabled: Boolean) {
+        if (current().overlayEnabled == enabled) return
         preferences.edit { putBoolean(KEY_OVERLAY_ENABLED, enabled) }
     }
 
     fun setBubblePosition(x: Int, y: Int) {
+        val current = current()
+        if (current.bubbleX == x && current.bubbleY == y) return
         preferences.edit {
             putInt(KEY_BUBBLE_X, x)
             putInt(KEY_BUBBLE_Y, y)

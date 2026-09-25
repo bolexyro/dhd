@@ -275,7 +275,6 @@ class OverlayWindowController(
         params.x = position.x
         params.y = position.y
         runCatching { panelView?.let { windowManager.updateViewLayout(it, params) } }
-        OverlayPreferences.setBubblePosition(appContext, position)
     }
 
     fun snapBubbleToNearestEdge() {

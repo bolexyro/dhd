@@ -6,6 +6,9 @@ class InMemorySharedPreferences : SharedPreferences {
     private val values = linkedMapOf<String, Any?>()
     private val listeners = linkedSetOf<SharedPreferences.OnSharedPreferenceChangeListener>()
 
+    var appliedEdits = 0
+        private set
+
     val snapshot: Map<String, Any?>
         get() = values.toMap()
 
@@ -51,6 +54,7 @@ class InMemorySharedPreferences : SharedPreferences {
         }
 
         override fun apply() {
+            appliedEdits += 1
             if (clear) values.clear()
             val changed = removals + pending.keys
             removals.forEach(values::remove)
