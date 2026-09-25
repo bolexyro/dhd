@@ -141,6 +141,83 @@ describe("phone request runner", () => {
     expect(args[8]).toBe(false);
   });
 
+  it("coalesces streamed agent messages behind the in-flight update and retries rejected text", async () => {
+    respond("claim_request", { ok: true, request: "Order iced tea" });
+    const streamResponses: Array<(response: BridgeResponse) => void> = [];
+    respond("stream_agent_message", () => new Promise((resolve) => streamResponses.push(resolve)));
+    respond("complete_session", { ok: true });
+    const codex = fakeCodex({
+      turn: async (...args) => {
+        const stream = args[6];
+        stream({ itemId: "final-1", text: "A" });
+        stream({ itemId: "final-1", text: "AB" });
+        stream({ itemId: "final-1", text: "   " });
+        stream({ itemId: "final-1", text: "ABC" });
+        await vi.waitFor(() => expect(streamResponses).toHaveLength(1));
+        streamResponses[0]({ ok: true });
+        await vi.waitFor(() => expect(streamResponses).toHaveLength(2));
+        streamResponses[1]({ ok: false, message: "timeline busy" });
+        await new Promise((resolve) => setImmediate(resolve));
+        stream({ itemId: "final-1", text: "ABC" });
+        await vi.waitFor(() => expect(streamResponses).toHaveLength(3));
+        streamResponses[2]({ ok: true });
+        return { text: "ABC", threadId: "thread-1", phoneToolFailures: [] };
+      },
+    });
+
+    await processPendingRequest({ sessionId: "session-s" }, codex);
+
+    expect(
+      bridge.calls
+        .filter(({ request }) => request.type === "stream_agent_message")
+        .map(({ request }) => request.text),
+    ).toEqual(["A", "ABC", "ABC"]);
+    expect(companionErrors()).toContain(
+      "[phone-assistant-companion] phone rejected streamed agent message: timeline busy",
+    );
+    expect(bridge.calls.at(-1)?.request).toMatchObject({ type: "complete_session", agentMessageId: "dhd-agent-session-s" });
+  });
+
+  it("truncates streamed agent messages to the phone limit", async () => {
+    respond("claim_request", { ok: true, request: "Summarize" });
+    respond("stream_agent_message", { ok: true });
+    respond("complete_session", { ok: true });
+    const codex = fakeCodex({
+      turn: async (...args) => {
+        args[6]({ itemId: "final-1", text: "y".repeat(4_100) });
+        return { text: "Done.", threadId: "thread-1", phoneToolFailures: [] };
+      },
+    });
+
+    await processPendingRequest({ sessionId: "session-u" }, codex);
+
+    expect(bridge.calls.find(({ request }) => request.type === "stream_agent_message")?.request.text).toBe(
+      "y".repeat(4_000),
+    );
+  });
+
+  it("keeps the turn alive when streaming an agent message fails", async () => {
+    respond("claim_request", { ok: true, request: "Order iced tea" });
+    respond("stream_agent_message", () => {
+      throw new Error("Timed out waiting for the phone assistant bridge.");
+    });
+    respond("complete_session", { ok: true });
+    const codex = fakeCodex({
+      turn: async (...args) => {
+        args[6]({ itemId: "final-1", text: "Working" });
+        await new Promise((resolve) => setImmediate(resolve));
+        return { text: "Done.", threadId: "thread-1", phoneToolFailures: [] };
+      },
+    });
+
+    await processPendingRequest({ sessionId: "session-t" }, codex);
+
+    expect(companionErrors()).toContain(
+      "[phone-assistant-companion] could not stream agent message: Timed out waiting for the phone assistant bridge.",
+    );
+    expect(bridge.calls.at(-1)?.request).toMatchObject({ type: "complete_session", agentMessageId: "dhd-agent-session-t" });
+  });
+
   it("resumes a stored thread without rebinding it and falls back to the default completion message", async () => {
     respond("claim_request", {
       ok: true,
