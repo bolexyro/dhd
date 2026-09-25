@@ -1,14 +1,11 @@
 package com.phonecontrol.assistant.overlay.cards
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +15,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonecontrol.assistant.ui.components.GlassSurface
 import com.phonecontrol.assistant.ui.components.MarkdownContent
+import com.phonecontrol.assistant.ui.components.glassSurfaceColor
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable
@@ -40,9 +39,7 @@ internal fun FloatingResultCard(
     val showResultBottomFade by remember {
         derivedStateOf { resultScrollState.value < resultScrollState.maxValue }
     }
-    val resultSurfaceColor = colors.composerBackground.copy(
-        alpha = if (colors.isDark) 0.98f else 0.97f,
-    )
+    val resultSurfaceColor = glassSurfaceColor(colors)
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -54,16 +51,9 @@ internal fun FloatingResultCard(
             label = "Close",
         )
 
-        Surface(
+        GlassSurface(
             modifier = Modifier.fillMaxWidth(),
             shape = cardShape,
-            color = colors.composerBackground.copy(
-                alpha = if (colors.isDark) 0.98f else 0.97f,
-            ),
-            border = BorderStroke(
-                width = 0.8.dp,
-                color = colors.borderColor.copy(alpha = if (colors.isDark) 0.9f else 0.95f),
-            ),
         ) {
             Column(
                 modifier = Modifier

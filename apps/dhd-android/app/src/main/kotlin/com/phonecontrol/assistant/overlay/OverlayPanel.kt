@@ -2,14 +2,11 @@ package com.phonecontrol.assistant.overlay
 
 import android.view.Surface as AndroidSurface
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,6 +46,7 @@ import com.phonecontrol.assistant.overlay.composer.GlyphButton
 import com.phonecontrol.assistant.overlay.effects.ComposerPerimeterGlow
 import com.phonecontrol.assistant.session.DhdToolCall
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.components.GlassSurface
 import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
 import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
@@ -407,7 +405,7 @@ fun OverlayPanel(
                     )
                 }
 
-                Surface(
+                GlassSurface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(swipeDismissModifier)
@@ -416,13 +414,6 @@ fun OverlayPanel(
                             composerHeightPx = coordinates.size.height
                         },
                     shape = bottomCapsuleShape,
-                    color = colors.composerBackground.copy(
-                        alpha = if (colors.isDark) 0.98f else 0.97f,
-                    ),
-                    border = BorderStroke(
-                        width = 0.8.dp,
-                        color = colors.borderColor.copy(alpha = if (colors.isDark) 0.9f else 0.95f),
-                    ),
                 ) {
                     when (effectiveMode) {
                         OverlayPanelMode.COMPOSER,

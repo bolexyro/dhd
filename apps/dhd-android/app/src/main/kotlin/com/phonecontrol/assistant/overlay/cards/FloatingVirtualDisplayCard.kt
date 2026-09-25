@@ -2,10 +2,7 @@ package com.phonecontrol.assistant.overlay.cards
 
 import android.view.Surface as AndroidSurface
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +14,7 @@ import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.overlay.sessionOrNull
+import com.phonecontrol.assistant.ui.components.GlassSurface
 import com.phonecontrol.assistant.ui.displays.LiveDisplayPreview
 import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
 import com.phonecontrol.assistant.ui.displays.liveDisplayCornerShape
@@ -46,16 +44,9 @@ internal fun FloatingVirtualDisplayCard(
             label = "Close",
         )
 
-        Surface(
+        GlassSurface(
             modifier = Modifier.fillMaxWidth(),
             shape = cardShape,
-            color = colors.composerBackground.copy(
-                alpha = if (colors.isDark) 0.98f else 0.97f,
-            ),
-            border = BorderStroke(
-                width = 0.8.dp,
-                color = colors.borderColor.copy(alpha = if (colors.isDark) 0.9f else 0.95f),
-            ),
         ) {
             Column(
                 modifier = Modifier

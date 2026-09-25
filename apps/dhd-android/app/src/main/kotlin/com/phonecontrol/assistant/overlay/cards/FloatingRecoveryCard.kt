@@ -24,6 +24,7 @@ import com.phonecontrol.assistant.overlay.OverlayRecoveryKind
 import com.phonecontrol.assistant.overlay.attentionActionLabelOrNull
 import com.phonecontrol.assistant.overlay.attentionReasonOrNull
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.components.GlassSurface
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable
@@ -90,16 +91,9 @@ internal fun FloatingRecoveryCard(
         }
     }
 
-    Surface(
+    GlassSurface(
         modifier = modifier.fillMaxWidth(),
         shape = cardShape,
-        color = colors.composerBackground.copy(
-            alpha = if (colors.isDark) 0.98f else 0.97f,
-        ),
-        border = BorderStroke(
-            width = 0.8.dp,
-            color = colors.borderColor.copy(alpha = if (colors.isDark) 0.9f else 0.95f),
-        ),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
