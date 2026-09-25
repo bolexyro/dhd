@@ -1,6 +1,6 @@
 import { CodexAppServerClient } from "../codex/app-server-client.js";
 import { pollIntervalSetting } from "../config/env.js";
-import { bridgeHost, bridgePort, isLoopbackBridgeHost } from "../phone/bridge-client.js";
+import { environmentBridgeTarget, isLoopbackBridgeHost } from "../phone/bridge-client.js";
 import { delay } from "../shared/delay.js";
 import { errorMessage } from "../shared/errors.js";
 import { currentCodexTurn } from "./active-turn.js";
@@ -9,13 +9,14 @@ import { PhonePoller, parsePollInterval } from "./poll-loop.js";
 import { CodexWarmup } from "./prewarm.js";
 
 function logStartupBanner(): void {
+  const target = environmentBridgeTarget();
   console.error(
     "[phone-assistant-companion] waiting for a request typed in the Android app",
   );
   console.error(
-    `[phone-assistant-companion] phone bridge target ${bridgeHost}:${bridgePort}`,
+    `[phone-assistant-companion] phone bridge target ${target.host}:${target.port}`,
   );
-  if (isLoopbackBridgeHost(bridgeHost)) {
+  if (isLoopbackBridgeHost(target.host)) {
     console.error(
       "[phone-assistant-companion] loopback mode: adb forward tcp:8765 tcp:8765 is still supported",
     );

@@ -23,9 +23,11 @@ export interface BridgeRequestOptions {
   token?: string;
 }
 
-export const bridgeHost = bridgeHostSetting() ?? DEFAULT_BRIDGE_HOST;
-export const bridgePort = parsePort(bridgePortSetting() ?? `${DEFAULT_BRIDGE_PORT}`);
-export const bridgeToken = bridgeTokenSetting();
+export interface BridgeTarget {
+  host: string;
+  port: number;
+  token: string | undefined;
+}
 
 export function parsePort(value: string): number {
   if (!/^\d+$/.test(value)) throw new Error("PHONE_ASSISTANT_BRIDGE_PORT must be an integer.");
@@ -34,6 +36,22 @@ export function parsePort(value: string): number {
     throw new Error("PHONE_ASSISTANT_BRIDGE_PORT must be between 1 and 65535.");
   }
   return port;
+}
+
+export function bridgePortFromEnvironment(): number {
+  try {
+    return parsePort(bridgePortSetting() ?? `${DEFAULT_BRIDGE_PORT}`);
+  } catch {
+    return DEFAULT_BRIDGE_PORT;
+  }
+}
+
+export function environmentBridgeTarget(): BridgeTarget {
+  return {
+    host: bridgeHostSetting() ?? DEFAULT_BRIDGE_HOST,
+    port: bridgePortFromEnvironment(),
+    token: bridgeTokenSetting(),
+  };
 }
 
 export function isLoopbackBridgeHost(host: string): boolean {
@@ -45,14 +63,14 @@ export function buildBridgePayload(
   request: BridgeRequest,
   token?: string,
 ): BridgeRequest {
-  const effectiveToken = arguments.length > 1 ? token : bridgeToken;
+  const effectiveToken = arguments.length > 1 ? token : bridgeTokenSetting();
   const safeToken = effectiveToken?.trim();
   return safeToken ? { ...request, authToken: safeToken } : { ...request };
 }
 
 export function bridgeConfigurationError(
-  host: string = bridgeHost,
-  token: string | undefined = bridgeToken,
+  host: string = environmentBridgeTarget().host,
+  token: string | undefined = bridgeTokenSetting(),
 ): string | null {
   if (!isLoopbackBridgeHost(host) && !token?.trim()) {
     return "PHONE_ASSISTANT_BRIDGE_TOKEN is required when PHONE_ASSISTANT_BRIDGE_HOST is not loopback.";
@@ -65,9 +83,10 @@ export function requestBridge(
   request: BridgeRequest,
   options: BridgeRequestOptions = {}
 ): Promise<BridgeMessage> {
-  const host = options.host ?? bridgeHost;
-  const port = options.port ?? bridgePort;
-  const token = options.token ?? bridgeToken;
+  const target = environmentBridgeTarget();
+  const host = options.host ?? target.host;
+  const port = options.port ?? target.port;
+  const token = options.token ?? target.token;
   const configurationError = bridgeConfigurationError(host, token);
   if (configurationError) return Promise.reject(new Error(configurationError));
   return new Promise((resolve, reject) => {

@@ -7,8 +7,8 @@ import {
   bridgeTokenSetting,
   companionSettingsPath,
 } from "../../config/env.js";
-import { parsePort } from "../../phone/bridge-client.js";
-import { DEFAULT_BRIDGE_HOST, DEFAULT_BRIDGE_PORT } from "../../phone/protocol.js";
+import { bridgePortFromEnvironment } from "../../phone/bridge-client.js";
+import { DEFAULT_BRIDGE_HOST } from "../../phone/protocol.js";
 
 export interface ConnectionConfig {
   host: string;
@@ -24,18 +24,10 @@ interface StoredConnectionSettings {
   deviceId?: string;
 }
 
-function readEnvPort(): number {
-  try {
-    return parsePort(bridgePortSetting() ?? `${DEFAULT_BRIDGE_PORT}`);
-  } catch {
-    return DEFAULT_BRIDGE_PORT;
-  }
-}
-
 export function initialConnection(): ConnectionConfig {
   return {
     host: bridgeHostSetting() ?? DEFAULT_BRIDGE_HOST,
-    port: readEnvPort(),
+    port: bridgePortFromEnvironment(),
     token: bridgeTokenSetting() ?? ""
   };
 }
