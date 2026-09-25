@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { CompanionTokenUsageSnapshot } from "../src/dashboard/client/api.js";
-import { DEFAULT_TOKEN_PRICING_MODEL, TOKEN_PRICING, estimateTokenCost } from "../src/dashboard/client/pricing.js";
+import { TOKEN_PRICING, estimateTokenCost } from "../src/dashboard/client/pricing.js";
+import { DEFAULT_CODEX_MODEL } from "../src/shared/default-model.js";
 import { toolImageLabel } from "../src/dashboard/client/tool-images.js";
 
 function usage(overrides: Partial<CompanionTokenUsageSnapshot> = {}): CompanionTokenUsageSnapshot {
@@ -20,7 +21,7 @@ function usage(overrides: Partial<CompanionTokenUsageSnapshot> = {}): CompanionT
 
 describe("dashboard token pricing", () => {
   it("pins the rate card", () => {
-    expect(DEFAULT_TOKEN_PRICING_MODEL).toBe("gpt-6-luna");
+    expect(DEFAULT_CODEX_MODEL).toBe("gpt-6-luna");
     expect(TOKEN_PRICING).toMatchInlineSnapshot(`
       {
         "gpt-5.4": {

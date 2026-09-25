@@ -1,3 +1,4 @@
+import { DEFAULT_CODEX_MODEL } from "../../shared/default-model.js";
 import type { CompanionState } from "./api.js";
 
 export interface TokenPricing {
@@ -9,7 +10,6 @@ export interface TokenPricing {
   longContextOutputMultiplier?: number;
 }
 
-export const DEFAULT_TOKEN_PRICING_MODEL = "gpt-6-luna";
 export const TOKEN_PRICING: Record<string, TokenPricing> = {
   "gpt-6-luna": {
     inputPerMillion: 0.1,
@@ -89,7 +89,7 @@ export interface TokenCostEstimate {
 export function estimateTokenCost(
   usage: NonNullable<CompanionState["tokenUsage"]>,
 ): TokenCostEstimate | null {
-  const model = usage.model?.trim() || DEFAULT_TOKEN_PRICING_MODEL;
+  const model = usage.model?.trim() || DEFAULT_CODEX_MODEL;
   const pricing = TOKEN_PRICING[model];
   if (!pricing) return null;
 

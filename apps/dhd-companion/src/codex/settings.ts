@@ -1,8 +1,8 @@
 import { codexModelSetting, codexReasoningEffortSetting } from "../config/env.js";
+import { DEFAULT_CODEX_MODEL } from "../shared/default-model.js";
 
 // DHD owns its App Server conversation settings. These defaults deliberately
 // do not depend on the user's interactive Codex chat or global config.
-export const DEFAULT_CODEX_MODEL = "gpt-6-luna";
 const DEFAULT_CODEX_EFFORT = "high";
 export const DEFAULT_CODEX_SERVICE_TIER = "default";
 const FAST_CODEX_SERVICE_TIER = "priority";

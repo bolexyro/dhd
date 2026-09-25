@@ -23,7 +23,7 @@ const STATIC_FILES: Record<string, string> = {
 const CLIENT_ENTRY_PATHS = new Set(["/renderer.js", "/renderer.ts"]);
 const CLIENT_MODULE_PATH = /^\/((?:views\/)?[a-z][a-z-]*)\.(?:js|ts)$/;
 const SHARED_MODULE_PATH = /^\/shared\/([a-z][a-z-]*)\.(?:js|ts)$/;
-const BROWSER_SHARED_MODULES = new Set(["errors", "single-flight"]);
+const BROWSER_SHARED_MODULES = new Set(["default-model", "errors", "single-flight"]);
 const NO_CACHE_HEADERS = {
   "Cache-Control": "no-cache, no-store, must-revalidate",
   "Pragma": "no-cache",

@@ -218,6 +218,7 @@ describe("dashboard route contract", () => {
     "/views/discovery.js",
     "/shared/errors.js",
     "/shared/single-flight.js",
+    "/shared/default-model.js",
   ])(
     "serves browser module %s as JavaScript",
     async (path) => {
