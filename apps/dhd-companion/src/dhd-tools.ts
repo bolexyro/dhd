@@ -5,11 +5,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import {
-  BLOCKING_BRIDGE_TIMEOUT_MS,
-  requestBridge,
-  type BridgeMessage,
-} from "./phone/bridge-client.js";
+import { BLOCKING_BRIDGE_TIMEOUT_MS, requestBridge } from "./phone/bridge-client.js";
+import type { BridgeMessage } from "./phone/protocol.js";
 import {
   DHD_ACTION_TYPES,
   DHD_KEYPRESS_KEYS,

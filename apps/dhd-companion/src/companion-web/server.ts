@@ -17,13 +17,12 @@ import {
   type CompanionTokenUsageEvent,
   type CompanionToolCallEvent,
 } from "../companion-events.js";
+import { parsePort, requestBridge } from "../phone/bridge-client.js";
 import {
   DEFAULT_BRIDGE_HOST,
   DEFAULT_BRIDGE_PORT,
-  parsePort,
-  requestBridge,
-  type BridgeMessage
-} from "../phone/bridge-client.js";
+  type BridgeMessage,
+} from "../phone/protocol.js";
 import {
   DEFAULT_PHONE_DISCOVERY_TIMEOUT_MS,
   discoverPhones,

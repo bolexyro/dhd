@@ -15,8 +15,8 @@ import {
   isLoopbackBridgeHost,
   parsePort,
   requestBridge,
-  type BridgeRequest,
 } from "../src/phone/bridge-client.js";
+import type { BridgeRequest } from "../src/phone/protocol.js";
 
 afterEach(() => {
   vi.useRealTimers();

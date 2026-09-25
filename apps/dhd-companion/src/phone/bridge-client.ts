@@ -1,26 +1,17 @@
 import net from "node:net";
 import { bridgeHostSetting, bridgePortSetting, bridgeTokenSetting } from "../config/env.js";
+import {
+  DEFAULT_BRIDGE_HOST,
+  DEFAULT_BRIDGE_PORT,
+  isTerminalBridgeMessage,
+  type BridgeMessage,
+  type BridgeRequest,
+} from "./protocol.js";
 
-export const DEFAULT_BRIDGE_HOST = "127.0.0.1";
-export const DEFAULT_BRIDGE_PORT = 8765;
 export const DEFAULT_BRIDGE_TIMEOUT_MS = 45_000;
 /** Initial connection grace period for requests that may wait after acceptance. */
 export const BLOCKING_BRIDGE_TIMEOUT_MS = DEFAULT_BRIDGE_TIMEOUT_MS;
 export const MAX_BRIDGE_RESPONSE_BYTES = 16 * 1024 * 1024;
-
-export interface BridgeMessage {
-  type?: string;
-  ok?: boolean;
-  [key: string]: unknown;
-}
-
-export interface BridgeRequest {
-  type: string;
-  requestId: string;
-  /** Canonical DHD tool name used for safe phone-side activity display. */
-  tool?: string;
-  [key: string]: unknown;
-}
 
 export interface BridgeRequestOptions {
   timeoutMs?: number;
@@ -34,37 +25,6 @@ export interface BridgeRequestOptions {
 export const bridgeHost = bridgeHostSetting() ?? DEFAULT_BRIDGE_HOST;
 export const bridgePort = parsePort(bridgePortSetting() ?? `${DEFAULT_BRIDGE_PORT}`);
 export const bridgeToken = bridgeTokenSetting();
-
-const TERMINAL_MESSAGE_TYPES = new Set([
-  "error",
-  "started",
-  "status",
-  "pending_request",
-  "pending_steer",
-  "heartbeat",
-  "companion_disconnected",
-  "request_claimed",
-  "request_released",
-  "steer_claimed",
-  "steer_released",
-  "steer_completed",
-  "codex_thread_bound",
-  "agent_message_streamed",
-  "attention_requested",
-  "attention_resolved",
-  "attention_cancelled",
-  "session_completed",
-  "session_failed",
-  "allowed_apps",
-  "browse_apps",
-  "app_display_layout_updated",
-  "displays",
-  "display_closed",
-  "foreground_app",
-  "observation",
-  "completed",
-  "stopped"
-]);
 
 export function parsePort(value: string): number {
   if (!/^\d+$/.test(value)) throw new Error("PHONE_ASSISTANT_BRIDGE_PORT must be an integer.");
@@ -182,7 +142,7 @@ export function requestBridge(
           }
           continue;
         }
-        if (typeof message.type === "string" && TERMINAL_MESSAGE_TYPES.has(message.type)) {
+        if (isTerminalBridgeMessage(message)) {
           finish(undefined, message);
           return;
         }

@@ -42,8 +42,8 @@ import {
   bridgePort,
   isLoopbackBridgeHost,
   requestBridge,
-  type BridgeMessage,
 } from "./phone/bridge-client.js";
+import type { BridgeMessage } from "./phone/protocol.js";
 import { errorMessage, toError } from "./shared/errors.js";
 import { asRecord } from "./shared/guards.js";
 import { isMainModule } from "./shared/is-main-module.js";
