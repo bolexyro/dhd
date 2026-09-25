@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.session
+package com.phonecontrol.assistant.session.service
 
 private const val MAX_COMPLETION_PREVIEW_CHARS = 160
 

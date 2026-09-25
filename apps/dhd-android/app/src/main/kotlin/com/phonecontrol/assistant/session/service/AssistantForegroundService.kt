@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.session
+package com.phonecontrol.assistant.session.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -22,6 +22,10 @@ import com.phonecontrol.assistant.core.isActive
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.overlay.OverlayPreferences
 import com.phonecontrol.assistant.overlay.OverlayWindowController
+import com.phonecontrol.assistant.session.DhdToolCall
+import com.phonecontrol.assistant.session.DhdToolCallStatus
+import com.phonecontrol.assistant.session.SessionCoordinator
+import com.phonecontrol.assistant.session.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

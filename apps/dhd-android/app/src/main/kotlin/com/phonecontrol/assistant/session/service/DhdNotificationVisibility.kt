@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.session
+package com.phonecontrol.assistant.session.service
 
 /**
  * Describes which DHD surface is currently visible to the user.

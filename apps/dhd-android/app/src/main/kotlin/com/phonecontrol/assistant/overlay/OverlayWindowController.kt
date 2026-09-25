@@ -37,7 +37,7 @@ import com.phonecontrol.assistant.data.UiPreferencesRepository
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.execution.TaskDisplaySession
-import com.phonecontrol.assistant.session.AssistantForegroundService
+import com.phonecontrol.assistant.session.service.AssistantForegroundService
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.DarkAssistantColors

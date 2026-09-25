@@ -21,7 +21,7 @@ import com.phonecontrol.assistant.domain.ActionType
 import com.phonecontrol.assistant.domain.ActivityEventKind
 import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
-import com.phonecontrol.assistant.session.AssistantForegroundService
+import com.phonecontrol.assistant.session.service.AssistantForegroundService
 import com.phonecontrol.assistant.ui.AppRoutes
 import java.io.File
 import java.lang.reflect.Method

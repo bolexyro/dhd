@@ -30,7 +30,7 @@ import com.phonecontrol.assistant.execution.TaskDisplayStatus
 import com.phonecontrol.assistant.execution.taskDisplayReference
 import com.phonecontrol.assistant.overlay.OverlayPreferences
 import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
-import com.phonecontrol.assistant.session.AssistantForegroundService
+import com.phonecontrol.assistant.session.service.AssistantForegroundService
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.PhoneControlApp
 import com.phonecontrol.assistant.ui.LiveDisplayPreviewState

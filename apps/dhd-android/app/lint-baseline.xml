@@ -40,7 +40,7 @@
         errorLine1="                appContext.stopService(Intent(appContext, AssistantForegroundService::class.java))"
         errorLine2="                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/session/service/AssistantForegroundService.kt"
             line="300"
             column="40"/>
     </issue>
@@ -388,7 +388,7 @@
         errorLine1="            if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/session/service/AssistantForegroundService.kt"
             line="363"
             column="17"/>
     </issue>
@@ -399,7 +399,7 @@
         errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/session/service/AssistantForegroundService.kt"
             line="405"
             column="17"/>
     </issue>

@@ -6,7 +6,7 @@ import com.phonecontrol.assistant.apps.InstalledAppsRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
 import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
-import com.phonecontrol.assistant.session.AssistantForegroundService
+import com.phonecontrol.assistant.session.service.AssistantForegroundService
 
 internal const val BRIDGE_LOG_TAG = "PhoneControlBridge"
 

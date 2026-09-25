@@ -1,6 +1,10 @@
-package com.phonecontrol.assistant.session
+package com.phonecontrol.assistant.session.service
 
 import com.phonecontrol.assistant.core.isActive
+import com.phonecontrol.assistant.session.DhdToolCall
+import com.phonecontrol.assistant.session.DhdToolCallStatus
+import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.session.defaultDhdToolPurpose
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

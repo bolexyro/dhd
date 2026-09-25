@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.session
+package com.phonecontrol.assistant.session.service
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
