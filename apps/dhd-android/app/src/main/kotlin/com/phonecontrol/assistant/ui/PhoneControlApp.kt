@@ -47,6 +47,8 @@ import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_VIS
 import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.PREFS_NAME
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.navigation.AppRoutes
+import com.phonecontrol.assistant.ui.navigation.supportedInitialRoute
 import com.phonecontrol.assistant.ui.theme.DarkAssistantColors
 import com.phonecontrol.assistant.ui.theme.LightAssistantColors
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
@@ -68,17 +70,6 @@ internal fun effectiveReasoningEffort(
     visibleEfforts: List<ReasoningEffort>,
 ): ReasoningEffort = ReasoningEffort.fromStorage(storedValue).takeIf { it in visibleEfforts }
     ?: visibleEfforts.first()
-
-internal fun supportedInitialRoute(initialRoute: String?): String? = when (initialRoute) {
-    AppRoutes.SETTINGS,
-    AppRoutes.TASK_DISPLAYS,
-    AppRoutes.PAIRING,
-    AppRoutes.APPROVED_APPS,
-    AppRoutes.COMPANION,
-    AppRoutes.PERMISSION_SETUP,
-    -> initialRoute
-    else -> null
-}
 
 internal fun displayRecordsWithPreviewFallback(
     displayRecords: List<TaskDisplayUiRecord>,
@@ -121,16 +112,6 @@ internal fun viewerPreviewState(
             currentToolName = record.currentToolName,
         )
     }
-
-object AppRoutes {
-    const val MAIN = "main"
-    const val SETTINGS = "settings"
-    const val TASK_DISPLAYS = "task_displays"
-    const val PAIRING = "pairing"
-    const val APPROVED_APPS = "approved_apps"
-    const val COMPANION = "companion"
-    const val PERMISSION_SETUP = "permission_setup"
-}
 
 @Composable
 fun PhoneControlApp(

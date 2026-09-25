@@ -40,7 +40,7 @@ import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.session.AssistantForegroundService
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
-import com.phonecontrol.assistant.ui.AppRoutes
+import com.phonecontrol.assistant.ui.navigation.AppRoutes
 import com.phonecontrol.assistant.ui.theme.DarkAssistantColors
 import com.phonecontrol.assistant.ui.theme.LightAssistantColors
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
