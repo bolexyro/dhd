@@ -179,6 +179,30 @@ describe("phone request runner", () => {
     expect(bridge.calls.at(-1)?.request).toMatchObject({ type: "complete_session", agentMessageId: "dhd-agent-session-s" });
   });
 
+  it("keeps streaming after an idle push repeats the last sent text", async () => {
+    respond("claim_request", { ok: true, request: "Order iced tea" });
+    respond("stream_agent_message", { ok: true });
+    respond("complete_session", { ok: true });
+    const streamed = () =>
+      bridge.calls.filter(({ request }) => request.type === "stream_agent_message").map(({ request }) => request.text);
+    const codex = fakeCodex({
+      turn: async (...args) => {
+        const stream = args[6];
+        stream({ itemId: "final-1", text: "Ordering" });
+        await vi.waitFor(() => expect(streamed()).toEqual(["Ordering"]));
+        await new Promise((resolve) => setImmediate(resolve));
+        stream({ itemId: "final-1", text: "Ordering" });
+        stream({ itemId: "final-2", text: "Ordered." });
+        await new Promise((resolve) => setImmediate(resolve));
+        return { text: "Ordered.", threadId: "thread-1", phoneToolFailures: [] };
+      },
+    });
+
+    await processPendingRequest({ sessionId: "session-v" }, codex);
+
+    expect(streamed()).toEqual(["Ordering", "Ordered."]);
+  });
+
   it("truncates streamed agent messages to the phone limit", async () => {
     respond("claim_request", { ok: true, request: "Summarize" });
     respond("stream_agent_message", { ok: true });

@@ -39,7 +39,13 @@ export class AgentMessageStreamer {
 
   private startDrain(): void {
     if (this.drainPromise) return;
-    this.drainPromise = this.drain();
+    const drain = this.drain();
+    this.drainPromise = drain;
+    void drain.finally(() => {
+      if (this.drainPromise !== drain) return;
+      this.drainPromise = null;
+      if (this.latest) this.startDrain();
+    });
   }
 
   private async drain(): Promise<void> {
@@ -75,8 +81,6 @@ export class AgentMessageStreamer {
         );
       }
     }
-    this.drainPromise = null;
-    if (this.latest) this.startDrain();
   }
 }
 
