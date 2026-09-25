@@ -18,7 +18,7 @@ import {
   DHD_MAX_WAIT_DURATION_MS,
   dhdToolDescription,
   isGuardRegionsEnabled,
-} from "./dhd-tool-contract.js";
+} from "./tools/contract.js";
 import {
   ScreenshotMarkerPresenter,
   cropScreenshotPng,
@@ -31,7 +31,7 @@ import { errorMessage } from "./shared/errors.js";
 import { isRecord, readRecord } from "./shared/guards.js";
 import { isMainModule } from "./shared/is-main-module.js";
 
-export * from "./dhd-tool-contract.js";
+export * from "./tools/contract.js";
 
 const PHONE_ACCESS_BRIDGE_OPTIONS = {
   timeoutMs: BLOCKING_BRIDGE_TIMEOUT_MS,

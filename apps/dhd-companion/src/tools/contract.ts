@@ -3,7 +3,7 @@ import {
   STALE_OBSERVATION_GUIDANCE,
 } from "@dhd/screenshot-markers";
 
-export { GUARD_REGIONS_FEATURE_FLAG, isGuardRegionsEnabled } from "./config/env.js";
+export { GUARD_REGIONS_FEATURE_FLAG, isGuardRegionsEnabled } from "../config/env.js";
 
 export const DHD_MAX_SEQUENCE_ACTIONS = 16;
 export const DHD_MAX_TEXT_CHARS = 240;

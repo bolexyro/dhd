@@ -36,7 +36,7 @@ import {
   isDhdToolName,
   isGuardRegionsEnabled,
   type DhdToolName,
-} from "./dhd-tool-contract.js";
+} from "./tools/contract.js";
 import {
   bridgeHost,
   bridgePort,
