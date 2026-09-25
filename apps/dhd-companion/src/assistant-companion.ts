@@ -1608,10 +1608,11 @@ async function maintainCompanionHeartbeat(
   }
 }
 
-export async function runAssistantCompanion(): Promise<void> {
+export async function runAssistantCompanion(
+  codexClient = new CodexAppServerClient(),
+): Promise<void> {
   const pollIntervalMs = parsePollInterval(process.env.PHONE_ASSISTANT_POLL_MS);
   let stopping = false;
-  const codexClient = new CodexAppServerClient();
   let pendingRun: Promise<void> | null = null;
   const stop = () => {
     stopping = true;
