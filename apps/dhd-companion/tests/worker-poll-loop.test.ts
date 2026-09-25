@@ -22,7 +22,8 @@ vi.mock("../src/phone/bridge-client.js", async () => {
   };
 });
 
-const { CodexAppServerClient, runAssistantCompanion } = await import("../src/assistant-companion.js");
+const { runAssistantCompanion } = await import("../src/assistant-companion.js");
+const { CodexAppServerClient } = await import("../src/codex/app-server-client.js");
 const { startFakeAppServer } = await import("./support/fake-app-server.js");
 
 let errorLog: string[];

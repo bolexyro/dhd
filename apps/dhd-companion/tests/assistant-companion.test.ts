@@ -4,7 +4,8 @@ import type {
   CompanionTokenUsageEvent,
   CompanionToolCallEvent
 } from "../src/companion-events.js";
-import { CodexAppServerClient, shouldInterruptForPhoneStop } from "../src/assistant-companion.js";
+import { shouldInterruptForPhoneStop } from "../src/assistant-companion.js";
+import { CodexAppServerClient } from "../src/codex/app-server-client.js";
 import { handleDynamicToolCall } from "../src/codex/dynamic-tools.js";
 import { extractCompanionTokenUsageEvent } from "../src/codex/extract.js";
 import { startFakeAppServer, type FakeAppServer } from "./support/fake-app-server.js";

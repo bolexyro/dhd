@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CodexAppServerClient } from "../src/assistant-companion.js";
+import { CodexAppServerClient } from "../src/codex/app-server-client.js";
 import { JsonRpcFailure, startFakeAppServer, type FakeAppServer } from "./support/fake-app-server.js";
 
 let server: FakeAppServer;
