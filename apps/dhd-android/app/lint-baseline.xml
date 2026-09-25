@@ -7,7 +7,7 @@
         errorLine1="        NotificationManagerCompat.from(this).notify("
         errorLine2="        ^">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbPairingService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
             line="155"
             column="9"/>
     </issue>
@@ -18,7 +18,7 @@
         errorLine1="        NotificationManagerCompat.from(context).notify("
         errorLine2="        ^">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbPairingService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
             line="314"
             column="9"/>
     </issue>
@@ -29,7 +29,7 @@
         errorLine1="        NotificationManagerCompat.from(context).notify("
         errorLine2="        ^">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbPairingService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
             line="343"
             column="9"/>
     </issue>
@@ -51,7 +51,7 @@
         errorLine1="        appContext.stopService(Intent(appContext, DhdAdbPairingService::class.java))"
         errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbController.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbController.kt"
             line="195"
             column="32"/>
     </issue>
@@ -62,7 +62,7 @@
         errorLine1="    TWO_TO_RSA_BITS.modPow(BigInteger.TWO, modulus).toLittleEndianWords().forEach(buffer::putInt)"
         errorLine2="                           ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbKey.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbKey.kt"
             line="263"
             column="28"/>
     </issue>
@@ -410,7 +410,7 @@
         errorLine1="        if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbPairingService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
             line="215"
             column="13"/>
     </issue>
@@ -421,7 +421,7 @@
         errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbPairingService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
             line="239"
             column="13"/>
     </issue>
@@ -432,7 +432,7 @@
         errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbPairingService.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
             line="397"
             column="17"/>
     </issue>
@@ -702,7 +702,7 @@
         errorLine1="                    preferences.edit().putBoolean(KEY_PAIRED, false).apply()"
         errorLine2="                    ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbController.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbController.kt"
             line="647"
             column="21"/>
     </issue>
@@ -713,7 +713,7 @@
         errorLine1="            preferences.edit().putBoolean(KEY_PAIRED, true).apply()"
         errorLine2="            ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbController.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbController.kt"
             line="679"
             column="13"/>
     </issue>
@@ -724,7 +724,7 @@
         errorLine1="        preferences.edit()"
         errorLine2="        ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbKey.kt"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbKey.kt"
             line="245"
             column="9"/>
     </issue>

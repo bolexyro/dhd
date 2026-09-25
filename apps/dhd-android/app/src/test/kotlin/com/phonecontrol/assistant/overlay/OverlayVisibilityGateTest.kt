@@ -1,8 +1,8 @@
 package com.phonecontrol.assistant.overlay
 
 import com.phonecontrol.assistant.session.SessionState
-import com.phonecontrol.assistant.developer.DeveloperConnectionState
-import com.phonecontrol.assistant.developer.DeveloperModeStatus
+import com.phonecontrol.assistant.adb.DeveloperConnectionState
+import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.adb
 
 import android.content.Context
 import android.content.SharedPreferences

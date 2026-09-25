@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.adb
 
 import android.Manifest
 import android.app.Notification

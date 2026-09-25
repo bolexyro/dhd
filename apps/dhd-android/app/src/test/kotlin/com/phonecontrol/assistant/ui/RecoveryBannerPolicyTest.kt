@@ -1,7 +1,7 @@
 package com.phonecontrol.assistant.ui
 
-import com.phonecontrol.assistant.developer.DeveloperConnectionState
-import com.phonecontrol.assistant.developer.DeveloperModeStatus
+import com.phonecontrol.assistant.adb.DeveloperConnectionState
+import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import com.phonecontrol.assistant.session.SessionState
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

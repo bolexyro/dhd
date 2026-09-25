@@ -166,8 +166,8 @@ import com.phonecontrol.assistant.session.DhdToolCall
 import com.phonecontrol.assistant.session.DhdToolCallStatus
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
-import com.phonecontrol.assistant.developer.DeveloperConnectionState
-import com.phonecontrol.assistant.developer.DeveloperModeStatus
+import com.phonecontrol.assistant.adb.DeveloperConnectionState
+import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import java.text.DateFormat

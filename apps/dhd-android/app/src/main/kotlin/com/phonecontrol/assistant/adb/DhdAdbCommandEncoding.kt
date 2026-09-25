@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.adb
 
 /** Quote one already-validated argv value for the ADB shell service. */
 internal fun quoteDhdAdbShellArgument(argument: String): String {

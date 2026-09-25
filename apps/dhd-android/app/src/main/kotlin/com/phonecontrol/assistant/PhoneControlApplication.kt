@@ -6,8 +6,8 @@ import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.bridge.DevBridgeServer
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
-import com.phonecontrol.assistant.developer.DhdAdbController
-import com.phonecontrol.assistant.developer.DhdAdbProcessRunner
+import com.phonecontrol.assistant.adb.DhdAdbController
+import com.phonecontrol.assistant.adb.DhdAdbProcessRunner
 import com.phonecontrol.assistant.developer.DhdTaskDisplayBackend
 import com.phonecontrol.assistant.developer.PreviewSurfaceDispatcher
 import com.phonecontrol.assistant.developer.DhdVirtualDisplayManager

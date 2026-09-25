@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.adb
 
 import com.phonecontrol.assistant.execution.PhoneProcessResult
 import com.phonecontrol.assistant.execution.PhoneProcessRunner

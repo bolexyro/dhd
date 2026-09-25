@@ -46,7 +46,7 @@
         </service>
 
         <service
-            android:name=".developer.DhdAdbPairingService"
+            android:name=".adb.DhdAdbPairingService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property

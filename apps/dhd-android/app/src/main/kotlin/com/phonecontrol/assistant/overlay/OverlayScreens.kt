@@ -82,7 +82,7 @@ import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.needsAttention
 import com.phonecontrol.assistant.core.sessionIdOrNull
-import com.phonecontrol.assistant.developer.DeveloperModeStatus
+import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplaySession

@@ -2,6 +2,8 @@ package com.phonecontrol.assistant.developer
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.phonecontrol.assistant.adb.DhdAdbClient
+import com.phonecontrol.assistant.adb.quoteDhdAdbShellArgument
 import java.io.IOException
 import kotlinx.coroutines.delay
 

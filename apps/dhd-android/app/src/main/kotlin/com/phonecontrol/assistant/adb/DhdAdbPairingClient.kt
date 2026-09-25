@@ -1,7 +1,8 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.adb
 
 import android.os.Build
 import android.util.Log
+import com.phonecontrol.assistant.developer.DhdAdbPairingContext
 import org.conscrypt.Conscrypt
 import java.io.Closeable
 import java.io.DataInputStream

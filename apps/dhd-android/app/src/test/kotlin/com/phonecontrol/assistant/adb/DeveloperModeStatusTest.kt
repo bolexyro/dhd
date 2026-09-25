@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.adb
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

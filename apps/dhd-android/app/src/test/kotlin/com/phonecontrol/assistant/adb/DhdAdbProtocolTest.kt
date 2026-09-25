@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.developer
+package com.phonecontrol.assistant.adb
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
