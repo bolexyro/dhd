@@ -10,96 +10,20 @@ import type { BridgeMessage } from "./phone/protocol.js";
 import { errorMessage } from "./shared/errors.js";
 import { isMainModule } from "./shared/is-main-module.js";
 import { isDebugTimingEnabled, pollIntervalSetting } from "./config/env.js";
-import type { AgentMessageStreamUpdate } from "./codex/agent-messages.js";
 import { PhaseTimer, logCompanionPhase } from "./shared/timing.js";
 import { CodexAppServerClient } from "./codex/app-server-client.js";
+import { delay } from "./shared/delay.js";
+import {
+  AgentMessageStreamer,
+  MAX_AGENT_FEEDBACK_CHARS,
+  streamedAgentMessageId,
+} from "./worker/agent-message-streamer.js";
+import { maintainCompanionHeartbeat } from "./worker/heartbeat.js";
+import { prewarmCodexClient } from "./worker/prewarm.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
-const COMPANION_HEARTBEAT_INTERVAL_MS = 2_500;
-const COMPANION_HEARTBEAT_TIMEOUT_MS = 4_000;
-const STREAM_BRIDGE_TIMEOUT_MS = 5_000;
-const MAX_AGENT_FEEDBACK_CHARS = 4_000;
 const DEFAULT_COMPLETION_MESSAGE = "Your DHD task is ready to review.";
-const PREWARM_ATTEMPTS = 2;
-const PREWARM_RETRY_DELAY_MS = 500;
-
-/**
- * Forward the latest cumulative final-answer text to the phone while keeping
- * bridge writes ordered. If Codex emits faster than the phone can refresh its
- * Room-backed timeline, intermediate snapshots are coalesced; the phone still
- * receives the newest text in order. Completion does not wait for these
- * presentation updates because `complete_session` is the authoritative
- * terminal update for the same message id.
- */
-class AgentMessageStreamer {
-  private latest: AgentMessageStreamUpdate | null = null;
-  private drainPromise: Promise<void> | null = null;
-  private lastSentText: string | null = null;
-  private _hasUpdates = false;
-
-  constructor(
-    private readonly sessionId: string,
-    readonly messageId: string,
-  ) {}
-
-  get hasUpdates(): boolean {
-    return this._hasUpdates;
-  }
-
-  push(update: AgentMessageStreamUpdate): void {
-    if (!update.text.trim()) return;
-    this.latest = update;
-    this._hasUpdates = true;
-    this.startDrain();
-  }
-
-  private startDrain(): void {
-    if (this.drainPromise) return;
-    this.drainPromise = this.drain();
-  }
-
-  private async drain(): Promise<void> {
-    while (this.latest) {
-      const update = this.latest;
-      this.latest = null;
-      const text = update.text.slice(0, MAX_AGENT_FEEDBACK_CHARS);
-      if (text === this.lastSentText) continue;
-      try {
-        const response = await requestBridge(
-          {
-            type: "stream_agent_message",
-            requestId: randomUUID(),
-            sessionId: this.sessionId,
-            messageId: this.messageId,
-            text,
-          },
-          { timeoutMs: STREAM_BRIDGE_TIMEOUT_MS },
-        );
-        if (response.ok !== true) {
-          console.error(
-            `[phone-assistant-companion] phone rejected streamed agent message: ${String(response.message ?? "unknown error")}`,
-          );
-        } else {
-          this.lastSentText = text;
-        }
-      } catch (error) {
-        // Streaming is presentation feedback. A dropped update should not
-        // turn a healthy Codex turn into a failed phone session; the final
-        // complete_session call remains authoritative.
-        console.error(
-          `[phone-assistant-companion] could not stream agent message: ${errorMessage(error)}`,
-        );
-      }
-    }
-    this.drainPromise = null;
-    if (this.latest) this.startDrain();
-  }
-}
-
-function streamedAgentMessageId(sessionId: string): string {
-  return `dhd-agent-${sessionId}`;
-}
 
 export interface ActiveCodexTurn {
   sessionId: string;
@@ -112,40 +36,6 @@ export interface ActiveCodexTurn {
  * polls can deliver steering input to the same in-flight turn.
  */
 let activeCodexTurn: ActiveCodexTurn | null = null;
-
-/** Keep phone-side companion presence alive independently of task polling. */
-async function maintainCompanionHeartbeat(
-  isStopping: () => boolean,
-): Promise<void> {
-  let lastHealthy: boolean | undefined;
-  while (!isStopping()) {
-    try {
-      const response = await requestBridge(
-        { type: "heartbeat", requestId: randomUUID() },
-        { timeoutMs: COMPANION_HEARTBEAT_TIMEOUT_MS },
-      );
-      if (response.ok !== true) {
-        throw new Error(
-          typeof response.message === "string"
-            ? response.message
-            : "The phone bridge rejected the companion heartbeat.",
-        );
-      }
-      if (lastHealthy === false) {
-        console.error("[phone-assistant-companion] phone bridge heartbeat restored");
-      }
-      lastHealthy = true;
-    } catch (error) {
-      if (lastHealthy !== false) {
-        console.error(
-          `[phone-assistant-companion] phone bridge heartbeat unavailable: ${errorMessage(error)}`,
-        );
-      }
-      lastHealthy = false;
-    }
-    if (!isStopping()) await delay(COMPANION_HEARTBEAT_INTERVAL_MS);
-  }
-}
 
 export async function runAssistantCompanion(
   codexClient = new CodexAppServerClient(),
@@ -269,32 +159,6 @@ export async function runAssistantCompanion(
     await heartbeatPromise;
     await codexClient.close();
   }
-}
-
-async function prewarmCodexClient(
-  codexClient: CodexAppServerClient,
-  scope: string,
-): Promise<boolean> {
-  for (let attempt = 1; attempt <= PREWARM_ATTEMPTS; attempt += 1) {
-    const timing = new PhaseTimer(scope);
-    try {
-      timing.log("start", `attempt=${attempt}`);
-      await codexClient.start(timing);
-      timing.log("complete", `attempt=${attempt}`);
-      return true;
-    } catch (error) {
-      timing.log("error", `attempt=${attempt}`);
-      console.error(
-        `[phone-assistant-companion] Codex prewarm attempt ${attempt}/${PREWARM_ATTEMPTS} failed: ` +
-          `${errorMessage(error)}`,
-      );
-      if (attempt < PREWARM_ATTEMPTS) await delay(PREWARM_RETRY_DELAY_MS);
-    }
-  }
-  console.error(
-    "[phone-assistant-companion] continuing without a warm Codex connection; the next request will retry startup",
-  );
-  return false;
 }
 
 export async function processPendingRequest(
@@ -583,10 +447,6 @@ export function parsePollInterval(value: string | undefined): number {
     throw new Error("PHONE_ASSISTANT_POLL_MS must be between 250 and 60000.");
   }
   return parsed;
-}
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 if (isMainModule("assistant-companion")) {
