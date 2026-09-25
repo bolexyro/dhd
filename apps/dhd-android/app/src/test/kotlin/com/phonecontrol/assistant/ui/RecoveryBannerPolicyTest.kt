@@ -3,6 +3,8 @@ package com.phonecontrol.assistant.ui
 import com.phonecontrol.assistant.adb.DeveloperConnectionState
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.recovery.shouldCombineRecoveryBanners
+import com.phonecontrol.assistant.ui.recovery.shouldShowTopRecoveryBanner
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

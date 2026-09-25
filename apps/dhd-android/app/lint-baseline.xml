@@ -315,8 +315,8 @@
         errorLine1="    modifier: Modifier = Modifier,"
         errorLine2="    ~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="1059"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/recovery/RecoveryCards.kt"
+            line="43"
             column="5"/>
     </issue>
 
@@ -326,8 +326,8 @@
         errorLine1="    modifier: Modifier = Modifier,"
         errorLine2="    ~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="1572"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/recovery/RecoveryCards.kt"
+            line="75"
             column="5"/>
     </issue>
 
