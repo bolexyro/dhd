@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
         refreshOverlayState()
         maybeStartFirstRunPermissionSetup()
         val initialConversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
-        val app = application as PhoneControlApplication
+        val app = (application as PhoneControlApplication).container
         val appPackageManager = packageManager
         setContent {
             val display by app.taskDisplayBackend.activeSession.collectAsState()
@@ -222,7 +222,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        val app = application as? PhoneControlApplication
+        val app = (application as? PhoneControlApplication)?.container
         app?.let {
             it.notificationVisibility.setActivityVisible(true)
             // A conversation that aged out while the app was not visible is
@@ -244,8 +244,8 @@ class MainActivity : ComponentActivity() {
                 com.phonecontrol.assistant.overlay.OverlayHideReason.DHD_ACTIVITY,
             )
         }
-        (application as? PhoneControlApplication)?.let { app ->
-            app.developerModeController.refresh()
+        (application as? PhoneControlApplication)?.container?.let { app ->
+            app.phoneAccessController.refresh()
             app.devBridgeServer.requestCodexWarmup()
         }
     }
@@ -259,8 +259,8 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         conversationExpiryMonitor?.cancel()
         conversationExpiryMonitor = null
-        (application as? PhoneControlApplication)?.notificationVisibility?.setActivityVisible(false)
-        (application as? PhoneControlApplication)?.conversationStore?.dismissInactiveConversationPrompt()
+        (application as? PhoneControlApplication)?.container?.notificationVisibility?.setActivityVisible(false)
+        (application as? PhoneControlApplication)?.container?.conversationStore?.dismissInactiveConversationPrompt()
         overlayActivityToken?.close()
         overlayActivityToken = null
         super.onStop()
@@ -441,7 +441,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startFresh() {
-        val app = application as PhoneControlApplication
+        val app = (application as PhoneControlApplication).container
         app.startFresh()
         startService(
             Intent(this, AssistantForegroundService::class.java)
@@ -450,7 +450,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun continueSession() {
-        val app = application as PhoneControlApplication
+        val app = (application as PhoneControlApplication).container
         if (app.sessionCoordinator.state.value !is SessionState.Stopped) return
         ContextCompat.startForegroundService(
             this,
@@ -460,7 +460,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun steerSession(text: String): Boolean =
-        (application as PhoneControlApplication).sessionCoordinator.enqueueSteer(text) != null
+        (application as PhoneControlApplication).container.sessionCoordinator.enqueueSteer(text) != null
 
     private fun refreshOverlayState() {
         val granted = Settings.canDrawOverlays(this)

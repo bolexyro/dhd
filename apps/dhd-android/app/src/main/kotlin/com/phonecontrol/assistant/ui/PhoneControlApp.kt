@@ -334,16 +334,16 @@ fun PhoneControlApp(
         }
     }
 
-    val application = context.applicationContext as PhoneControlApplication
-    val coordinator = application.sessionCoordinator
+    val container = (context.applicationContext as PhoneControlApplication).container
+    val coordinator = container.sessionCoordinator
     val coordinatorState by coordinator.state.collectAsState()
-    val conversationStore = application.conversationStore
+    val conversationStore = container.conversationStore
     val showConversationExpiryPrompt by conversationStore.conversationExpiryPrompt.collectAsState()
-    val permissions = application.appPermissionRepository
-    val developerModeController = application.developerModeController
+    val permissions = container.appPermissionRepository
+    val developerModeController = container.phoneAccessController
     val developerStatus by developerModeController.status.collectAsState()
-    val companionConnected by application.devBridgeServer.companionConnected.collectAsState()
-    val pendingCompanionPairing by application.devBridgeServer.pendingCompanionPairing.collectAsState()
+    val companionConnected by container.devBridgeServer.companionConnected.collectAsState()
+    val pendingCompanionPairing by container.devBridgeServer.pendingCompanionPairing.collectAsState()
     val apps = remember { InstalledAppsRepository(context).listLaunchableUserApps() }
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -370,7 +370,7 @@ fun PhoneControlApp(
         if (onStartFresh != null) {
             onStartFresh()
         } else {
-            application.startFresh()
+            container.startFresh()
         }
     }
 
@@ -557,7 +557,7 @@ fun PhoneControlApp(
 
                 CompanionPairingApprovalDialog(
                     pending = pendingCompanionPairing,
-                    bridgeServer = application.devBridgeServer,
+                    bridgeServer = container.devBridgeServer,
                 )
 
                 LaunchedEffect(initialNavigationRoute) {

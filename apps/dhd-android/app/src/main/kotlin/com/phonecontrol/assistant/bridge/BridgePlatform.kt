@@ -60,7 +60,7 @@ internal class AndroidBridgePlatform(
     }
 
     override fun overlayVisibilityGate(): OverlayVisibilityGate? =
-        (context.applicationContext as? PhoneControlApplication)?.overlayVisibilityGate
+        (context.applicationContext as? PhoneControlApplication)?.containerOrNull?.overlayVisibilityGate
 
     override fun startSessionService(
         request: String,

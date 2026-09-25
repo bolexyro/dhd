@@ -32,29 +32,29 @@ import kotlinx.coroutines.launch
 class AssistantForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val coordinator: SessionCoordinator
-        get() = (application as PhoneControlApplication).sessionCoordinator
+        get() = (application as PhoneControlApplication).container.sessionCoordinator
     private lateinit var overlayWindowController: OverlayWindowController
     private var foregroundNotificationActive = false
     private val overlayVisibilityGate
-        get() = (application as PhoneControlApplication).overlayVisibilityGate
+        get() = (application as PhoneControlApplication).container.overlayVisibilityGate
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        val application = application as PhoneControlApplication
+        val container = (application as PhoneControlApplication).container
         overlayWindowController = OverlayWindowController(
             context = this,
             coordinator = coordinator,
             visibilityGate = overlayVisibilityGate,
-            developerStatus = application.developerModeController.status,
-            companionConnected = application.devBridgeServer.companionConnected,
-            taskPreviewState = application.taskDisplayBackend.previewState,
-            taskDisplaySession = application.taskDisplayBackend.activeSession,
+            developerStatus = container.phoneAccessController.status,
+            companionConnected = container.devBridgeServer.companionConnected,
+            taskPreviewState = container.taskDisplayBackend.previewState,
+            taskDisplaySession = container.taskDisplayBackend.activeSession,
             onTaskPreviewSurfaceAvailable = { session, surface ->
-                application.attachTaskPreview(session, surface)
+                container.attachTaskPreview(session, surface)
             },
             onTaskPreviewSurfaceDestroyed = { _, surface, release ->
-                application.detachTaskPreview(surface, release)
+                container.detachTaskPreview(surface, release)
             },
         )
         serviceScope.launch {
@@ -296,8 +296,8 @@ class AssistantForegroundService : Service() {
         /** Keep the foreground service only for an active task. The idle overlay host stays started normally. */
         fun reconcileLifetime(context: Context) {
             val appContext = context.applicationContext
-            val application = appContext as? PhoneControlApplication ?: return
-            val active = application.sessionCoordinator.state.value.isActive
+            val container = (appContext as? PhoneControlApplication)?.containerOrNull ?: return
+            val active = container.sessionCoordinator.state.value.isActive
             val overlayAvailable = OverlayPreferences.isEnabled(appContext) && Settings.canDrawOverlays(appContext)
             if (!overlayAvailable && !active) {
                 appContext.stopService(Intent(appContext, AssistantForegroundService::class.java))
@@ -312,8 +312,8 @@ class AssistantForegroundService : Service() {
 
         /** Post a result notification without bringing the assistant to the foreground. */
         fun showCompletionNotification(context: Context, message: String, conversationId: String? = null) {
-            val application = context.applicationContext as? PhoneControlApplication
-            if (application?.notificationVisibility?.shouldSuppressCompletionNotification() == true) return
+            val container = (context.applicationContext as? PhoneControlApplication)?.containerOrNull
+            if (container?.notificationVisibility?.shouldSuppressCompletionNotification() == true) return
             createNotificationChannels(context)
             val preview = completionNotificationPreview(message)
             val notification = NotificationCompat.Builder(context, RESULT_CHANNEL_ID)
@@ -332,8 +332,8 @@ class AssistantForegroundService : Service() {
 
         /** Notify the user without launching an Activity or interrupting Watch mode. */
         fun showAttentionNotification(context: Context, reason: String, conversationId: String? = null) {
-            val application = context.applicationContext as? PhoneControlApplication
-            if (application?.notificationVisibility?.shouldSuppressAttentionNotification() == true) return
+            val container = (context.applicationContext as? PhoneControlApplication)?.containerOrNull
+            if (container?.notificationVisibility?.shouldSuppressAttentionNotification() == true) return
             createNotificationChannels(context)
             val safeReason = reason.trim()
                 .ifBlank { "The phone assistant needs your attention." }
