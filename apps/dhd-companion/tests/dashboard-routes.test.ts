@@ -206,7 +206,7 @@ describe("dashboard route contract", () => {
     expect((await response.text()).toLowerCase().startsWith(prefix)).toBe(true);
   });
 
-  it.each(["/renderer.js", "/renderer.ts", "/api.js", "/api.ts"])(
+  it.each(["/renderer.js", "/renderer.ts", "/api.js", "/api.ts", "/pricing.js", "/tool-images.js"])(
     "serves browser module %s as JavaScript",
     async (path) => {
       const response = await fetch(`${baseUrl}${path}`);
@@ -227,6 +227,8 @@ describe("dashboard route contract", () => {
     ["POST", "/api/state"],
     ["GET", "/api/discover"],
     ["GET", "/renderer"],
+    ["GET", "/server.js"],
+    ["GET", "/Renderer.js"],
   ])("returns a plain 404 for %s %s", async (method, path) => {
     const response = await fetch(`${baseUrl}${path}`, { method });
 

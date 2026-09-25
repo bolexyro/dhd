@@ -8,6 +8,8 @@ import type {
   CompanionToolCallDebugImage,
   CompanionToolCallImageContent
 } from "./api.js";
+import { estimateTokenCost } from "./pricing.js";
+import { toolImageLabel, type ToolImage } from "./tool-images.js";
 
 function createWebApi(): CompanionClientApi {
   return {
@@ -175,80 +177,6 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 6,
 });
 
-interface TokenPricing {
-  inputPerMillion: number;
-  cachedInputPerMillion: number;
-  outputPerMillion: number;
-  longContextThreshold?: number;
-  longContextInputMultiplier?: number;
-  longContextOutputMultiplier?: number;
-}
-
-const DEFAULT_TOKEN_PRICING_MODEL = "gpt-6-luna";
-const TOKEN_PRICING: Record<string, TokenPricing> = {
-  "gpt-6-luna": {
-    inputPerMillion: 0.1,
-    cachedInputPerMillion: 0.01,
-    outputPerMillion: 0.5,
-    longContextThreshold: 272_000,
-    longContextInputMultiplier: 2,
-    longContextOutputMultiplier: 1.5,
-  },
-  "gpt-6-astra": {
-    inputPerMillion: 10,
-    cachedInputPerMillion: 1,
-    outputPerMillion: 50,
-    longContextThreshold: 272_000,
-    longContextInputMultiplier: 2,
-    longContextOutputMultiplier: 1.5,
-  },
-  "gpt-5.6-sol": {
-    inputPerMillion: 4,
-    cachedInputPerMillion: 0.4,
-    outputPerMillion: 20,
-    longContextThreshold: 272_000,
-    longContextInputMultiplier: 2,
-    longContextOutputMultiplier: 1.5,
-  },
-  "gpt-5.6-terra": {
-    inputPerMillion: 2,
-    cachedInputPerMillion: 0.2,
-    outputPerMillion: 12,
-    longContextThreshold: 272_000,
-    longContextInputMultiplier: 2,
-    longContextOutputMultiplier: 1.5,
-  },
-  "gpt-5.6-luna": {
-    inputPerMillion: 0.2,
-    cachedInputPerMillion: 0.02,
-    outputPerMillion: 1.2,
-    longContextThreshold: 272_000,
-    longContextInputMultiplier: 2,
-    longContextOutputMultiplier: 1.5,
-  },
-  "gpt-5.5": {
-    inputPerMillion: 5,
-    cachedInputPerMillion: 0.5,
-    outputPerMillion: 30,
-    longContextThreshold: 272_000,
-    longContextInputMultiplier: 2,
-    longContextOutputMultiplier: 1.5,
-  },
-  "gpt-5.4": {
-    inputPerMillion: 2.5,
-    cachedInputPerMillion: 0.25,
-    outputPerMillion: 15,
-    longContextThreshold: 272_000,
-    longContextInputMultiplier: 2,
-    longContextOutputMultiplier: 1.5,
-  },
-  "gpt-5.4-mini": {
-    inputPerMillion: 0.75,
-    cachedInputPerMillion: 0.075,
-    outputPerMillion: 4.5,
-  },
-};
-
 const TOAST_ICONS = {
   success: `<svg class="toast-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>`,
   error: `<svg class="toast-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
@@ -395,14 +323,6 @@ function renderPayload(
 function toolCallDuration(call: CompanionToolCall): string {
   if (call.durationMs === undefined) return "in progress";
   return `${call.durationMs}ms`;
-}
-
-type ToolImage = CompanionToolCallImageContent | CompanionToolCallDebugImage;
-
-function toolImageLabel(item: ToolImage): string {
-  return "label" in item
-    ? item.label === "before" ? "Before action" : "After action"
-    : `Response image ${item.index + 1}`;
 }
 
 function openToolImageDialog(
@@ -768,62 +688,6 @@ function formatTokenCount(value: number | null | undefined): string {
 
 function formatUsd(value: number): string {
   return value === 0 ? "$0.00" : usdFormatter.format(value);
-}
-
-interface TokenCostEstimate {
-  model: string;
-  totalCost: number;
-  uncachedInputCost: number;
-  cachedInputCost: number;
-  outputCost: number;
-  inputRatePerMillion: number;
-  cachedInputRatePerMillion: number;
-  outputRatePerMillion: number;
-  rateLabel: string;
-}
-
-function estimateTokenCost(
-  usage: NonNullable<CompanionState["tokenUsage"]>,
-): TokenCostEstimate | null {
-  const model = usage.model?.trim() || DEFAULT_TOKEN_PRICING_MODEL;
-  const pricing = TOKEN_PRICING[model];
-  if (!pricing) return null;
-
-  const cachedInputTokens = Math.min(usage.inputTokens, usage.cachedInputTokens);
-  const uncachedInputTokens = Math.max(0, usage.inputTokens - cachedInputTokens);
-  const usesLongContextRate =
-    pricing.longContextThreshold !== undefined &&
-    usage.inputTokens > pricing.longContextThreshold;
-  const serviceTierMultiplier = usage.serviceTier === "priority" ? 2 : 1;
-  const inputMultiplier = serviceTierMultiplier * (
-    usesLongContextRate ? pricing.longContextInputMultiplier ?? 1 : 1
-  );
-  const outputMultiplier = serviceTierMultiplier * (
-    usesLongContextRate ? pricing.longContextOutputMultiplier ?? 1 : 1
-  );
-  const uncachedInputCost =
-    (uncachedInputTokens / 1_000_000) * pricing.inputPerMillion * inputMultiplier;
-  const cachedInputCost =
-    (cachedInputTokens / 1_000_000) * pricing.cachedInputPerMillion * inputMultiplier;
-  const outputCost =
-    (usage.outputTokens / 1_000_000) * pricing.outputPerMillion * outputMultiplier;
-
-  const rateNotes = [
-    usage.serviceTier === "priority" ? "Priority 2x" : "Standard",
-    usesLongContextRate ? "long-context rate" : "",
-  ].filter(Boolean);
-
-  return {
-    model,
-    totalCost: uncachedInputCost + cachedInputCost + outputCost,
-    uncachedInputCost,
-    cachedInputCost,
-    outputCost,
-    inputRatePerMillion: pricing.inputPerMillion * inputMultiplier,
-    cachedInputRatePerMillion: pricing.cachedInputPerMillion * inputMultiplier,
-    outputRatePerMillion: pricing.outputPerMillion * outputMultiplier,
-    rateLabel: rateNotes.join(" · "),
-  };
 }
 
 function renderTokenUsage(

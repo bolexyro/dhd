@@ -1162,6 +1162,13 @@ function getContentType(path: string): string {
   return "text/plain; charset=utf-8";
 }
 
+const BROWSER_MODULES = new Set(["renderer", "api", "pricing", "tool-images"]);
+
+function browserModuleName(pathname: string): string | undefined {
+  const name = /^\/([a-z-]+)\.(?:js|ts)$/.exec(pathname)?.[1];
+  return name && BROWSER_MODULES.has(name) ? name : undefined;
+}
+
 function transpileTsFile(tsCode: string): string {
   return ts.transpileModule(tsCode, {
     compilerOptions: {
@@ -1367,11 +1374,9 @@ export function createCompanionWebServer(): http.Server {
     if (pathname === "/favicon.png") {
       return serveStaticFile(res, "favicon.png");
     }
-    if (pathname === "/renderer.js" || pathname === "/renderer.ts") {
-      return serveStaticFile(res, "renderer.js");
-    }
-    if (pathname === "/api.js" || pathname === "/api.ts") {
-      return serveStaticFile(res, "api.js");
+    const browserModule = browserModuleName(pathname);
+    if (browserModule) {
+      return serveStaticFile(res, `${browserModule}.js`);
     }
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Not Found");
