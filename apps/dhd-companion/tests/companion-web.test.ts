@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { companionDashboard } from "../src/dashboard/server/dashboard.js";
 import { createCompanionWebServer } from "../src/dashboard/server/routes.js";
-import type { CompanionState } from "../src/companion-web/api.js";
+import type { CompanionState } from "../src/dashboard/client/api.js";
 
 const openServers: ReturnType<typeof createCompanionWebServer>[] = [];
 

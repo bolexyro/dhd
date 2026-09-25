@@ -6,7 +6,7 @@ import {
 } from "../../shared/companion-events.js";
 import { errorMessage } from "../../shared/errors.js";
 import { isPlainRecord, isRecord } from "../../shared/guards.js";
-import type { CompanionToolCall, CompanionToolCallResponse } from "../../companion-web/api.js";
+import type { CompanionToolCall, CompanionToolCallResponse } from "../client/api.js";
 
 const MAX_TOOL_CALLS = 50;
 

@@ -1,6 +1,6 @@
 import http from "node:http";
 
-import type { DiscoveredPhoneSnapshot } from "../../companion-web/api.js";
+import type { DiscoveredPhoneSnapshot } from "../client/api.js";
 import { errorMessage } from "../../shared/errors.js";
 import type { CompanionDashboard } from "./dashboard.js";
 import { discoveredPhoneSnapshot } from "./pairing-service.js";

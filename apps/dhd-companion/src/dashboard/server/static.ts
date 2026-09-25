@@ -7,9 +7,9 @@ import ts from "typescript";
 
 const MODULE_DIRECTORY = fileURLToPath(new URL(".", import.meta.url));
 const PROJECT_ROOT = resolve(MODULE_DIRECTORY, "../../../");
-export const CLIENT_SOURCE_DIRECTORY = resolve(PROJECT_ROOT, "src/companion-web");
-export const CLIENT_DIST_DIRECTORY = resolve(PROJECT_ROOT, "dist/companion-web");
-const BROWSER_MODULES = new Set(["renderer", "api", "pricing", "tool-images"]);
+export const CLIENT_SOURCE_DIRECTORY = resolve(PROJECT_ROOT, "src/dashboard/client");
+export const CLIENT_DIST_DIRECTORY = resolve(PROJECT_ROOT, "dist/dashboard/client");
+const BROWSER_MODULES = new Set(["api", "pricing", "tool-images"]);
 const NO_CACHE_HEADERS = {
   "Cache-Control": "no-cache, no-store, must-revalidate",
   "Pragma": "no-cache",
@@ -28,6 +28,7 @@ function getContentType(path: string): string {
 
 export function browserModuleName(pathname: string): string | undefined {
   const name = /^\/([a-z-]+)\.(?:js|ts)$/.exec(pathname)?.[1];
+  if (name === "renderer") return "main";
   return name && BROWSER_MODULES.has(name) ? name : undefined;
 }
 

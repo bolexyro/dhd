@@ -1,4 +1,4 @@
-import type { CompanionState, DiscoveredPhoneSnapshot } from "../../companion-web/api.js";
+import type { CompanionState, DiscoveredPhoneSnapshot } from "../client/api.js";
 import {
   DEFAULT_PHONE_DISCOVERY_TIMEOUT_MS,
   discoverPhones,

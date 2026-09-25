@@ -2,9 +2,9 @@ import type {
   CompanionJsonValue,
   CompanionPlanStep,
   CompanionTokenUsageMetrics
-} from "../shared/companion-events.js";
+} from "../../shared/companion-events.js";
 
-export type { CompanionJsonValue } from "../shared/companion-events.js";
+export type { CompanionJsonValue } from "../../shared/companion-events.js";
 
 export type CompanionProcessStatus = "stopped" | "starting" | "running" | "stopping" | "error";
 export type BridgeStatus = "unknown" | "checking" | "connected" | "offline";

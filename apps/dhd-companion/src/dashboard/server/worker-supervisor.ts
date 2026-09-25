@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { BridgeCheckResult, CompanionState } from "../../companion-web/api.js";
+import type { BridgeCheckResult, CompanionState } from "../client/api.js";
 import type { CompanionDashboard } from "./dashboard.js";
 import { sameConnection, type ConnectionConfig } from "./settings-store.js";
 import type { DashboardState } from "./state-store.js";

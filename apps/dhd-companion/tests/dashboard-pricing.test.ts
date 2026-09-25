@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { CompanionTokenUsageSnapshot } from "../src/companion-web/api.js";
-import { DEFAULT_TOKEN_PRICING_MODEL, TOKEN_PRICING, estimateTokenCost } from "../src/companion-web/pricing.js";
-import { toolImageLabel } from "../src/companion-web/tool-images.js";
+import type { CompanionTokenUsageSnapshot } from "../src/dashboard/client/api.js";
+import { DEFAULT_TOKEN_PRICING_MODEL, TOKEN_PRICING, estimateTokenCost } from "../src/dashboard/client/pricing.js";
+import { toolImageLabel } from "../src/dashboard/client/tool-images.js";
 
 function usage(overrides: Partial<CompanionTokenUsageSnapshot> = {}): CompanionTokenUsageSnapshot {
   return {

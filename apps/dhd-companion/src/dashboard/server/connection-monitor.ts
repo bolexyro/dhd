@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { BridgeCheckResult, PhoneSnapshot } from "../../companion-web/api.js";
+import type { BridgeCheckResult, PhoneSnapshot } from "../client/api.js";
 import { requestBridge } from "../../phone/bridge-client.js";
 import type { BridgeMessage } from "../../phone/protocol.js";
 import { errorMessage } from "../../shared/errors.js";

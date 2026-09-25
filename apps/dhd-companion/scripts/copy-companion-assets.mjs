@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
 
-for (const dirName of ["companion-web"]) {
+for (const dirName of ["dashboard/client"]) {
   const sourceDirectory = resolve(projectRoot, "src", dirName);
   const outputDirectory = resolve(projectRoot, "dist", dirName);
 

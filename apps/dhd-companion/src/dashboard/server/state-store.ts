@@ -16,7 +16,7 @@ import type {
   CompanionState,
   CompanionTokenUsageSnapshot,
   PhoneSnapshot,
-} from "../../companion-web/api.js";
+} from "../client/api.js";
 import { initialConnection, type ConnectionConfig } from "./settings-store.js";
 import type { SseHub } from "./sse.js";
 import { ToolCallStore } from "./tool-call-store.js";
