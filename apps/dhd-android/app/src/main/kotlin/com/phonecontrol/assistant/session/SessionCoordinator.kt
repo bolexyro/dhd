@@ -38,15 +38,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlin.math.roundToInt
-import kotlin.random.Random
-
-private val CALIBRATION_ANCHORS = arrayOf(
-    0.18f to 0.16f,
-    0.82f to 0.16f,
-    0.18f to 0.84f,
-    0.82f to 0.84f,
-)
 
 private data class PendingAttention(
     val sessionId: String,
@@ -79,7 +70,7 @@ class SessionCoordinator(
     private val lock = Any()
     private val _state = MutableStateFlow<SessionState>(SessionState.Idle)
     private val activityLog = ActivityLog(conversationStore)
-    private val _pointerEvent = MutableStateFlow<TaskPointerEvent?>(null)
+    private val pointerFeedback = PointerFeedback()
     private val toolCallLog = ToolCallLog()
     private var sessionJob: Job? = null
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -93,7 +84,7 @@ class SessionCoordinator(
     val toolCalls: StateFlow<List<DhdToolCall>> = toolCallLog.toolCalls
 
     /** Latest task-display pointer feedback for the read-only live preview. */
-    val pointerEvent: StateFlow<TaskPointerEvent?> = _pointerEvent.asStateFlow()
+    val pointerEvent: StateFlow<TaskPointerEvent?> = pointerFeedback.pointerEvent
 
     /** Stable owner key used by the phone bridge to choose the task display. */
     fun activeSessionId(): String? = synchronized(lock) {
@@ -117,7 +108,7 @@ class SessionCoordinator(
         val normalizedReasoningEffort = ReasoningEffort.fromCodexValue(reasoningEffort)?.codexValue
             ?: ReasoningEffort.default.codexValue
         completedAttentions.clear()
-        _pointerEvent.value = null
+        pointerFeedback.clear()
         val startedRun = conversationStore?.startRun(sessionId, request, conversationId)
         handoff.release()
         toolCallLog.clear()
@@ -343,7 +334,7 @@ class SessionCoordinator(
             requestedConversationId = stopped.conversationId,
         )
         completedAttentions.clear()
-        _pointerEvent.value = null
+        pointerFeedback.clear()
         handoff.release()
         _state.value = SessionState.Running(
             sessionId = sessionId,
@@ -392,7 +383,7 @@ class SessionCoordinator(
             request = current.requestOrNull() ?: "",
             workedDurationMs = workedDurationMs,
         )
-        _pointerEvent.value = null
+        pointerFeedback.clear()
         conversationStore?.completeRun(sessionId, RunStatus.STOPPED)
         appendEvent(ActivityEventKind.SESSION_STOPPED, reason, sessionId)
         true
@@ -416,7 +407,7 @@ class SessionCoordinator(
         }
         steers.clearAll()
         handoff.release()
-        _pointerEvent.value = null
+        pointerFeedback.clear()
         toolCallLog.clear()
         activityLog.clear()
         _state.value = SessionState.Idle
@@ -457,7 +448,7 @@ class SessionCoordinator(
             request = current.requestOrNull() ?: "",
             workedDurationMs = workedDurationMs,
         )
-        _pointerEvent.value = null
+        pointerFeedback.clear()
         conversationStore?.completeRun(
             sessionId,
             RunStatus.FAILED,
@@ -506,7 +497,7 @@ class SessionCoordinator(
             conversationId = conversationId,
             workedDurationMs = workedDurationMs,
         )
-        _pointerEvent.value = null
+        pointerFeedback.clear()
         // Feedback is emitted as an AGENT_MESSAGE below so the live timeline
         // and the durable timeline share one row. The fallback completion has
         // no separate event, so persist it directly here.
@@ -997,33 +988,7 @@ class SessionCoordinator(
         if (current.sessionIdOrNull != sessionId || !current.isActive || observation == null) {
             return@synchronized
         }
-        val sequence = (_pointerEvent.value?.sequence ?: 0L) + 1L
-        val nextEvent = when (action) {
-            is TapAction -> TaskPointerEvent.Click(
-                sequence = sequence,
-                sessionId = sessionId,
-                x = action.x,
-                y = action.y,
-                displayWidth = observation.width,
-                displayHeight = observation.height,
-                phase = clickPhase,
-            )
-
-            is SwipeAction -> TaskPointerEvent.Swipe(
-                sequence = sequence,
-                sessionId = sessionId,
-                startX = action.startX,
-                startY = action.startY,
-                endX = action.endX,
-                endY = action.endY,
-                durationMs = action.durationMs,
-                displayWidth = observation.width,
-                displayHeight = observation.height,
-            )
-
-            else -> return@synchronized
-        }
-        _pointerEvent.value = nextEvent
+        pointerFeedback.publishGesture(sessionId, action, observation, clickPhase)
     }
 
     /**
@@ -1040,17 +1005,7 @@ class SessionCoordinator(
             return@synchronized null
         }
 
-        val (xRatio, yRatio) = CALIBRATION_ANCHORS[Random.nextInt(CALIBRATION_ANCHORS.size)]
-        val nextEvent = TaskPointerEvent.Calibration(
-            sequence = (_pointerEvent.value?.sequence ?: 0L) + 1L,
-            sessionId = sessionId,
-            x = (observation.width * xRatio).roundToInt().coerceIn(0, observation.width - 1),
-            y = (observation.height * yRatio).roundToInt().coerceIn(0, observation.height - 1),
-            displayWidth = observation.width,
-            displayHeight = observation.height,
-        )
-        _pointerEvent.value = nextEvent
-        nextEvent
+        pointerFeedback.publishCalibration(sessionId, observation)
     }
 
     fun close() {
