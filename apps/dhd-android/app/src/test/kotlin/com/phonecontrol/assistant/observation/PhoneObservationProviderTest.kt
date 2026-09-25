@@ -11,7 +11,7 @@ import org.junit.Test
 class PhoneObservationProviderTest {
     @Test
     fun `parses current focus package and expands relative activity`() {
-        val focused = parseFocusedWindow(
+        val focused = ActivityDumpParser.focusedWindow(
             "mCurrentFocus=Window{123 u0 com.spotify/.MainActivity}",
         )
 
@@ -21,7 +21,7 @@ class PhoneObservationProviderTest {
 
     @Test
     fun `parses focused app when current focus is absent`() {
-        val focused = parseFocusedWindow(
+        val focused = ActivityDumpParser.focusedWindow(
             "mFocusedApp=ActivityRecord{456 u0 com.example.mail/com.example.mail.ComposeActivity}",
         )
 
@@ -31,7 +31,7 @@ class PhoneObservationProviderTest {
 
     @Test
     fun `returns no foreground app when the dump has no supported focus line`() {
-        assertNull(parseFocusedWindow("mCurrentFocus=Window{null}"))
+        assertNull(ActivityDumpParser.focusedWindow("mCurrentFocus=Window{null}"))
     }
 
     @Test

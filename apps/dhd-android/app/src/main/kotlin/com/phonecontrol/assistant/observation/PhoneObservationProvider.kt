@@ -46,24 +46,6 @@ sealed interface ForegroundAppResult {
     data class Failed(val code: String, val message: String) : ForegroundAppResult
 }
 
-internal data class FocusedWindow(
-    val packageName: String,
-    val activityName: String,
-)
-
-internal fun parseFocusedWindow(text: String): FocusedWindow? {
-    val match = FOCUS_REGEX.find(text) ?: return null
-    val packageName = match.groupValues[1]
-    val activityName = match.groupValues[2].let { raw ->
-        if (raw.startsWith('.')) packageName + raw else raw
-    }
-    return FocusedWindow(packageName, activityName)
-}
-
-private val FOCUS_REGEX = Regex(
-    "m(?:CurrentFocus|FocusedApp)=.*\\s([A-Za-z0-9_.\\$]+)/(\\.?[A-Za-z0-9_.\\$]+)",
-)
-
 /**
  * Captures the physical display using the selected DHD phone shell and records the
  * package/fingerprint binding needed by the policy layer.
@@ -380,7 +362,7 @@ class PhoneObservationProvider(
         screenshots[snapshot.id]?.copyOf()
     }
 
-    private suspend fun readFocusedWindow(): FocusedWindow? = when (val result = readFocusedWindowResult()) {
+    private suspend fun readFocusedWindow(): FocusedComponent? = when (val result = readFocusedWindowResult()) {
         is FocusedWindowReadResult.Found -> result.window
         is FocusedWindowReadResult.Failed -> null
     }
@@ -398,7 +380,7 @@ class PhoneObservationProvider(
             )
         }
         val text = result.stdout.toString(Charsets.UTF_8)
-        return parseFocusedWindow(text)?.let { focused ->
+        return ActivityDumpParser.focusedWindow(text)?.let { focused ->
             FocusedWindowReadResult.Found(focused, text)
         }
             ?: FocusedWindowReadResult.Failed(
@@ -473,7 +455,7 @@ class PhoneObservationProvider(
     }
 
     private sealed interface FocusedWindowReadResult {
-        data class Found(val window: FocusedWindow, val dump: String) : FocusedWindowReadResult
+        data class Found(val window: FocusedComponent, val dump: String) : FocusedWindowReadResult
         data class Failed(val code: String, val message: String) : FocusedWindowReadResult
     }
 

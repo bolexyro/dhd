@@ -6,6 +6,7 @@ import android.view.Display
 import android.view.Surface
 import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.data.ConversationStore
+import com.phonecontrol.assistant.observation.ActivityDumpParser
 import com.phonecontrol.assistant.observation.ForegroundAppInfo
 import com.phonecontrol.assistant.execution.PhoneProcessRunner
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
@@ -54,35 +55,6 @@ sealed interface TaskPreviewState {
 }
 
 /**
- * Returns whether [packageName] still has an activity/task on [displayId].
- * A null result means the command output did not contain a recognizable
- * section for that display, so callers must treat the observation as unknown.
- */
-internal fun parseDisplayTaskPresence(
-    text: String,
-    displayId: Int,
-    packageName: String,
-): Boolean? {
-    if (displayId <= 0 || packageName.isBlank()) return null
-    val packagePattern = Regex(
-        "(?<![A-Za-z0-9_])${Regex.escape(packageName)}(?:/|(?=[^A-Za-z0-9_.]|$))",
-    )
-    var currentDisplay: Int? = null
-    var sawDisplay = false
-    for (line in text.lineSequence()) {
-        DISPLAY_ID_REGEX.find(line)?.let { match ->
-            currentDisplay = match.groupValues
-                .drop(1)
-                .firstOrNull(String::isNotBlank)
-                ?.toIntOrNull()
-            if (currentDisplay == displayId) sawDisplay = true
-        }
-        if (currentDisplay == displayId && packagePattern.containsMatchIn(line)) return true
-    }
-    return if (sawDisplay) false else null
-}
-
-/**
  * A stopped run can leave its terminal record queued for asynchronous
  * persistence. The synchronous cancellation tombstone is authoritative while
  * that write is pending, so a continuation may reclaim the native display.
@@ -122,11 +94,6 @@ internal fun taskDisplayUnavailableForRecord(
             record = record,
         )
 }
-
-private val DISPLAY_ID_REGEX = Regex(
-    "(?:\\bdisplayId\\s*[:=]?\\s*(\\d+))|(?:\\bmDisplayId\\s*[:=]?\\s*(\\d+))|(?:\\bDisplay\\s*#?\\s*(\\d+)\\b)",
-    RegexOption.IGNORE_CASE,
-)
 
 internal interface TaskDisplayPlatform {
     fun isFullSizeLayoutEnabled(packageName: String): Boolean
@@ -870,7 +837,7 @@ class DhdTaskDisplayBackend internal constructor(
                 missingPolls.keys.retainAll(currentKeys)
                 candidates.forEach { session ->
                     val currentPackage = findRecord(session.sessionKey)?.packageName ?: session.packageName
-                    when (parseDisplayTaskPresence(output, session.displayId, currentPackage)) {
+                    when (ActivityDumpParser.displayTaskPresence(output, session.displayId, currentPackage)) {
                         true -> missingPolls.remove(session.sessionKey)
                         false -> {
                             val count = (missingPolls[session.sessionKey] ?: 0) + 1
@@ -1701,7 +1668,7 @@ class DhdTaskDisplayBackend internal constructor(
         val result = processRunner.run(listOf("dumpsys", "activity", "activities"))
         if (result.timedOut || result.exitCode != 0) return null
         val text = result.stdout.toString(Charsets.UTF_8)
-        val focused = parseDisplayFocusedWindow(text, session.displayId) ?: return null
+        val focused = ActivityDumpParser.displayFocusedWindow(text, session.displayId) ?: return null
         val rotation = platform.displayRotation(session.displayId) ?: return null
         return ForegroundAppInfo(
             packageName = focused.packageName,
@@ -1739,33 +1706,6 @@ class DhdTaskDisplayBackend internal constructor(
                 })
             }
         }
-    }
-
-    internal data class FocusedComponent(val packageName: String, val activityName: String)
-
-    internal fun parseDisplayFocusedWindow(text: String, displayId: Int): FocusedComponent? {
-        var currentDisplay: Int? = null
-        var candidate: FocusedComponent? = null
-        for (line in text.lineSequence()) {
-            DISPLAY_ID_REGEX.find(line)?.let { match ->
-                currentDisplay = match.groupValues
-                    .drop(1)
-                    .firstOrNull(String::isNotBlank)
-                    ?.toIntOrNull()
-            }
-            val marker = line.contains("topResumedActivity", ignoreCase = true) ||
-                line.contains("mResumedActivity", ignoreCase = true) ||
-                line.contains("mCurrentFocus", ignoreCase = true) ||
-                line.contains("mFocusedApp", ignoreCase = true)
-            if (!marker || currentDisplay != displayId) continue
-            COMPONENT_REGEX.find(line)?.let { match ->
-                val packageName = match.groupValues[1]
-                val rawActivity = match.groupValues[2]
-                val activityName = if (rawActivity.startsWith('.')) packageName + rawActivity else rawActivity
-                candidate = FocusedComponent(packageName, activityName)
-            }
-        }
-        return candidate
     }
 
     private fun DhdVirtualDisplaySession.toTaskSession(): TaskDisplaySession {
@@ -1847,9 +1787,6 @@ class DhdTaskDisplayBackend internal constructor(
         private const val MAX_RECORD_ERROR_CHARS = 4_000
         private const val RECONCILIATION_ATTEMPTS = 4
         private const val RECONCILIATION_RETRY_DELAY_MS = 250L
-        private val COMPONENT_REGEX = Regex(
-            "\\b([A-Za-z][A-Za-z0-9_.$]*)/(\\.?[A-Za-z0-9_.$]+)",
-        )
     }
 }
 

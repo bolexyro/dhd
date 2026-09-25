@@ -8,6 +8,8 @@ import com.phonecontrol.assistant.execution.TaskDisplayResolution
 import com.phonecontrol.assistant.execution.TaskDisplaySpec
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
 import com.phonecontrol.assistant.execution.taskDisplayReference
+import com.phonecontrol.assistant.observation.ActivityDumpParser
+import com.phonecontrol.assistant.observation.FocusedComponent
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -537,14 +539,14 @@ class DhdTaskDisplayBackendBehaviorTest {
               mResumedActivity: ActivityRecord{d u0 com.example.mail/.Inbox t43}
         """.trimIndent()
         assertEquals(
-            DhdTaskDisplayBackend.FocusedComponent("com.example.shop", "com.example.shop.CheckoutActivity"),
-            backend.parseDisplayFocusedWindow(dump, 7),
+            FocusedComponent("com.example.shop", "com.example.shop.CheckoutActivity"),
+            ActivityDumpParser.displayFocusedWindow(dump, 7),
         )
         assertEquals(
-            DhdTaskDisplayBackend.FocusedComponent("com.example.mail", "com.example.mail.Inbox"),
-            backend.parseDisplayFocusedWindow(dump, 8),
+            FocusedComponent("com.example.mail", "com.example.mail.Inbox"),
+            ActivityDumpParser.displayFocusedWindow(dump, 8),
         )
-        assertNull(backend.parseDisplayFocusedWindow(dump, 9))
-        assertNull(backend.parseDisplayFocusedWindow("Display #7\n  mCurrentFocus=null", 7))
+        assertNull(ActivityDumpParser.displayFocusedWindow(dump, 9))
+        assertNull(ActivityDumpParser.displayFocusedWindow("Display #7\n  mCurrentFocus=null", 7))
     }
 }

@@ -2,6 +2,7 @@ package com.phonecontrol.assistant.display
 
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
 import com.phonecontrol.assistant.execution.TaskDisplayRecord
+import com.phonecontrol.assistant.observation.ActivityDumpParser
 import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -110,7 +111,7 @@ class DhdTaskDisplayBackendTest {
 
         assertEquals(
             true,
-            parseDisplayTaskPresence(dump, displayId = 7, packageName = "com.example.target"),
+            ActivityDumpParser.displayTaskPresence(dump, displayId = 7, packageName = "com.example.target"),
         )
     }
 
@@ -124,14 +125,14 @@ class DhdTaskDisplayBackendTest {
 
         assertEquals(
             false,
-            parseDisplayTaskPresence(dump, displayId = 7, packageName = "com.example.target"),
+            ActivityDumpParser.displayTaskPresence(dump, displayId = 7, packageName = "com.example.target"),
         )
     }
 
     @Test
     fun `treats an unrecognizable display section as unknown`() {
         assertNull(
-            parseDisplayTaskPresence(
+            ActivityDumpParser.displayTaskPresence(
                 "Display #2 (activities from top to bottom):",
                 displayId = 7,
                 packageName = "com.example.target",
@@ -148,7 +149,7 @@ class DhdTaskDisplayBackendTest {
 
         assertEquals(
             false,
-            parseDisplayTaskPresence(dump, displayId = 7, packageName = "com.example.target"),
+            ActivityDumpParser.displayTaskPresence(dump, displayId = 7, packageName = "com.example.target"),
         )
     }
 }
