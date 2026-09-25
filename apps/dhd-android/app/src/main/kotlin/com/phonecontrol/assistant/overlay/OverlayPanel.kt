@@ -42,6 +42,7 @@ import com.phonecontrol.assistant.overlay.cards.FloatingRecoveryCard
 import com.phonecontrol.assistant.overlay.cards.FloatingResultCard
 import com.phonecontrol.assistant.overlay.cards.FloatingVirtualDisplayCard
 import com.phonecontrol.assistant.overlay.composer.Composer
+import com.phonecontrol.assistant.overlay.composer.Glyph
 import com.phonecontrol.assistant.overlay.composer.GlyphButton
 import com.phonecontrol.assistant.overlay.effects.ComposerPerimeterGlow
 import com.phonecontrol.assistant.session.DhdToolCall
@@ -514,7 +515,7 @@ private fun PanelHeader(
         Spacer(Modifier.weight(1f))
         GlyphButton(
             label = "Minimize assistant",
-            glyph = "down",
+            glyph = Glyph.DOWN,
             onClick = onCollapse,
         )
     }

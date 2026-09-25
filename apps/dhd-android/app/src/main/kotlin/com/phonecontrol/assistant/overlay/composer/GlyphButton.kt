@@ -26,10 +26,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
+internal enum class Glyph { SEND, STOP, DOWN }
+
 @Composable
 internal fun GlyphButton(
     label: String,
-    glyph: String,
+    glyph: Glyph,
     onClick: () -> Unit,
     enabled: Boolean = true,
     filled: Boolean = false,
@@ -38,7 +40,7 @@ internal fun GlyphButton(
 ) {
     val colors = LocalAssistantColors.current
     val tint = when {
-        glyph == "stop" -> Color(0xFF1E2B45).copy(alpha = 0.88f)
+        glyph == Glyph.STOP -> Color(0xFF1E2B45).copy(alpha = 0.88f)
         filled && enabled -> colors.sendButtonActiveBg
         filled -> colors.sendButtonInactiveBg
         enabled -> colors.surfaceCard.copy(alpha = 0.78f)
@@ -50,7 +52,7 @@ internal fun GlyphButton(
             .clip(CircleShape)
             .background(tint)
             .then(
-                if (glyph == "stop") {
+                if (glyph == Glyph.STOP) {
                     Modifier.border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f), CircleShape)
                 } else {
                     Modifier
@@ -65,7 +67,7 @@ internal fun GlyphButton(
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        if (glyph == "send") {
+        if (glyph == Glyph.SEND) {
             Icon(
                 painter = painterResource(com.phonecontrol.assistant.R.drawable.ic_send_arrow),
                 contentDescription = null,
@@ -76,25 +78,25 @@ internal fun GlyphButton(
             val color = when {
                 !enabled -> colors.sendButtonInactiveIcon
                 filled -> colors.sendButtonActiveIcon
-                glyph == "stop" -> colors.textPrimary.copy(alpha = 0.78f)
+                glyph == Glyph.STOP -> colors.textPrimary.copy(alpha = 0.78f)
                 else -> colors.textSecondary
             }
             val path = Path()
             when (glyph) {
-                "down" -> {
+                Glyph.DOWN -> {
                     path.moveTo(size.width * 0.25f, size.height * 0.4f)
                     path.lineTo(size.width * 0.5f, size.height * 0.65f)
                     path.lineTo(size.width * 0.75f, size.height * 0.4f)
                     drawPath(path, color, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
                 }
-                "stop" -> drawRoundRect(
+                Glyph.STOP -> drawRoundRect(
                     color = Color.White.copy(alpha = 0.95f),
                     topLeft = Offset(size.width * 0.24f, size.height * 0.24f),
                     size = Size(size.width * 0.52f, size.height * 0.52f),
                     cornerRadius = CornerRadius(3.5.dp.toPx()),
                     style = Stroke(1.8.dp.toPx()),
                 )
-                else -> Unit
+                Glyph.SEND -> Unit
             }
         }
     }

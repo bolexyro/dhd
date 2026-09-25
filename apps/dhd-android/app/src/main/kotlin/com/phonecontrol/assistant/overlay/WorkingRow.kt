@@ -34,6 +34,7 @@ import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.needsAttention
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.overlay.bubble.DhdIdentity
+import com.phonecontrol.assistant.overlay.composer.Glyph
 import com.phonecontrol.assistant.overlay.composer.GlyphButton
 import com.phonecontrol.assistant.overlay.effects.GeminiHorizonGlow
 import com.phonecontrol.assistant.session.DhdToolCall
@@ -162,7 +163,7 @@ internal fun WorkingRow(
 
             GlyphButton(
                 label = "Stop assistant",
-                glyph = "stop",
+                glyph = Glyph.STOP,
                 onClick = onStop,
                 filled = true,
                 buttonSize = 44.dp,
@@ -276,7 +277,7 @@ private fun WorkingContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End,
         ) {
-            GlyphButton(label = "Stop assistant", glyph = "stop", onClick = onStop)
+            GlyphButton(label = "Stop assistant", glyph = Glyph.STOP, onClick = onStop)
         }
     }
 }

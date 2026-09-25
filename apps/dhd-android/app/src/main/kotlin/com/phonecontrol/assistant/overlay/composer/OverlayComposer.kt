@@ -281,7 +281,7 @@ internal fun Composer(
                 Spacer(Modifier.width(8.dp))
                 GlyphButton(
                     label = "Send request",
-                    glyph = "send",
+                    glyph = Glyph.SEND,
                     onClick = ::submit,
                     enabled = draft.isNotBlank(),
                     filled = true,
@@ -315,7 +315,7 @@ internal fun Composer(
                 Spacer(Modifier.width(10.dp))
                 GlyphButton(
                     label = "Send request",
-                    glyph = "send",
+                    glyph = Glyph.SEND,
                     onClick = ::submit,
                     enabled = draft.isNotBlank(),
                     filled = true,
