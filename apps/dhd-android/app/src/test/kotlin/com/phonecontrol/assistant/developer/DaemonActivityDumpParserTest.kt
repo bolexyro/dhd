@@ -23,9 +23,19 @@ class DaemonActivityDumpParserTest {
     }
 
     @Test
-    fun `known gap a dotted child package also verifies the parent package`() {
+    fun `a dotted child or parent package does not verify the launch`() {
         val child = "Display #7\n  mResumedActivity: ActivityRecord{a u0 com.example.shop.child/.Main t1}"
+        val parent = "Display #7\n  mResumedActivity: ActivityRecord{a u0 net.com.example.shop/.Main t1}"
 
-        assertTrue(DaemonActivityDumpParser.hasFocusedPackage(child, 7, "com.example.shop"))
+        assertFalse(DaemonActivityDumpParser.hasFocusedPackage(child, 7, "com.example.shop"))
+        assertFalse(DaemonActivityDumpParser.hasFocusedPackage(parent, 7, "com.example.shop"))
+        assertTrue(DaemonActivityDumpParser.hasFocusedPackage(child, 7, "com.example.shop.child"))
+    }
+
+    @Test
+    fun `a package named at the end of the focus line verifies the launch`() {
+        val taskOnly = "Display #7\n  mFocusedApp=com.example.shop"
+
+        assertTrue(DaemonActivityDumpParser.hasFocusedPackage(taskOnly, 7, "com.example.shop"))
     }
 }

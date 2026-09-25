@@ -16,7 +16,7 @@ final class DaemonActivityDumpParser {
     static boolean hasFocusedPackage(String output, int expectedDisplayId, String expectedPackage) {
         int currentDisplay = -1;
         Pattern packagePattern = Pattern.compile(
-                "(?<![A-Za-z0-9_])" + Pattern.quote(expectedPackage) + "(?:/|\\b)");
+                "(?<![A-Za-z0-9_.])" + Pattern.quote(expectedPackage) + "(?:/|(?=[^A-Za-z0-9_.]|$))");
         for (String line : output.split("\\r?\\n")) {
             Matcher display = ACTIVITY_DISPLAY_HEADER_PATTERN.matcher(line);
             if (display.find()) currentDisplay = Integer.parseInt(display.group(1));
