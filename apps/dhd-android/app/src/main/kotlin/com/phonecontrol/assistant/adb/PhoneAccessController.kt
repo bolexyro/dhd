@@ -2,6 +2,7 @@ package com.phonecontrol.assistant.adb
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -127,15 +128,18 @@ data class DeveloperModeStatus(
  * itself; the user explicitly turns that maintenance switch on when Android
  * has restarted the maintenance process or pairing is needed.
  */
-class PhoneAccessController(context: Context) {
+class PhoneAccessController internal constructor(
+    context: Context,
+    private val preferences: SharedPreferences,
+    private val mdns: DhdAdbMdns,
+    private val maintenanceBootstrap: DhdMaintenanceBootstrap,
+    keyFactory: () -> DhdAdbKey,
+) {
     private val appContext = context.applicationContext
-    private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val mdns = DhdAdbMdns(appContext)
     private val commandMutex = Mutex()
-    private val maintenanceBootstrap = DhdMaintenanceBootstrap(appContext, preferences)
     private val maintenanceRecoveryPolicy = DhdMaintenanceRecoveryPolicy()
-    private val key by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { DhdAdbKey.from(appContext) }
+    private val key by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { keyFactory() }
     private val _status = MutableStateFlow(DeveloperModeStatus())
     private val started = AtomicBoolean(false)
     private val maintenanceProbeGate = AtomicBoolean(false)

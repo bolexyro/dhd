@@ -2,6 +2,8 @@ package com.phonecontrol.assistant.app
 
 import android.content.Context
 import android.view.Surface
+import com.phonecontrol.assistant.adb.DhdAdbKey
+import com.phonecontrol.assistant.adb.DhdAdbMdns
 import com.phonecontrol.assistant.adb.DhdAdbProcessRunner
 import com.phonecontrol.assistant.adb.PhoneAccessController
 import com.phonecontrol.assistant.apps.AppPermissionRepository
@@ -14,6 +16,7 @@ import com.phonecontrol.assistant.display.DhdTaskDisplayBackend
 import com.phonecontrol.assistant.display.DhdVirtualDisplayManager
 import com.phonecontrol.assistant.display.PreviewSurfaceDispatcher
 import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
+import com.phonecontrol.assistant.maintenance.DhdMaintenanceBootstrap
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.execution.TypedPhoneActionTransport
 import com.phonecontrol.assistant.observation.PhoneObservationProvider
@@ -31,7 +34,7 @@ class AppContainer(context: Context) {
     private val previewScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val notificationVisibility = DhdNotificationVisibility()
     val appPermissionRepository = AppPermissionRepository(context)
-    val phoneAccessController = PhoneAccessController(context).also { it.start() }
+    val phoneAccessController = buildPhoneAccessController(context).also { it.start() }
     val processRunner = DhdAdbProcessRunner(phoneAccessController)
     val conversationStore = ConversationStore(context)
     val taskDisplayLayoutPreferences = TaskDisplayLayoutPreferences(context)
@@ -112,6 +115,18 @@ class AppContainer(context: Context) {
             attach = { session, surface -> taskDisplayBackend.attachLiveSurface(session, surface) },
             detach = { session, surface -> taskDisplayBackend.detachLiveSurface(session, surface) },
             onFailure = { error -> android.util.Log.w("DhdPreview", "Surface lifecycle failed", error) },
+        )
+    }
+
+    private fun buildPhoneAccessController(context: Context): PhoneAccessController {
+        val appContext = context.applicationContext
+        val preferences = appContext.getSharedPreferences(PhoneAccessController.PREFERENCES_NAME, Context.MODE_PRIVATE)
+        return PhoneAccessController(
+            context = appContext,
+            preferences = preferences,
+            mdns = DhdAdbMdns(appContext),
+            maintenanceBootstrap = DhdMaintenanceBootstrap(appContext, preferences),
+            keyFactory = { DhdAdbKey.from(appContext) },
         )
     }
 
