@@ -2,6 +2,7 @@ package com.phonecontrol.assistant.overlay
 
 import android.content.Context
 import com.phonecontrol.assistant.data.UiPreferencesRepository
+import com.phonecontrol.assistant.overlay.bubble.BubblePosition
 
 object OverlayPreferences {
     private fun repository(context: Context) = UiPreferencesRepository(

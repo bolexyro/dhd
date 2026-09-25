@@ -62,25 +62,3 @@ class OverlayVisibilityGate {
         }
     }
 }
-
-data class BubblePosition(val x: Int, val y: Int)
-
-fun clampBubblePosition(
-    x: Int,
-    y: Int,
-    displayWidth: Int,
-    displayHeight: Int,
-    bubbleWidth: Int,
-    bubbleHeight: Int,
-    topInset: Int = 0,
-    bottomInset: Int = 0,
-    margin: Int = 12,
-): BubblePosition {
-    val maxX = (displayWidth - bubbleWidth - margin).coerceAtLeast(margin)
-    val minY = (topInset + margin).coerceAtMost(displayHeight - bubbleHeight - margin)
-    val maxY = (displayHeight - bubbleHeight - bottomInset - margin).coerceAtLeast(minY)
-    return BubblePosition(
-        x = x.coerceIn(margin, maxX),
-        y = y.coerceIn(minY, maxY),
-    )
-}

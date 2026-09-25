@@ -83,8 +83,8 @@ import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.domain.TaskPointerEvent
-import com.phonecontrol.assistant.overlay.DhdBubblePreview
-import com.phonecontrol.assistant.overlay.DhdComposerPreview
+import com.phonecontrol.assistant.overlay.bubble.DhdBubblePreview
+import com.phonecontrol.assistant.overlay.composer.DhdComposerPreview
 import com.phonecontrol.assistant.ui.displays.TaskPointerOverlay
 import com.phonecontrol.assistant.ui.displays.liveDisplayCornerShape
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors

@@ -1,5 +1,9 @@
 package com.phonecontrol.assistant.overlay
 
+import com.phonecontrol.assistant.overlay.bubble.BubblePosition
+import com.phonecontrol.assistant.overlay.bubble.bubblePositionForHorizontalSwipe
+import com.phonecontrol.assistant.overlay.bubble.bubblePositionOnNearestEdge
+import com.phonecontrol.assistant.overlay.bubble.clampBubblePosition
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.adb.DeveloperConnectionState
 import com.phonecontrol.assistant.adb.DeveloperModeStatus

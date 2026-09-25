@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
-import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
@@ -19,24 +18,21 @@ import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.phonecontrol.assistant.MainActivity
 import com.phonecontrol.assistant.core.isActive
-import com.phonecontrol.assistant.core.needsAttention
-import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import com.phonecontrol.assistant.data.UiPreferencesRepository
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.execution.TaskDisplaySession
+import com.phonecontrol.assistant.overlay.bubble.BubblePosition
+import com.phonecontrol.assistant.overlay.bubble.bubblePositionForHorizontalSwipe
+import com.phonecontrol.assistant.overlay.bubble.bubblePositionOnNearestEdge
+import com.phonecontrol.assistant.overlay.bubble.clampBubblePosition
+import com.phonecontrol.assistant.overlay.effects.OverlayGlow
 import com.phonecontrol.assistant.session.AssistantForegroundService
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
@@ -761,133 +757,4 @@ private data class BubbleInsets(
         val top: Int = 0,
         val bottom: Int = 0,
     )
-}
-
-private class OverlayViewTreeOwner : SavedStateRegistryOwner {
-    private val lifecycleRegistry = LifecycleRegistry(this)
-    private val savedStateRegistryController = SavedStateRegistryController.create(this)
-
-    override val lifecycle: Lifecycle = lifecycleRegistry
-    override val savedStateRegistry: SavedStateRegistry
-        get() = savedStateRegistryController.savedStateRegistry
-
-    init {
-        savedStateRegistryController.performAttach()
-        savedStateRegistryController.performRestore(Bundle())
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-    }
-
-    fun destroy() {
-        if (lifecycleRegistry.currentState != Lifecycle.State.DESTROYED) {
-            savedStateRegistryController.performSave(Bundle())
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        }
-    }
-}
-
-internal fun nextOverlayPanelMode(
-    currentMode: OverlayPanelMode,
-    previousState: SessionState,
-    state: SessionState,
-): OverlayPanelMode {
-    val wasActive = previousState.isActive
-    val isActive = state.isActive
-    if (isActive) {
-        val newSession = !wasActive ||
-            previousState.sessionIdOrNull != state.sessionIdOrNull
-        val attentionStarted = state.needsAttention && !previousState.needsAttention
-        return when {
-            attentionStarted -> OverlayPanelMode.ATTENTION
-            newSession -> if (state.needsAttention) {
-                OverlayPanelMode.ATTENTION
-            } else {
-                OverlayPanelMode.WORKING
-            }
-            currentMode == OverlayPanelMode.BUBBLE -> OverlayPanelMode.BUBBLE
-            state.needsAttention -> OverlayPanelMode.ATTENTION
-            else -> OverlayPanelMode.WORKING
-        }
-    }
-    return if (wasActive) {
-        when (state) {
-            is SessionState.Completed -> OverlayPanelMode.RESULT
-            is SessionState.Stopped -> if (currentMode == OverlayPanelMode.BUBBLE) {
-                OverlayPanelMode.BUBBLE
-            } else {
-                OverlayPanelMode.COMPOSER
-            }
-            else -> currentMode
-        }
-    } else {
-        currentMode
-    }
-}
-
-internal fun overlayPanelModeForUserExpand(state: SessionState): OverlayPanelMode =
-    if (state.isActive) {
-        if (state.needsAttention) OverlayPanelMode.ATTENTION else OverlayPanelMode.WORKING
-    } else {
-        OverlayPanelMode.COMPOSER
-    }
-
-internal fun shouldShowOverlayGlow(
-    mode: OverlayPanelMode,
-    state: SessionState,
-    hidden: Boolean,
-): Boolean = !hidden && mode == OverlayPanelMode.COMPOSER && !state.isActive
-
-internal fun bubblePositionForHorizontalSwipe(
-    direction: OverlaySwipeDirection,
-    currentPosition: BubblePosition,
-    displayWidth: Int,
-    displayHeight: Int,
-    bubbleWidth: Int,
-    bubbleHeight: Int,
-    topInset: Int = 0,
-    bottomInset: Int = 0,
-): BubblePosition {
-    val edgeX = when (direction) {
-        OverlaySwipeDirection.LEFT -> 12
-        OverlaySwipeDirection.RIGHT -> displayWidth - bubbleWidth - 12
-    }
-    return clampBubblePosition(
-        x = edgeX,
-        y = currentPosition.y,
-        displayWidth = displayWidth,
-        displayHeight = displayHeight,
-        bubbleWidth = bubbleWidth,
-        bubbleHeight = bubbleHeight,
-        topInset = topInset,
-        bottomInset = bottomInset,
-    )
-}
-
-internal fun bubblePositionOnNearestEdge(
-    currentPosition: BubblePosition,
-    displayWidth: Int,
-    displayHeight: Int,
-    bubbleWidth: Int,
-    bubbleHeight: Int,
-    topInset: Int = 0,
-    bottomInset: Int = 0,
-    margin: Int = 12,
-): BubblePosition {
-    val clamped = clampBubblePosition(
-        x = currentPosition.x,
-        y = currentPosition.y,
-        displayWidth = displayWidth,
-        displayHeight = displayHeight,
-        bubbleWidth = bubbleWidth,
-        bubbleHeight = bubbleHeight,
-        topInset = topInset,
-        bottomInset = bottomInset,
-        margin = margin,
-    )
-    val rightX = (displayWidth - bubbleWidth - margin).coerceAtLeast(margin)
-    val edgeX = if (clamped.x + bubbleWidth / 2 <= displayWidth / 2) margin else rightX
-    return BubblePosition(edgeX, clamped.y)
 }

@@ -516,8 +516,8 @@
         errorLine1="        return remember(label) { mutableStateOf(0f) }"
         errorLine2="                                 ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="135"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/effects/OverlayGlow.kt"
+            line="50"
             column="34"/>
     </issue>
 
@@ -527,8 +527,8 @@
         errorLine1="    var composerOriginX by remember { mutableStateOf(0) }"
         errorLine2="                                      ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="1000"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="214"
             column="39"/>
     </issue>
 
@@ -538,8 +538,8 @@
         errorLine1="        var composerHeightPx by remember { mutableStateOf(0) }"
         errorLine2="                                           ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="1064"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="278"
             column="44"/>
     </issue>
 
@@ -549,8 +549,8 @@
         errorLine1="        var resultCardHeightPx by remember { mutableStateOf(0) }"
         errorLine2="                                             ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="1065"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="279"
             column="46"/>
     </issue>
 
@@ -560,8 +560,8 @@
         errorLine1="        var recoveryCardHeightPx by remember { mutableStateOf(0) }"
         errorLine2="                                               ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="1066"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="280"
             column="48"/>
     </issue>
 
@@ -571,8 +571,8 @@
         errorLine1="    var focusRequestToken by remember { mutableStateOf(0) }"
         errorLine2="                                        ~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="1650"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/composer/OverlayComposer.kt"
+            line="143"
             column="41"/>
     </issue>
 
@@ -812,30 +812,30 @@
         errorLine1="            preferences.edit()"
         errorLine2="            ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="910"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="130"
             column="13"/>
     </issue>
 
     <issue
         id="UseKtx"
         message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        preferences.edit().putBoolean(OverlayPreferences.KEY_FAST_MODE, enabled).apply()"
+        errorLine1="        preferences.edit().putBoolean(UiPreferencesRepository.KEY_FAST_MODE, enabled).apply()"
         errorLine2="        ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="917"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="137"
             column="9"/>
     </issue>
 
     <issue
         id="UseKtx"
         message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="            preferences.edit().putString(OverlayPreferences.KEY_REASONING_EFFORT, effort.storageValue).apply()"
+        errorLine1="            preferences.edit().putString(UiPreferencesRepository.KEY_REASONING_EFFORT, effort.storageValue).apply()"
         errorLine2="            ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayScreens.kt"
-            line="922"
+            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPanel.kt"
+            line="142"
             column="13"/>
     </issue>
 
