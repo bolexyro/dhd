@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.phonecontrol.assistant.domain.ReasoningEffort
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlin.math.roundToInt
 
@@ -89,8 +90,8 @@ internal fun ReasoningEffortTrack(
         label = "reasoning_slider_position",
     )
 
-    val trackBg = if (colors.isDark) colors.composerBackground else Color(0xFFE5E5EA)
-    val trackBorder = if (colors.isDark) colors.borderColor else Color(0xFFD1D1D6)
+    val trackBg = if (colors.isDark) colors.composerBackground else DhdPalette.TrackLight
+    val trackBorder = if (colors.isDark) colors.borderColor else DhdPalette.TrackBorderLight
 
     Surface(
         shape = trackShape,
@@ -183,7 +184,7 @@ internal fun ReasoningEffortTrack(
                             color = if (x < selectedX) {
                                 Color.White.copy(alpha = 0.5f)
                             } else {
-                                if (colors.isDark) colors.textSecondary.copy(alpha = 0.75f) else Color(0xFF8E8E93)
+                                if (colors.isDark) colors.textSecondary.copy(alpha = 0.75f) else DhdPalette.SystemGray
                             },
                             radius = dotRadius,
                             center = Offset(x, centerY),
@@ -194,7 +195,7 @@ internal fun ReasoningEffortTrack(
                 // In light mode, add a subtle soft shadow/outline ring around the white knob for crisp definition
                 if (!colors.isDark) {
                     drawCircle(
-                        color = Color(0x18000000),
+                        color = DhdPalette.TrackShadow,
                         radius = thumbRadius + with(density) { 1.5.dp.toPx() },
                         center = Offset(selectedX, centerY + with(density) { 0.75.dp.toPx() }),
                     )

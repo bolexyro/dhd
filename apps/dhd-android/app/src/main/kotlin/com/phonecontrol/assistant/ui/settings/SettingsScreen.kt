@@ -53,6 +53,7 @@ import com.phonecontrol.assistant.ui.components.SettingsRow
 import com.phonecontrol.assistant.ui.components.SettingsRowIcon
 import com.phonecontrol.assistant.ui.components.SettingsSetUpAction
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningMeterIcon
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.ThemeMode
 
@@ -141,10 +142,10 @@ fun SettingsScreen(
                                     expanded = isAppearanceMenuOpen,
                                     onDismissRequest = { isAppearanceMenuOpen = false },
                                     shape = RoundedCornerShape(16.dp),
-                                    containerColor = if (colors.isDark) Color(0xFF262628) else Color(0xFFFFFFFF),
+                                    containerColor = if (colors.isDark) DhdPalette.MenuSurfaceDark else DhdPalette.White,
                                     border = BorderStroke(
                                         1.dp,
-                                        if (colors.isDark) Color(0xFF38383B) else Color(0xFFE5E7EB)
+                                        if (colors.isDark) DhdPalette.MenuBorderDark else DhdPalette.Gray200
                                     ),
                                     modifier = Modifier.width(220.dp),
                                 ) {
@@ -205,10 +206,10 @@ fun SettingsScreen(
                                     expanded = isReasoningMenuOpen,
                                     onDismissRequest = { isReasoningMenuOpen = false },
                                     shape = RoundedCornerShape(16.dp),
-                                    containerColor = if (colors.isDark) Color(0xFF262628) else Color(0xFFFFFFFF),
+                                    containerColor = if (colors.isDark) DhdPalette.MenuSurfaceDark else DhdPalette.White,
                                     border = BorderStroke(
                                         1.dp,
-                                        if (colors.isDark) Color(0xFF38383B) else Color(0xFFE5E7EB)
+                                        if (colors.isDark) DhdPalette.MenuBorderDark else DhdPalette.Gray200
                                     ),
                                     modifier = Modifier.width(220.dp),
                                 ) {

@@ -20,6 +20,7 @@ import com.phonecontrol.assistant.core.needsAttention
 import com.phonecontrol.assistant.overlay.OverlayPanelMode
 import com.phonecontrol.assistant.overlay.shouldShowOverlayGlow
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlin.math.PI
 import kotlin.math.cos
@@ -145,12 +146,12 @@ fun OverlayGlow(
 
     // Multi-color spectrum from Gemini:
     // Right (Green) -> Bottom-Right (Purple) -> Bottom (Coral Red) -> Bottom-Left (Amber) -> Left (Blue) -> Top (Cyan)
-    val colorGreen = if (attention) colors.warningAmber else Color(0xFF10B981)
-    val colorPurple = if (attention) colors.warningAmber else Color(0xFF8B5CF6)
-    val colorCoral = if (attention) colors.warningAmber else Color(0xFFEF4444)
-    val colorAmber = if (attention) colors.warningAmber else Color(0xFFF59E0B)
-    val colorBlue = if (attention) colors.warningAmber else Color(0xFF2563EB)
-    val colorCyan = if (attention) colors.warningAmber else Color(0xFF06B6D4)
+    val colorGreen = if (attention) colors.warningAmber else DhdPalette.Emerald500
+    val colorPurple = if (attention) colors.warningAmber else DhdPalette.Violet500
+    val colorCoral = if (attention) colors.warningAmber else DhdPalette.Red500
+    val colorAmber = if (attention) colors.warningAmber else DhdPalette.Amber500
+    val colorBlue = if (attention) colors.warningAmber else DhdPalette.Blue600
+    val colorCyan = if (attention) colors.warningAmber else DhdPalette.Cyan500
 
     val stardust = remember {
         val random = Random(2026)
@@ -311,7 +312,7 @@ fun OverlayGlow(
             brush = Brush.radialGradient(
                 colors = listOf(
                     colorCoral.copy(alpha = 0.48f * overallAlpha),
-                    Color(0xFFE11D48).copy(alpha = 0.26f * overallAlpha),
+                    DhdPalette.Rose600.copy(alpha = 0.26f * overallAlpha),
                     Color.Transparent,
                 ),
                 center = Offset(size.width * 0.5f, size.height),

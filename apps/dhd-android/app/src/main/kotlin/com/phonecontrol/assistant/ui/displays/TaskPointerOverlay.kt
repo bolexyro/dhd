@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.phonecontrol.assistant.domain.ClickPhase
 import com.phonecontrol.assistant.domain.TASK_CLICK_MOVE_DURATION_MS
 import com.phonecontrol.assistant.domain.TaskPointerEvent
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import kotlin.math.max
 import kotlinx.coroutines.launch
 
@@ -290,10 +291,10 @@ private fun DrawScope.drawArrow(
     }
     drawPath(
         path = path,
-        color = Color(0xFF00E6FF).copy(alpha = 0.42f),
+        color = DhdPalette.PointerGlow.copy(alpha = 0.42f),
         style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
     )
-    drawPath(path = path, color = Color(0xFF2B8CDB))
+    drawPath(path = path, color = DhdPalette.PointerArrow)
     drawPath(
         path = path,
         color = Color.White,

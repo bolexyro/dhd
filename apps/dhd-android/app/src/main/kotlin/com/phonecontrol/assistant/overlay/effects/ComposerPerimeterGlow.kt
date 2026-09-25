@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlin.math.PI
 import kotlin.math.abs
@@ -38,25 +39,25 @@ internal fun ComposerPerimeterGlow(
         enabled = true,
     )
     val breath = 0.88f + 0.12f * sin(glowBreathPhase)
-    val glowBase = if (colors.isDark) Color.White else Color(0xFF1E293B)
-    val glowAccent = if (colors.isDark) Color(0xFF93C5FD) else Color(0xFF3B82F6)
+    val glowBase = if (colors.isDark) Color.White else DhdPalette.Slate800
+    val glowAccent = if (colors.isDark) DhdPalette.Blue300 else DhdPalette.Blue500
     val chromaticColors = if (hasRecovery) {
         listOf(
             colors.warningAmber,
-            Color(0xFFFBBF24),
+            DhdPalette.Amber400,
             colors.warningAmber,
-            Color(0xFFFBBF24),
+            DhdPalette.Amber400,
             colors.warningAmber,
-            Color(0xFFFBBF24),
+            DhdPalette.Amber400,
         )
     } else {
         listOf(
-            Color(0xFF10B981),
-            Color(0xFF06B6D4),
-            Color(0xFF3B82F6),
-            Color(0xFF8B5CF6),
-            Color(0xFFEF4444),
-            Color(0xFFF59E0B),
+            DhdPalette.Emerald500,
+            DhdPalette.Cyan500,
+            DhdPalette.Blue500,
+            DhdPalette.Violet500,
+            DhdPalette.Red500,
+            DhdPalette.Amber500,
         )
     }
     val shift = (glowOrbitPhase / (2 * PI.toFloat())) % 1f

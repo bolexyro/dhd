@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 internal enum class Glyph { SEND, STOP }
@@ -38,7 +39,7 @@ internal fun GlyphButton(
 ) {
     val colors = LocalAssistantColors.current
     val tint = when {
-        glyph == Glyph.STOP -> Color(0xFF1E2B45).copy(alpha = 0.88f)
+        glyph == Glyph.STOP -> DhdPalette.StopGlyphNavy.copy(alpha = 0.88f)
         filled && enabled -> colors.sendButtonActiveBg
         filled -> colors.sendButtonInactiveBg
         enabled -> colors.surfaceCard.copy(alpha = 0.78f)
@@ -51,7 +52,7 @@ internal fun GlyphButton(
             .background(tint)
             .then(
                 if (glyph == Glyph.STOP) {
-                    Modifier.border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f), CircleShape)
+                    Modifier.border(1.dp, DhdPalette.Sky400.copy(alpha = 0.35f), CircleShape)
                 } else {
                     Modifier
                 }

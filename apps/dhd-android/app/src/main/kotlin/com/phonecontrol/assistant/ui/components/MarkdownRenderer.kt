@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -34,6 +33,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.ui.theme.AssistantColorScheme
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 sealed interface MarkdownBlock {
@@ -89,7 +89,7 @@ fun parseInlineMarkdown(
                     withStyle(
                         SpanStyle(
                             fontFamily = FontFamily.Monospace,
-                            background = if (colors.isDark) Color(0xFF2C2C2E) else Color(0xFFE5E7EB),
+                            background = if (colors.isDark) DhdPalette.InlineCodeDark else DhdPalette.Gray200,
                             color = colors.accentBlue,
                             fontSize = 13.5.sp,
                         ),
@@ -281,7 +281,7 @@ fun MarkdownContent(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(if (colors.isDark) Color(0xFF1E1E1E) else Color(0xFFEAEAED))
+                                        .background(if (colors.isDark) DhdPalette.CodeBlockDark else DhdPalette.CodeBlockLight)
                                         .padding(horizontal = 14.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {

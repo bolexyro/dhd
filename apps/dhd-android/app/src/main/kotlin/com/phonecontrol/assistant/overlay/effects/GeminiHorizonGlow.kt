@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -36,8 +37,8 @@ internal fun BoxScope.GeminiHorizonGlow(attention: Boolean) {
             brush = Brush.verticalGradient(
                 0.0f to Color.Transparent,
                 0.36f to Color.Transparent,
-                0.68f to if (attention) Color(0xFFD97706).copy(alpha = 0.26f * breath) else Color(0xFF1E40AF).copy(alpha = 0.28f * breath),
-                1.0f to if (attention) Color(0xFFF59E0B).copy(alpha = 0.62f * breath) else Color(0xFF2563EB).copy(alpha = 0.65f * breath),
+                0.68f to if (attention) DhdPalette.Amber600.copy(alpha = 0.26f * breath) else DhdPalette.Blue800.copy(alpha = 0.28f * breath),
+                1.0f to if (attention) DhdPalette.Amber500.copy(alpha = 0.62f * breath) else DhdPalette.Blue600.copy(alpha = 0.65f * breath),
                 startY = 0f,
                 endY = size.height,
             ),
@@ -49,16 +50,16 @@ internal fun BoxScope.GeminiHorizonGlow(attention: Boolean) {
         val primaryRadius = size.width * 0.46f
         val primaryColors = if (attention) {
             listOf(
-                Color(0xFFFBBF24).copy(alpha = 0.75f * breath),
-                Color(0xFFF59E0B).copy(alpha = 0.50f * breath),
-                Color(0xFFD97706).copy(alpha = 0.22f * breath),
+                DhdPalette.Amber400.copy(alpha = 0.75f * breath),
+                DhdPalette.Amber500.copy(alpha = 0.50f * breath),
+                DhdPalette.Amber600.copy(alpha = 0.22f * breath),
                 Color.Transparent,
             )
         } else {
             listOf(
-                Color(0xFF38BDF8).copy(alpha = 0.70f * breath),
-                Color(0xFF2563EB).copy(alpha = 0.80f * breath),
-                Color(0xFF1D4ED8).copy(alpha = 0.40f * breath),
+                DhdPalette.Sky400.copy(alpha = 0.70f * breath),
+                DhdPalette.Blue600.copy(alpha = 0.80f * breath),
+                DhdPalette.Blue700.copy(alpha = 0.40f * breath),
                 Color.Transparent,
             )
         }
@@ -78,14 +79,14 @@ internal fun BoxScope.GeminiHorizonGlow(attention: Boolean) {
         val secondaryRadius = size.width * 0.38f
         val secondaryColors = if (attention) {
             listOf(
-                Color(0xFFF59E0B).copy(alpha = 0.40f * breath),
-                Color(0xFFD97706).copy(alpha = 0.18f * breath),
+                DhdPalette.Amber500.copy(alpha = 0.40f * breath),
+                DhdPalette.Amber600.copy(alpha = 0.18f * breath),
                 Color.Transparent,
             )
         } else {
             listOf(
-                Color(0xFF60A5FA).copy(alpha = 0.45f * breath),
-                Color(0xFF1E40AF).copy(alpha = 0.30f * breath),
+                DhdPalette.Blue400.copy(alpha = 0.45f * breath),
+                DhdPalette.Blue800.copy(alpha = 0.30f * breath),
                 Color.Transparent,
             )
         }
@@ -104,7 +105,7 @@ internal fun BoxScope.GeminiHorizonGlow(attention: Boolean) {
         val rimBrush = Brush.horizontalGradient(
             0.0f to Color.Transparent,
             (rimXRatio - 0.25f).coerceAtLeast(0f) to Color.Transparent,
-            rimXRatio to if (attention) Color(0xFFFDE68A).copy(alpha = 0.65f * breath) else Color(0xFF93C5FD).copy(alpha = 0.70f * breath),
+            rimXRatio to if (attention) DhdPalette.Amber200.copy(alpha = 0.65f * breath) else DhdPalette.Blue300.copy(alpha = 0.70f * breath),
             (rimXRatio + 0.25f).coerceAtMost(1f) to Color.Transparent,
             1.0f to Color.Transparent,
         )

@@ -87,6 +87,7 @@ import com.phonecontrol.assistant.ui.components.FullAccessConfirmDialog
 import com.phonecontrol.assistant.ui.displays.TaskPointerOverlay
 import com.phonecontrol.assistant.ui.displays.liveDisplayCornerShape
 import com.phonecontrol.assistant.ui.settings.filterAppsByQuery
+import com.phonecontrol.assistant.ui.theme.DhdPalette
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.assistantSwitchColors
 import kotlin.math.hypot
@@ -859,7 +860,7 @@ private fun DummyTaskApp(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = liveDisplayCornerShape(),
-        color = if (colors.isDark) Color(0xFF10151D) else Color(0xFFF6F8FC),
+        color = if (colors.isDark) DhdPalette.PreviewCanvasDark else DhdPalette.PreviewCanvasLight,
         border = BorderStroke(0.8.dp, colors.borderColor),
     ) {
         Box {
