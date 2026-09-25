@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.phonecontrol.assistant.developer.DhdAdbPairingService
 import com.phonecontrol.assistant.maintenance.DhdMaintenanceBootstrap
 import com.phonecontrol.assistant.maintenance.DhdMaintenanceRecoveryPolicy
 import com.phonecontrol.assistant.execution.PhoneProcessResult

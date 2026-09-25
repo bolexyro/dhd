@@ -7,8 +7,8 @@
         errorLine1="        NotificationManagerCompat.from(this).notify("
         errorLine2="        ^">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
-            line="155"
+            file="src/main/kotlin/com/phonecontrol/assistant/developer/DhdAdbPairingService.kt"
+            line="150"
             column="9"/>
     </issue>
 
@@ -18,8 +18,8 @@
         errorLine1="        NotificationManagerCompat.from(context).notify("
         errorLine2="        ^">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
-            line="314"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="132"
             column="9"/>
     </issue>
 
@@ -29,8 +29,8 @@
         errorLine1="        NotificationManagerCompat.from(context).notify("
         errorLine2="        ^">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
-            line="343"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="132"
             column="9"/>
     </issue>
 
@@ -40,8 +40,8 @@
         errorLine1="                appContext.stopService(Intent(appContext, AssistantForegroundService::class.java))"
         errorLine2="                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/session/service/AssistantForegroundService.kt"
-            line="300"
+            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            line="304"
             column="40"/>
     </issue>
 
@@ -388,8 +388,8 @@
         errorLine1="            if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/session/service/AssistantForegroundService.kt"
-            line="363"
+            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            line="367"
             column="17"/>
     </issue>
 
@@ -399,8 +399,8 @@
         errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/session/service/AssistantForegroundService.kt"
-            line="405"
+            file="src/main/kotlin/com/phonecontrol/assistant/session/AssistantForegroundService.kt"
+            line="409"
             column="17"/>
     </issue>
 
@@ -410,8 +410,8 @@
         errorLine1="        if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O) return"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
-            line="215"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="33"
             column="13"/>
     </issue>
 
@@ -421,8 +421,8 @@
         errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
-            line="239"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="57"
             column="13"/>
     </issue>
 
@@ -432,8 +432,8 @@
         errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingService.kt"
-            line="397"
+            file="src/main/kotlin/com/phonecontrol/assistant/adb/DhdAdbPairingNotification.kt"
+            line="215"
             column="17"/>
     </issue>
 

@@ -26,7 +26,7 @@ import com.phonecontrol.assistant.execution.TypedPhoneActionTransport
 import com.phonecontrol.assistant.observation.PhoneObservationProvider
 import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.policy.PolicyEngine
-import com.phonecontrol.assistant.session.service.AssistantForegroundService
+import com.phonecontrol.assistant.session.AssistantForegroundService
 import com.phonecontrol.assistant.session.service.DhdNotificationVisibility
 import com.phonecontrol.assistant.session.SessionCoordinator
 import kotlinx.coroutines.CoroutineScope

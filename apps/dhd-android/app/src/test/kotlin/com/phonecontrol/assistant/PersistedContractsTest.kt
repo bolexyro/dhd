@@ -13,7 +13,7 @@ import com.phonecontrol.assistant.data.activityStatus
 import com.phonecontrol.assistant.adb.PhoneAccessController
 import com.phonecontrol.assistant.adb.DhdAdbKey
 import com.phonecontrol.assistant.adb.DhdAdbPairingNotification
-import com.phonecontrol.assistant.adb.DhdAdbPairingService
+import com.phonecontrol.assistant.developer.DhdAdbPairingService
 import com.phonecontrol.assistant.maintenance.DhdMaintenanceBootstrap
 import com.phonecontrol.assistant.developer.DhdMaintenanceDaemon
 import com.phonecontrol.assistant.adb.PreferenceDhdAdbKeyStore
@@ -21,7 +21,7 @@ import com.phonecontrol.assistant.domain.ActionType
 import com.phonecontrol.assistant.domain.ActivityEventKind
 import com.phonecontrol.assistant.execution.TaskDisplayLayoutPreferences
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
-import com.phonecontrol.assistant.session.service.AssistantForegroundService
+import com.phonecontrol.assistant.session.AssistantForegroundService
 import com.phonecontrol.assistant.ui.AppRoutes
 import java.io.File
 import java.lang.reflect.Method

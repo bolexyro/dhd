@@ -37,7 +37,7 @@
         </activity>
 
         <service
-            android:name=".session.service.AssistantForegroundService"
+            android:name=".session.AssistantForegroundService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
@@ -46,7 +46,7 @@
         </service>
 
         <service
-            android:name=".adb.DhdAdbPairingService"
+            android:name=".developer.DhdAdbPairingService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
