@@ -32,7 +32,6 @@ class ChatViewModel internal constructor(
     val toolCalls: StateFlow<List<DhdToolCall>>,
     timeline: Flow<List<TimelineItem>>,
     initialTimeline: List<TimelineItem>,
-    private val resetSession: () -> Unit,
     private val savedState: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
     val timeline: StateFlow<List<TimelineItem>> =
@@ -49,7 +48,6 @@ class ChatViewModel internal constructor(
 
     fun startFresh() {
         clearSteerDrafts()
-        resetSession()
     }
 
     internal fun queueSteerDraft(draft: PendingSteerDraft, activeSessionId: String?) {
@@ -94,7 +92,6 @@ class ChatViewModel internal constructor(
                     toolCalls = container.sessionCoordinator.toolCalls,
                     timeline = container.conversationRepository.timeline,
                     initialTimeline = container.conversationStore.timeline(DHD_CONVERSATION_ID).value,
-                    resetSession = container.sessionCoordinator::reset,
                     savedState = createSavedStateHandle(),
                 )
             }

@@ -131,7 +131,7 @@ class AssistantForegroundService : Service() {
             ACTION_STOP -> stopSession("Stopped from the notification.", startId)
             ACTION_STOP_USER -> stopSession("Stopped by the user.", startId)
             ACTION_START_FRESH -> {
-                coordinator.reset()
+                (application as PhoneControlApplication).container.startFresh()
                 removeAttentionNotification(this)
                 removeCompletionNotification(this)
                 if (!overlayEnabledAndPermitted()) {

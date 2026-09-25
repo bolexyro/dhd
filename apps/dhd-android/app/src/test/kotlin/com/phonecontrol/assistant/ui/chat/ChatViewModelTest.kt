@@ -22,7 +22,6 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModelTest {
     private val timeline = MutableSharedFlow<List<TimelineItem>>()
-    private var resets = 0
 
     @Before
     fun setUp() {
@@ -41,7 +40,6 @@ class ChatViewModelTest {
         toolCalls = MutableStateFlow<List<DhdToolCall>>(emptyList()),
         timeline = timeline,
         initialTimeline = listOf(message("stored")),
-        resetSession = { resets += 1 },
         savedState = savedState,
     )
 
@@ -57,12 +55,6 @@ class ChatViewModelTest {
 
         timeline.emit(listOf(message("after")))
         assertEquals(listOf("after"), viewModel.timeline.value.map(TimelineItem::id))
-    }
-
-    @Test
-    fun `start fresh resets the session`() {
-        viewModel().startFresh()
-        assertEquals(1, resets)
     }
 
     @Test

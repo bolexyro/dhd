@@ -358,8 +358,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startFresh() {
-        val app = (application as PhoneControlApplication).container
-        app.startFresh()
         sessionCommands.startFresh()
     }
 
