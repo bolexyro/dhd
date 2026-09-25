@@ -27,7 +27,6 @@ import {
   extractCompanionTokenUsageEvent,
   extractText,
   extractThreadId,
-  extractTurnError,
   extractTurnId,
 } from "./codex/extract.js";
 import {
@@ -57,6 +56,14 @@ import {
 } from "./codex/dynamic-tools.js";
 import { answerServerRequest } from "./codex/server-requests.js";
 import { JsonRpcConnection, type JsonRpcMessage } from "./codex/json-rpc.js";
+import {
+  logServerNotification,
+  startedThreadId,
+  turnCompletedStatus,
+  turnCompletionError,
+  turnFailureError,
+  unloadedThreadId,
+} from "./codex/notifications.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -456,32 +463,10 @@ export class CodexAppServerClient {
       });
     }
 
-    if (message.method === "thread/started") {
-      const threadId = extractThreadId(message.params);
-      if (threadId) this.loadedThreadIds.add(threadId);
-    } else if (message.method === "thread/closed") {
-      const threadId = extractThreadId(message.params);
-      if (threadId) {
-        this.loadedThreadIds.delete(threadId);
-        if (this.activeDhdThreadId === threadId) {
-          this.activeDhdThreadId = null;
-          this.hasCurrentDhdThread = false;
-        }
-      }
-    } else if (message.method === "thread/status/changed") {
-      const params = asRecord(message.params);
-      const status = asRecord(params?.status);
-      if (status?.type === "notLoaded") {
-        const threadId = extractThreadId(message.params);
-        if (threadId) {
-          this.loadedThreadIds.delete(threadId);
-          if (this.activeDhdThreadId === threadId) {
-            this.activeDhdThreadId = null;
-            this.hasCurrentDhdThread = false;
-          }
-        }
-      }
-    }
+    const loadedThreadId = startedThreadId(message);
+    if (loadedThreadId) this.loadedThreadIds.add(loadedThreadId);
+    const closedThreadId = unloadedThreadId(message);
+    if (closedThreadId) this.forgetLoadedThread(closedThreadId);
 
     const completion = this.turnCompletion;
     if (!completion || !message.method) return;
@@ -528,21 +513,14 @@ export class CodexAppServerClient {
       return;
     }
     if (message.method === "turn/completed") {
-      const turn = asRecord(message.params)?.turn;
-      const status = asRecord(turn)?.status;
       this.activeTiming?.log(
         "turn/completed",
-        `status=${String(status ?? "unknown")}`,
+        `status=${String(turnCompletedStatus(message) ?? "unknown")}`,
       );
-      if (status === "failed") {
-        completion.reject(
-          new Error(
-            extractTurnError(message.params) || "Codex App Server turn failed.",
-          ),
-        );
-      } else if (status === "interrupted") {
-        completion.reject(new Error("Codex App Server turn was interrupted."));
-      } else if (status === "completed") {
+      const error = turnCompletionError(message);
+      if (error) {
+        completion.reject(error);
+      } else {
         completion.resolve({
           text:
             selectFinalAgentMessageText(completion.agentMessages) ||
@@ -550,23 +528,21 @@ export class CodexAppServerClient {
           threadId: this.activeThreadId || "",
           phoneToolFailures: [...(completion.phoneToolFailures ?? [])],
         });
-      } else {
-        completion.reject(
-          new Error(
-            `Codex App Server turn ended with unexpected status: ${String(status ?? "unknown")}.`,
-          ),
-        );
       }
       this.turnCompletion = null;
       return;
     }
     if (message.method === "turn/failed" || message.method === "error") {
-      completion.reject(
-        new Error(
-          extractTurnError(message.params) || "Codex App Server turn failed.",
-        ),
-      );
+      completion.reject(turnFailureError(message));
       this.turnCompletion = null;
+    }
+  }
+
+  private forgetLoadedThread(threadId: string): void {
+    this.loadedThreadIds.delete(threadId);
+    if (this.activeDhdThreadId === threadId) {
+      this.activeDhdThreadId = null;
+      this.hasCurrentDhdThread = false;
     }
   }
 
@@ -615,10 +591,7 @@ export class CodexAppServerClient {
     timing: PhaseTimer,
   ): Promise<void> {
     if (!this.loadedThreadIds.has(threadId)) {
-      if (this.activeDhdThreadId === threadId) {
-        this.activeDhdThreadId = null;
-        this.hasCurrentDhdThread = false;
-      }
+      this.forgetLoadedThread(threadId);
       return;
     }
     timing.log("thread/unsubscribe:start", `threadId=${threadId}`);
@@ -632,11 +605,7 @@ export class CodexAppServerClient {
           `${errorMessage(error)}`,
       );
     } finally {
-      this.loadedThreadIds.delete(threadId);
-      if (this.activeDhdThreadId === threadId) {
-        this.activeDhdThreadId = null;
-        this.hasCurrentDhdThread = false;
-      }
+      this.forgetLoadedThread(threadId);
     }
   }
 
@@ -717,32 +686,6 @@ export class CodexAppServerClient {
       });
     });
   }
-}
-
-function logServerNotification(message: JsonRpcMessage): void {
-  if (message.method === "turn/started") {
-    console.error("[codex-app-server] turn started");
-    return;
-  }
-  if (message.method === "turn/completed") {
-    const turn = asRecord(asRecord(message.params)?.turn);
-    console.error(
-      `[codex-app-server] turn completed (${String(turn?.status ?? "unknown")})`,
-    );
-    return;
-  }
-  if (message.method !== "item/started" && message.method !== "item/completed")
-    return;
-  const item = asRecord(asRecord(message.params)?.item);
-  if (!item) return;
-  const type = typeof item.type === "string" ? item.type : "item";
-  const tool = typeof item.tool === "string" ? ` ${item.tool}` : "";
-  const status = typeof item.status === "string" ? ` (${item.status})` : "";
-  const duration =
-    typeof item.durationMs === "number" ? ` [${item.durationMs}ms]` : "";
-  console.error(
-    `[codex-app-server] ${message.method} ${type}${tool}${status}${duration}`,
-  );
 }
 
 /**
