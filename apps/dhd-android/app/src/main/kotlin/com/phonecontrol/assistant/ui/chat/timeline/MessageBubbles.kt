@@ -18,8 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.data.TimelineItem
-import com.phonecontrol.assistant.ui.MarkdownContent
-import com.phonecontrol.assistant.ui.parseInlineMarkdown
+import com.phonecontrol.assistant.ui.components.MarkdownContent
+import com.phonecontrol.assistant.ui.components.parseInlineMarkdown
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable

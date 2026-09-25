@@ -1,4 +1,4 @@
-package com.phonecontrol.assistant.ui
+package com.phonecontrol.assistant.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

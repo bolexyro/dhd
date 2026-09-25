@@ -18,7 +18,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.phonecontrol.assistant.ui.MarkdownContent
+import com.phonecontrol.assistant.ui.components.MarkdownContent
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable
