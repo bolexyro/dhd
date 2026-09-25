@@ -36,18 +36,6 @@ class OverlayVisibilityGate {
         _hidden.value = activeTokens.isNotEmpty()
     }
 
-    suspend fun <T> withHidden(
-        reason: OverlayHideReason,
-        block: suspend () -> T,
-    ): T {
-        val token = acquire(reason)
-        return try {
-            block()
-        } finally {
-            token.close()
-        }
-    }
-
     class Token internal constructor(
         private val gate: OverlayVisibilityGate,
         private val tokenId: Long,

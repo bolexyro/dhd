@@ -393,113 +393,6 @@ private fun TaskDisplayActionsDialog(
     )
 }
 
-@Composable
-private fun TaskDisplayManagerCard(
-    record: TaskDisplayUiRecord,
-    nowEpochMs: Long,
-    onView: () -> Unit,
-    onEnd: () -> Unit,
-) {
-    val colors = LocalAssistantColors.current
-    val statusColor = colors.textSecondary
-    val canView = record.lifecycle != TaskDisplayLifecycle.ENDED &&
-            record.lifecycle != TaskDisplayLifecycle.EXPIRED
-    val canEnd = record.lifecycle != TaskDisplayLifecycle.ENDED &&
-            record.lifecycle != TaskDisplayLifecycle.EXPIRED
-
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = colors.settingsCard,
-        border = BorderStroke(1.dp, colors.borderColor),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 5.dp)
-                        .size(10.dp)
-                        .background(statusColor, CircleShape),
-                )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 12.dp),
-                ) {
-                    Text(
-                        text = record.appLabel ?: record.packageName ?: "Task display",
-                        color = colors.textPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = record.lifecycle.displayLabel(),
-                        color = statusColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 3.dp),
-                    )
-                }
-                record.expiresAtEpochMs?.let { expiry ->
-                    Text(
-                        text = taskDisplayRemainingLabel(expiry, nowEpochMs),
-                        color = colors.textSecondary,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-            }
-
-            record.currentPurpose
-                ?.takeIf(String::isNotBlank)
-                ?.takeUnless { record.lifecycle == TaskDisplayLifecycle.COMPLETED }
-                ?.let { purpose ->
-                    Text(
-                        text = purpose,
-                        color = colors.textSecondary,
-                        fontSize = 13.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 22.dp, top = 10.dp),
-                    )
-                }
-            record.error?.takeIf(String::isNotBlank)?.let { error ->
-                Text(
-                    text = error,
-                    color = colors.warningAmber,
-                    fontSize = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 22.dp, top = 5.dp),
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = taskDisplayAgeLabel(record.createdAtEpochMs, nowEpochMs),
-                    color = colors.textSecondary,
-                    fontSize = 11.sp,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onView, enabled = canView) {
-                    Text("View", color = if (canView) colors.accentBlue else colors.textSecondary)
-                }
-                TextButton(onClick = onEnd, enabled = canEnd) {
-                    Text("End", color = colors.textSecondary)
-                }
-            }
-        }
-    }
-}
-
 private const val TASK_DISPLAY_MANAGER_REFRESH_MS = 30_000L
 
 internal fun inspectableTaskDisplayRecords(records: List<TaskDisplayUiRecord>): List<TaskDisplayUiRecord> =
@@ -521,16 +414,6 @@ private fun TaskDisplayLifecycle.isLive(): Boolean = when (this) {
     TaskDisplayLifecycle.PAUSED -> true
 
     else -> false
-}
-
-private fun taskDisplayAgeLabel(createdAtEpochMs: Long, nowEpochMs: Long): String {
-    if (createdAtEpochMs <= 0L) return "Age unavailable"
-    val seconds = ((nowEpochMs - createdAtEpochMs).coerceAtLeast(0L)) / 1000L
-    return when {
-        seconds < 60L -> "Started just now"
-        seconds < 3600L -> "Started ${seconds / 60L}m ago"
-        else -> "Started ${seconds / 3600L}h ago"
-    }
 }
 
 private fun taskDisplayRemainingLabel(expiryEpochMs: Long, nowEpochMs: Long): String {

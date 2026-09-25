@@ -16,8 +16,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -26,7 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
-internal enum class Glyph { SEND, STOP, DOWN }
+internal enum class Glyph { SEND, STOP }
 
 @Composable
 internal fun GlyphButton(
@@ -75,20 +73,7 @@ internal fun GlyphButton(
                 modifier = Modifier.size(iconSize),
             )
         } else Canvas(Modifier.size(iconSize)) {
-            val color = when {
-                !enabled -> colors.sendButtonInactiveIcon
-                filled -> colors.sendButtonActiveIcon
-                glyph == Glyph.STOP -> colors.textPrimary.copy(alpha = 0.78f)
-                else -> colors.textSecondary
-            }
-            val path = Path()
             when (glyph) {
-                Glyph.DOWN -> {
-                    path.moveTo(size.width * 0.25f, size.height * 0.4f)
-                    path.lineTo(size.width * 0.5f, size.height * 0.65f)
-                    path.lineTo(size.width * 0.75f, size.height * 0.4f)
-                    drawPath(path, color, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
-                }
                 Glyph.STOP -> drawRoundRect(
                     color = Color.White.copy(alpha = 0.95f),
                     topLeft = Offset(size.width * 0.24f, size.height * 0.24f),

@@ -2,30 +2,24 @@ package com.phonecontrol.assistant.overlay
 
 import android.view.Surface as AndroidSurface
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
@@ -37,13 +31,10 @@ import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.overlay.bubble.BubbleButton
-import com.phonecontrol.assistant.overlay.bubble.DhdIdentity
 import com.phonecontrol.assistant.overlay.cards.FloatingRecoveryCard
 import com.phonecontrol.assistant.overlay.cards.FloatingResultCard
 import com.phonecontrol.assistant.overlay.cards.FloatingVirtualDisplayCard
 import com.phonecontrol.assistant.overlay.composer.Composer
-import com.phonecontrol.assistant.overlay.composer.Glyph
-import com.phonecontrol.assistant.overlay.composer.GlyphButton
 import com.phonecontrol.assistant.overlay.effects.ComposerPerimeterGlow
 import com.phonecontrol.assistant.session.DhdToolCall
 import com.phonecontrol.assistant.session.SessionState
@@ -462,63 +453,6 @@ internal fun TaskPreviewState.sessionOrNull(): TaskDisplaySession? = when (this)
     is TaskPreviewState.Ended -> null
     is TaskPreviewState.Error -> null
     TaskPreviewState.Detached -> null
-}
-
-@Composable
-private fun PanelHeader(
-    mode: OverlayPanelMode,
-    orbWorking: Boolean,
-    orbAnimated: Boolean,
-    onCollapse: () -> Unit,
-    onIdentityClick: () -> Unit,
-) {
-    val showIdentity = mode != OverlayPanelMode.COMPOSER
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = if (showIdentity) 16.dp else 4.dp,
-        end = 4.dp,
-                top = 2.dp,
-                bottom = 0.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (showIdentity) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        role = Role.Button,
-                        onClickLabel = "Continue in DHD",
-                        onClick = onIdentityClick,
-                    )
-                    .semantics { contentDescription = "Continue in DHD" },
-                contentAlignment = Alignment.Center,
-            ) {
-                DhdIdentity(
-                    modifier = Modifier.fillMaxSize(),
-                    working = orbWorking,
-                    animated = orbAnimated,
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "dhd",
-                color = LocalAssistantColors.current.textPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.2.sp,
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        GlyphButton(
-            label = "Minimize assistant",
-            glyph = Glyph.DOWN,
-            onClick = onCollapse,
-        )
-    }
 }
 
 internal fun SessionState.attentionReasonOrNull(): String? = when (this) {

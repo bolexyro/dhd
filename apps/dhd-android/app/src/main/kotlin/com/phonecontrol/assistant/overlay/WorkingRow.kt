@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -17,11 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -43,7 +38,6 @@ import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.components.THINKING_WORDS
 import com.phonecontrol.assistant.ui.components.THINKING_WORD_INTERVAL_MS
 import com.phonecontrol.assistant.ui.components.nextThinkingWordIndex
-import com.phonecontrol.assistant.ui.theme.AssistantColorScheme
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -171,161 +165,6 @@ internal fun WorkingRow(
             )
         }
     }
-}
-
-@Composable
-private fun WorkingContent(
-    state: SessionState,
-    calls: List<DhdToolCall>,
-    onStop: () -> Unit,
-) {
-    val colors = LocalAssistantColors.current
-    val sessionCalls = calls.filter {
-        it.sessionId == state.sessionIdOrNull &&
-            !ToolNames.isCloseDisplay(it.toolName)
-    }
-    val attention = state.needsAttention
-    val paused = state is SessionState.Paused
-    val current = sessionCalls.lastOrNull { it.status == DhdToolCallStatus.RUNNING }
-        ?: sessionCalls.lastOrNull {
-            attention && it.status == DhdToolCallStatus.ATTENTION
-        }
-    val preToolStatus = rememberPreToolStatus(
-        enabled = sessionCalls.isEmpty() && !attention && !paused,
-    )
-    val purpose = current?.purpose
-        ?: if (paused) "Paused" else sessionCalls.lastOrNull()?.purpose ?: preToolStatus
-    val attentionReason = state.attentionReasonOrNull()
-    val recent = sessionCalls
-        .filter { it.id != current?.id && it.status != DhdToolCallStatus.RUNNING }
-        .takeLast(3)
-    val headline = when {
-        attention -> "A moment for you"
-        paused -> "Ready when you are"
-        else -> purpose
-    }
-    val secondary = when {
-        attention -> attentionReason ?: purpose
-        paused -> purpose
-        else -> null
-    }
-    val headlineColor = if (attention) colors.warningAmber else colors.textPrimary
-
-    Column(
-        modifier = Modifier.padding(start = 20.dp, end = 16.dp, bottom = 13.dp),
-    ) {
-        AnimatedContent(
-            targetState = headline,
-            transitionSpec = {
-                (fadeIn(tween(220)) + slideInVertically(tween(220)) { 8 })
-                    .togetherWith(fadeOut(tween(110)) + slideOutVertically(tween(110)) { -8 })
-            },
-            label = "live-purpose",
-        ) { text ->
-            Text(
-                text = text,
-                color = headlineColor,
-                fontSize = 22.sp,
-                lineHeight = 28.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = (-0.45).sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 8.dp, bottom = if (secondary == null) 8.dp else 5.dp),
-            )
-        }
-
-        if (secondary != null) {
-            Text(
-                text = secondary,
-                color = colors.textSecondary,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(bottom = 7.dp),
-            )
-        }
-
-        if (recent.isNotEmpty()) {
-            Column(
-                modifier = Modifier.padding(top = 2.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                recent.forEach { call ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        StatusMark(call.status, callTint(call.status, colors))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = call.purpose,
-                            color = colors.textSecondary.copy(alpha = 0.82f),
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 15.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End,
-        ) {
-            GlyphButton(label = "Stop assistant", glyph = Glyph.STOP, onClick = onStop)
-        }
-    }
-}
-
-
-
-@Composable
-private fun StatusMark(status: DhdToolCallStatus, color: Color) {
-    Canvas(Modifier.size(12.dp)) {
-        when (status) {
-            DhdToolCallStatus.COMPLETED -> {
-                val path = Path().apply {
-                    moveTo(size.width * 0.12f, size.height * 0.5f)
-                    lineTo(size.width * 0.4f, size.height * 0.76f)
-                    lineTo(size.width * 0.88f, size.height * 0.22f)
-                }
-                drawPath(path, color, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
-            }
-            DhdToolCallStatus.FAILED -> {
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.25f, size.height * 0.25f),
-                    end = Offset(size.width * 0.75f, size.height * 0.75f),
-                    strokeWidth = 1.5.dp.toPx(),
-                    cap = StrokeCap.Round,
-                )
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.75f, size.height * 0.25f),
-                    end = Offset(size.width * 0.25f, size.height * 0.75f),
-                    strokeWidth = 1.5.dp.toPx(),
-                    cap = StrokeCap.Round,
-                )
-            }
-            DhdToolCallStatus.ATTENTION -> drawCircle(color, 2.8.dp.toPx())
-            DhdToolCallStatus.RUNNING -> {
-                drawCircle(color.copy(alpha = 0.28f), 4.2.dp.toPx())
-                drawCircle(color, 2.1.dp.toPx())
-            }
-        }
-    }
-}
-
-private fun callTint(status: DhdToolCallStatus, colors: AssistantColorScheme): Color = when (status) {
-    DhdToolCallStatus.COMPLETED -> colors.accentGreen
-    DhdToolCallStatus.FAILED -> colors.warningAmber
-    DhdToolCallStatus.ATTENTION -> colors.warningAmber
-    DhdToolCallStatus.RUNNING -> colors.accentBlue
 }
 
 internal fun workingRowSessionCalls(state: SessionState, calls: List<DhdToolCall>): List<DhdToolCall> =

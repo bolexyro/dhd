@@ -176,7 +176,7 @@ internal fun PausedStatusIndicator(currentPurpose: String) {
                 color = colors.warningAmber,
             )
             Text(
-                text = thinkingDetail(currentPurpose, 0L),
+                text = thinkingDetail(currentPurpose),
                 fontSize = 12.sp,
                 color = colors.textSecondary,
             )
@@ -221,10 +221,7 @@ internal fun accumulatedElapsedSeconds(
                 (nowEpochMs - startedAtEpochMs).coerceAtLeast(0L)
         ) / 1_000L
 
-private fun thinkingDetail(currentPurpose: String, elapsedSeconds: Long): String = when {
-    currentPurpose.equals(CoordinatorCopy.PREPARING_REQUEST, ignoreCase = true) && elapsedSeconds >= COMPANION_WAIT_CALLOUT_SECONDS ->
-        "Waiting for the desktop companion"
-
+private fun thinkingDetail(currentPurpose: String): String = when {
     currentPurpose.equals(CoordinatorCopy.PREPARING_REQUEST, ignoreCase = true) -> "Connecting to the desktop companion"
     currentPurpose.equals(CoordinatorCopy.CODEX_PLANNING, ignoreCase = true) || currentPurpose.equals(
         CoordinatorCopy.DHD_PLANNING,
@@ -234,4 +231,3 @@ private fun thinkingDetail(currentPurpose: String, elapsedSeconds: Long): String
     else -> currentPurpose.ifBlank { "Preparing the next step" }
 }
 
-private const val COMPANION_WAIT_CALLOUT_SECONDS = 15L
