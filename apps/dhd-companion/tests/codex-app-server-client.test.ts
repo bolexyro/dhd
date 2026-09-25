@@ -57,6 +57,7 @@ async function waitUntilSteerable(): Promise<void> {
 
 describe("Codex App Server process", () => {
   it("spawns the App Server over stdio with the isolated DHD configuration", async () => {
+    vi.stubEnv("PHONE_ASSISTANT_CODEX_BIN", "codex");
     writeFileSync(
       join(server.codexHome, "config.toml"),
       ["[mcp_servers.zeta]", "  [mcp_servers.alpha.env]", "[mcp_servers.beta]", "[other]"].join("\n"),
@@ -66,8 +67,7 @@ describe("Codex App Server process", () => {
 
     expect(server.spawns).toHaveLength(1);
     const [{ command, args, options }] = server.spawns;
-    expect(command).toBe("codex");
-    expect(args).toEqual([
+    const expectedArgs = [
       "app-server",
       "--listen",
       "stdio://",
@@ -98,11 +98,13 @@ describe("Codex App Server process", () => {
       ].flatMap((override) => ["-c", override]),
       "--enable",
       "code_mode_host",
-    ]);
+    ];
+    expect(command).toBe(process.platform === "win32" ? `codex ${expectedArgs.join(" ")}` : "codex");
+    expect(args).toEqual(process.platform === "win32" ? [] : expectedArgs);
     expect(options).toMatchObject({
       stdio: ["pipe", "pipe", "pipe"],
       cwd: server.runtimeCwd,
-      shell: false,
+      shell: process.platform === "win32",
       windowsHide: true,
     });
     expect(options.env?.CODEX_HOME).toBe(server.codexHome);
@@ -113,7 +115,10 @@ describe("Codex App Server process", () => {
 
     await client.start();
 
-    expect(server.spawns[0].args.slice(-2)).toEqual(["--disable", "code_mode_host"]);
+    const invocation = process.platform === "win32"
+      ? server.spawns[0].command
+      : server.spawns[0].args.join(" ");
+    expect(invocation.endsWith("--disable code_mode_host")).toBe(true);
   });
 
   it("uses a configured Codex binary", async () => {
@@ -121,7 +126,11 @@ describe("Codex App Server process", () => {
 
     await client.start();
 
-    expect(server.spawns[0].command).toBe("/opt/codex/bin/codex");
+    if (process.platform === "win32") {
+      expect(server.spawns[0].command).toMatch(/^\/opt\/codex\/bin\/codex app-server /);
+    } else {
+      expect(server.spawns[0].command).toBe("/opt/codex/bin/codex");
+    }
   });
 
   it("initializes once with the DHD client identity and reuses the connection", async () => {

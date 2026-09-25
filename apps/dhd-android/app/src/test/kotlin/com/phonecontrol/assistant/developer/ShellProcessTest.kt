@@ -1,5 +1,8 @@
 package com.phonecontrol.assistant.developer
 
+import java.io.File
+import org.junit.Assume.assumeTrue
+import org.junit.Before
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -7,6 +10,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ShellProcessTest {
+    @Before
+    fun requirePosixShell() {
+        assumeTrue("ShellProcess tests require /bin/sh", File("/bin/sh").canExecute())
+    }
+
     private fun sh(script: String, timeoutMs: Long = 5_000L, maxStderrBytes: Int = 1024): ShellProcess.Result =
         ShellProcess.run(listOf("/bin/sh", "-c", script), timeoutMs, maxStderrBytes, "test-out", "test-err")
 

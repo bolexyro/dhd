@@ -5,6 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 
 object Goldens {
+    private fun normalizedLineEndings(text: String): String = text.replace("\r\n", "\n")
+
     private val contractsDir: File by lazy {
         val path = System.getProperty("dhd.contractsDir")
             ?: error("dhd.contractsDir is not set; run the tests through Gradle.")
@@ -29,6 +31,10 @@ object Goldens {
             "Missing golden ${file.absolutePath}. Run ./gradlew :app:testDebugUnitTest -PupdateGoldens=true to create it.",
             file.isFile,
         )
-        assertEquals("Golden $relativePath changed", file.readText(), actual)
+        assertEquals(
+            "Golden $relativePath changed",
+            normalizedLineEndings(file.readText()),
+            normalizedLineEndings(actual),
+        )
     }
 }

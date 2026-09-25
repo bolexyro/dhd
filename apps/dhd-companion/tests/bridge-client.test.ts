@@ -32,7 +32,7 @@ describe("phone assistant bridge configuration", () => {
   });
 
   it("requires a token for every bridge target, including loopback", () => {
-    expect(bridgeConfigurationError("127.0.0.1", undefined)).toContain("TOKEN");
+    expect(bridgeConfigurationError("127.0.0.1", "")).toContain("TOKEN");
     expect(bridgeConfigurationError("192.168.1.42", "  ")).toContain("TOKEN");
     expect(bridgeConfigurationError("127.0.0.1", "paired-token")).toBeNull();
     expect(bridgeConfigurationError("192.168.1.42", "paired-token")).toBeNull();

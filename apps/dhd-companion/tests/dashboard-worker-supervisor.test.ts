@@ -183,7 +183,7 @@ describe("dashboard worker supervision", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(worker(1).signals).toEqual([undefined]);
+    expect(worker(1).signals).toEqual([process.platform === "win32" ? "SIGTERM" : undefined]);
     expect(workers.spawned).toHaveLength(3);
     expect(workers.spawned[2].options.env).toMatchObject({
       PHONE_ASSISTANT_BRIDGE_HOST: "192.168.1.2",
