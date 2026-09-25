@@ -33,17 +33,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-private data class PendingAttention(
-    val sessionId: String,
-    val reason: String,
-    val completion: CompletableDeferred<AttentionResolution>,
-)
 
 /**
  * Process-local session state shared by the Compose activity, foreground
@@ -76,8 +69,35 @@ class SessionCoordinator(
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val handoff = CompanionHandoff(conversationStore)
     private val steers = SteerQueue()
-    private var pendingAttention: PendingAttention? = null
-    private val completedAttentions = mutableMapOf<String, AttentionResolution>()
+    private val attentionGate = AttentionGate()
+    private val phoneAccessRecovery = PhoneAccessRecovery(
+        host = object : PhoneAccessRecoveryHost {
+            override fun activeSessionId(): String? = this@SessionCoordinator.activeSessionId()
+
+            override fun isSessionActive(sessionId: String): Boolean = sessionStillActive(sessionId)
+
+            override fun requestAttentionWaiter(
+                reason: String,
+                actionLabel: String,
+            ): CompletableDeferred<AttentionResolution>? =
+                this@SessionCoordinator.requestAttentionWaiter(reason, actionLabel)
+
+            override fun attentionPending(): Boolean = this@SessionCoordinator.attentionPending()
+
+            override suspend fun awaitAttention(sessionId: String): AttentionResolution =
+                this@SessionCoordinator.awaitAttention(sessionId)
+
+            override fun acknowledgeAttention(automatic: Boolean): Boolean =
+                this@SessionCoordinator.acknowledgeAttention(automatic)
+
+            override fun conversationId(): String? = synchronized(lock) {
+                _state.value.conversationIdOrNull
+            }
+        },
+        phoneAccessReadyProvider = phoneAccessReadyProvider,
+        onPhoneAccessAttentionRequested = onPhoneAccessAttentionRequested,
+        onPhoneAccessAttentionResolved = onPhoneAccessAttentionResolved,
+    )
 
     val state: StateFlow<SessionState> = _state.asStateFlow()
     val events: StateFlow<List<ActivityEvent>> = activityLog.events
@@ -107,7 +127,7 @@ class SessionCoordinator(
         val now = System.currentTimeMillis()
         val normalizedReasoningEffort = ReasoningEffort.fromCodexValue(reasoningEffort)?.codexValue
             ?: ReasoningEffort.default.codexValue
-        completedAttentions.clear()
+        attentionGate.forgetCompleted()
         pointerFeedback.clear()
         val startedRun = conversationStore?.startRun(sessionId, request, conversationId)
         handoff.release()
@@ -333,7 +353,7 @@ class SessionCoordinator(
             runId = sessionId,
             requestedConversationId = stopped.conversationId,
         )
-        completedAttentions.clear()
+        attentionGate.forgetCompleted()
         pointerFeedback.clear()
         handoff.release()
         _state.value = SessionState.Running(
@@ -362,8 +382,7 @@ class SessionCoordinator(
         val sessionId = current.sessionIdOrNull ?: return false
         val now = System.currentTimeMillis()
         val workedDurationMs = current.elapsedAt(now)
-        cancelPendingAttentionLocked()
-        completedAttentions.remove(sessionId)
+        attentionGate.settle(sessionId)
         sessionJob?.cancel()
         sessionJob = null
         transport.cancelSessionForRun(sessionId)
@@ -396,8 +415,7 @@ class SessionCoordinator(
     fun reset(): Boolean = synchronized(lock) {
         val current = _state.value
         val sessionId = current.sessionIdOrNull
-        cancelPendingAttentionLocked()
-        completedAttentions.clear()
+        attentionGate.cancelAll()
         sessionJob?.cancel()
         sessionJob = null
         if (sessionId != null) {
@@ -425,8 +443,7 @@ class SessionCoordinator(
         if (!current.isActive) return false
         val now = System.currentTimeMillis()
         val workedDurationMs = current.elapsedAt(now)
-        cancelPendingAttentionLocked()
-        completedAttentions.remove(sessionId)
+        attentionGate.settle(sessionId)
         sessionJob?.cancel()
         sessionJob = null
         transport.cancelSessionForRun(sessionId)
@@ -471,8 +488,7 @@ class SessionCoordinator(
         val current = _state.value
         val sessionId = current.sessionIdOrNull ?: return false
         val workedDurationMs = current.elapsedAt(System.currentTimeMillis())
-        cancelPendingAttentionLocked()
-        completedAttentions.remove(sessionId)
+        attentionGate.settle(sessionId)
         val feedback = agentFeedback
             ?.trim()
             ?.take(MAX_AGENT_FEEDBACK_CHARS)
@@ -549,13 +565,11 @@ class SessionCoordinator(
         if (current !is SessionState.Running && current !is SessionState.Paused) {
             return@synchronized null
         }
-        if (pendingAttention != null) return@synchronized null
+        if (attentionGate.isPending) return@synchronized null
         val message = reason.trim().take(MAX_TEXT_CHARS).ifBlank { "The phone assistant needs your attention." }
         val safeActionLabel = actionLabel.trim().take(MAX_TEXT_CHARS)
             .ifBlank { DEFAULT_ATTENTION_ACTION_LABEL }
-        val completion = CompletableDeferred<AttentionResolution>()
-        completedAttentions.remove(sessionId)
-        pendingAttention = PendingAttention(sessionId, message, completion)
+        val completion = attentionGate.open(sessionId, message)
         val updated = when (current) {
             is SessionState.Running -> current.copy(
                 currentPurpose = CoordinatorCopy.NEEDS_ATTENTION,
@@ -582,28 +596,23 @@ class SessionCoordinator(
     }
 
     /** True while the Codex turn is waiting for the user to finish the step. */
-    fun attentionPending(): Boolean = synchronized(lock) { pendingAttention != null }
+    fun attentionPending(): Boolean = synchronized(lock) { attentionGate.isPending }
 
     /** Suspend the bridge request until the phone user acknowledges or stops the run. */
     suspend fun awaitAttention(sessionId: String): AttentionResolution =
         synchronized(lock) {
-            pendingAttention
-                ?.takeIf { it.sessionId == sessionId }
-                ?.completion
-                ?: completedAttentions.remove(sessionId)?.let { resolution ->
-                    CompletableDeferred<AttentionResolution>().apply { complete(resolution) }
-                }
+            attentionGate.waiterFor(sessionId)
         }?.await() ?: AttentionResolution.Cancelled
 
     /** Complete the blocking attention tool from the DHD UI's Done button. */
     fun acknowledgeAttention(automatic: Boolean = false): Boolean = synchronized(lock) {
-        val pending = pendingAttention ?: return@synchronized false
+        val pending = attentionGate.pendingOrNull() ?: return@synchronized false
         val current = _state.value
         if (current.sessionIdOrNull != pending.sessionId || !current.isActive) {
-            cancelPendingAttentionLocked()
+            attentionGate.cancelPending()
             return@synchronized false
         }
-        pendingAttention = null
+        attentionGate.dismissPending()
         _state.value = when (current) {
             is SessionState.Running -> current.copy(
                 currentPurpose = CoordinatorCopy.DHD_PLANNING,
@@ -643,8 +652,7 @@ class SessionCoordinator(
             },
             pending.sessionId,
         )
-        completedAttentions[pending.sessionId] = AttentionResolution.Acknowledged
-        pending.completion.complete(AttentionResolution.Acknowledged)
+        attentionGate.acknowledge(pending)
         true
     }
 
@@ -655,57 +663,8 @@ class SessionCoordinator(
      * that it can absorb and turn into a misleading completed response.
      */
     suspend fun awaitPhoneAccessForTool(
-        reason: String = PHONE_ACCESS_RECOVERY_MESSAGE,
-    ): Boolean {
-        val sessionId = activeSessionId() ?: return false
-        while (true) {
-            if (!sessionStillActive(sessionId)) return false
-            if (phoneAccessReadyProvider()) return true
-
-            val attention = requestAttentionWaiter(
-                reason = reason,
-                actionLabel = PHONE_ACCESS_INSTRUCTIONS_ACTION_LABEL,
-            )
-            if (attention == null) {
-                if (!attentionPending()) return false
-                if (awaitAttention(sessionId) == AttentionResolution.Cancelled) return false
-                continue
-            }
-
-            val conversationId = synchronized(lock) {
-                _state.value.conversationIdOrNull
-            }
-            runCatching {
-                onPhoneAccessAttentionRequested(reason, conversationId)
-            }
-            try {
-                while (sessionStillActive(sessionId)) {
-                    if (phoneAccessReadyProvider()) {
-                        if (acknowledgeAttention(automatic = true) || phoneAccessReadyProvider()) {
-                            return true
-                        }
-                    }
-                    if (attention.isCompleted) {
-                        when (attention.await()) {
-                            AttentionResolution.Acknowledged -> break
-                            AttentionResolution.Cancelled -> return false
-                        }
-                    }
-                    delay(PHONE_ACCESS_STATUS_POLL_INTERVAL_MS)
-                }
-            } finally {
-                runCatching { onPhoneAccessAttentionResolved() }
-            }
-            if (!sessionStillActive(sessionId)) return false
-        }
-    }
-
-    private fun cancelPendingAttentionLocked() {
-        val pending = pendingAttention ?: return
-        pendingAttention = null
-        completedAttentions[pending.sessionId] = AttentionResolution.Cancelled
-        pending.completion.complete(AttentionResolution.Cancelled)
-    }
+        reason: String = PhoneAccessRecovery.PHONE_ACCESS_RECOVERY_MESSAGE,
+    ): Boolean = phoneAccessRecovery.awaitPhoneAccess(reason)
 
     fun setCurrentPurpose(purpose: String, metadataPurpose: String? = null): Boolean = synchronized(lock) {
         val displayPurpose = userFacingActivityLabel(actionType = null, purpose = purpose)
@@ -1019,8 +978,7 @@ class SessionCoordinator(
             }
         }
         synchronized(lock) {
-            cancelPendingAttentionLocked()
-            completedAttentions.clear()
+            attentionGate.cancelAll()
             steers.clearAll()
         }
     }
@@ -1055,11 +1013,7 @@ class SessionCoordinator(
         const val MAX_TEXT_CHARS = 240
         const val MAX_AGENT_FEEDBACK_CHARS = 4_000
         const val MAX_PHONE_ACCESS_RECOVERY_ATTEMPTS = 3
-        const val PHONE_ACCESS_STATUS_POLL_INTERVAL_MS = 500L
         const val DEFAULT_ATTENTION_ACTION_LABEL = "Done"
-        const val PHONE_ACCESS_INSTRUCTIONS_ACTION_LABEL = CoordinatorCopy.VIEW_INSTRUCTIONS
-        const val PHONE_ACCESS_RECOVERY_MESSAGE =
-            "DHD paused this task because it needs phone access. Turn on Wi-Fi and Wireless debugging in Android Settings, then return to DHD. Your phone action has not been sent."
     }
 }
 
