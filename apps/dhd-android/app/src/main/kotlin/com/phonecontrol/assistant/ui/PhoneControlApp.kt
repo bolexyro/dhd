@@ -58,6 +58,12 @@ import com.phonecontrol.assistant.ui.displays.surface.PreviewSurfaceDestroyed
 import com.phonecontrol.assistant.ui.displays.viewerPreviewState
 import com.phonecontrol.assistant.ui.navigation.AppRoutes
 import com.phonecontrol.assistant.ui.navigation.supportedInitialRoute
+import com.phonecontrol.assistant.ui.onboarding.PermissionOnboardingScreen
+import com.phonecontrol.assistant.ui.pairing.CompanionInstructionsScreen
+import com.phonecontrol.assistant.ui.pairing.CompanionPairingApprovalDialog
+import com.phonecontrol.assistant.ui.pairing.PairingScreen
+import com.phonecontrol.assistant.ui.settings.ApprovedAppsScreen
+import com.phonecontrol.assistant.ui.settings.SettingsScreen
 import com.phonecontrol.assistant.ui.theme.DarkAssistantColors
 import com.phonecontrol.assistant.ui.theme.LightAssistantColors
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
