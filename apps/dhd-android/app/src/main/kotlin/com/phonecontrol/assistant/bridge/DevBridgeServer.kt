@@ -26,6 +26,8 @@ import com.phonecontrol.assistant.bridge.protocol.isSuccessful
 import com.phonecontrol.assistant.bridge.protocol.resultMessage
 import com.phonecontrol.assistant.bridge.protocol.staleDetailsOrNull
 import com.phonecontrol.assistant.bridge.protocol.unstartedSequenceFailure
+import com.phonecontrol.assistant.bridge.transport.BridgeReply
+import com.phonecontrol.assistant.bridge.transport.NdjsonWriter
 import com.phonecontrol.assistant.core.AndroidBase64Codec
 import com.phonecontrol.assistant.core.Base64Codec
 import com.phonecontrol.assistant.core.BuildDeviceInfo
@@ -567,7 +569,7 @@ class DevBridgeServer internal constructor(
         client.use { socket ->
             val reader = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.UTF_8))
             val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), Charsets.UTF_8))
-            handleRequestLine(reader.readLine(), socket.inetAddress, writer)
+            handleRequestLine(reader.readLine(), socket.inetAddress, NdjsonWriter(writer))
         }
     }
 
@@ -576,28 +578,35 @@ class DevBridgeServer internal constructor(
         peerAddress: InetAddress,
         writer: BufferedWriter,
     ) {
+        handleRequestLine(line, peerAddress, NdjsonWriter(writer))
+    }
+
+    private suspend fun handleRequestLine(
+        line: String?,
+        peerAddress: InetAddress,
+        reply: BridgeReply,
+    ) {
         if (line == null) {
-            write(writer, errorResponse(null, "The bridge received an empty request."))
+            reply.write(errorResponse(null, "The bridge received an empty request."))
             return
         }
         if (line.length > MAX_REQUEST_CHARS) {
-            write(writer, errorResponse(null, "The bridge request is too large."))
+            reply.write(errorResponse(null, "The bridge request is too large."))
             return
         }
         val json = try {
             JSONObject(line)
         } catch (error: IllegalArgumentException) {
-            write(writer, errorResponse(null, error.message ?: "Invalid bridge request."))
+            reply.write(errorResponse(null, error.message ?: "Invalid bridge request."))
             return
         } catch (error: JSONException) {
-            write(writer, errorResponse(null, "The bridge request must be valid JSON."))
+            reply.write(errorResponse(null, "The bridge request must be valid JSON."))
             return
         }
         val requestId = json.optString("requestId").ifBlank { newUuid().toString() }
 
         if (!isAuthorized(peerAddress, json)) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The phone bridge rejected this network connection. Pair the desktop companion in DHD settings.")
                     .put("code", BridgeErrorCodes.AUTH_REQUIRED),
             )
@@ -612,8 +621,7 @@ class DevBridgeServer internal constructor(
         if (requestType != "status" && requestType != "companion_disconnected") {
             markCompanionSeen()
         }
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "accepted")
                 .put("requestId", requestId)
@@ -621,68 +629,68 @@ class DevBridgeServer internal constructor(
         )
         try {
             when (requestType) {
-                "demo_run" -> phoneActionMutex.withLock { runDemo(parseRequest(json), writer) }
-                "start_session" -> startSession(requestId, json, writer)
-                "status" -> status(requestId, writer)
-                "heartbeat" -> heartbeat(requestId, writer)
-                "companion_disconnected" -> companionDisconnected(requestId, writer)
-                "pending_request" -> pendingRequest(requestId, writer)
-                "claim_request" -> claimRequest(requestId, json, writer)
-                "pending_steer" -> pendingSteer(requestId, json, writer)
-                "claim_steer" -> claimSteer(requestId, json, writer)
-                "release_steer" -> releaseSteer(requestId, json, writer)
-                "complete_steer" -> completeSteer(requestId, json, writer)
-                "bind_codex_thread" -> bindCodexThread(requestId, json, writer)
-                "release_request" -> releaseRequest(requestId, json, writer)
-                "stream_agent_message" -> streamAgentMessage(requestId, json, writer)
-                "complete_session" -> completeSession(requestId, json, writer)
-                "fail_session" -> failSession(requestId, json, writer)
+                "demo_run" -> phoneActionMutex.withLock { runDemo(parseRequest(json), reply) }
+                "start_session" -> startSession(requestId, json, reply)
+                "status" -> status(requestId, reply)
+                "heartbeat" -> heartbeat(requestId, reply)
+                "companion_disconnected" -> companionDisconnected(requestId, reply)
+                "pending_request" -> pendingRequest(requestId, reply)
+                "claim_request" -> claimRequest(requestId, json, reply)
+                "pending_steer" -> pendingSteer(requestId, json, reply)
+                "claim_steer" -> claimSteer(requestId, json, reply)
+                "release_steer" -> releaseSteer(requestId, json, reply)
+                "complete_steer" -> completeSteer(requestId, json, reply)
+                "bind_codex_thread" -> bindCodexThread(requestId, json, reply)
+                "release_request" -> releaseRequest(requestId, json, reply)
+                "stream_agent_message" -> streamAgentMessage(requestId, json, reply)
+                "complete_session" -> completeSession(requestId, json, reply)
+                "fail_session" -> failSession(requestId, json, reply)
                 "allowed_apps" -> withDhdTool(json, ToolNames.LIST_ALLOWED_APPS) {
-                    allowedApps(requestId, json, writer)
+                    allowedApps(requestId, json, reply)
                 }
                 "browse_apps" -> withDhdTool(json, ToolNames.BROWSE_APP) {
-                    browseApps(requestId, json, writer)
+                    browseApps(requestId, json, reply)
                 }
                 "set_app_display_layout" -> withDhdTool(json, ToolNames.SET_APP_DISPLAY_LAYOUT) {
-                    setAppDisplayLayout(requestId, json, writer)
+                    setAppDisplayLayout(requestId, json, reply)
                 }
-                "list_displays" -> listDisplays(requestId, writer)
-                "close_display" -> closeDisplay(requestId, json, writer)
+                "list_displays" -> listDisplays(requestId, reply)
+                "close_display" -> closeDisplay(requestId, json, reply)
                 "foreground_app" -> withDhdTool(json, ToolNames.FOREGROUND_APP) {
-                    foregroundApp(requestId, json, writer)
+                    foregroundApp(requestId, json, reply)
                 }
                 "observe" -> withDhdTool(
                     json = json,
                     fallbackToolName = ToolNames.OBSERVE,
                 ) {
-                    observe(requestId, json, writer)
+                    observe(requestId, json, reply)
                 }
                 "execute_action" -> withDhdTool(
                     json = json,
                     fallbackToolName = fallbackActionToolName(json),
                 ) {
-                    phoneActionMutex.withLock { executeAction(requestId, json, writer) }
+                    phoneActionMutex.withLock { executeAction(requestId, json, reply) }
                 }
                 "execute_sequence" -> withDhdTool(
                     json = json,
                     fallbackToolName = ToolNames.EXECUTE_SEQUENCE,
                 ) {
-                    phoneActionMutex.withLock { executeSequence(requestId, json, writer) }
+                    phoneActionMutex.withLock { executeSequence(requestId, json, reply) }
                 }
                 "request_attention" -> withDhdTool(
                     json = json,
                     fallbackToolName = ToolNames.REQUEST_ATTENTION,
                     terminalStatus = DhdToolCallStatus.ATTENTION,
                 ) {
-                    requestAttention(requestId, json, writer)
+                    requestAttention(requestId, json, reply)
                 }
-                "stop_session" -> stopSession(requestId, json, writer)
-                else -> write(writer, errorResponse(requestId, "Unsupported bridge request type."))
+                "stop_session" -> stopSession(requestId, json, reply)
+                else -> reply.write(errorResponse(requestId, "Unsupported bridge request type."))
             }
         } catch (error: Throwable) {
             val message = error.message ?: error::class.java.simpleName
             platform.logError(TAG, "Bridge request failed", error)
-            write(writer, errorResponse(requestId, "The phone bridge failed: $message"))
+            reply.write(errorResponse(requestId, "The phone bridge failed: $message"))
         }
     }
 
@@ -792,7 +800,7 @@ class DevBridgeServer internal constructor(
     private fun startSession(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val request = json.optString("request").trim()
         require(request.isNotEmpty() && request.length <= MAX_REQUEST_CHARS) {
@@ -804,7 +812,7 @@ class DevBridgeServer internal constructor(
             .ifBlank { ReasoningEffort.default.codexValue }
         val fastMode = json.optBoolean("fastMode", false)
         if (!coordinator.start(request, conversationId, reasoningEffort, fastMode)) {
-            write(writer, errorResponse(requestId, "The phone already has an active session."))
+            reply.write(errorResponse(requestId, "The phone already has an active session."))
             return
         }
         val state = coordinator.state.value
@@ -817,8 +825,7 @@ class DevBridgeServer internal constructor(
         }.onFailure { error ->
             platform.logWarning(TAG, "Could not start the foreground notification for the bridge session", error)
         }
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "started")
                 .put("requestId", requestId)
@@ -833,7 +840,7 @@ class DevBridgeServer internal constructor(
 
     private fun status(
         requestId: String,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val state = coordinator.state.value
         val response = JSONObject()
@@ -859,18 +866,17 @@ class DevBridgeServer internal constructor(
                 .put("fastMode", state.fastMode)
             else -> Unit
         }
-        write(writer, response)
+        reply.write(response)
     }
 
     private fun heartbeat(
         requestId: String,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         // Keep the phone-side companion lease independent from pending work,
         // Codex startup, or a long-running task request.
         markCompanionSeen()
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "heartbeat")
                 .put("requestId", requestId)
@@ -881,12 +887,11 @@ class DevBridgeServer internal constructor(
 
     private fun companionDisconnected(
         requestId: String,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         lastCompanionSeenElapsedMs = 0L
         _companionConnected.value = false
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "companion_disconnected")
                 .put("requestId", requestId)
@@ -897,7 +902,7 @@ class DevBridgeServer internal constructor(
 
     private fun pendingRequest(
         requestId: String,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         // The companion's normal pending-request poll doubles as its
         // heartbeat. The phone uses this to render the existing recovery card
@@ -920,26 +925,24 @@ class DevBridgeServer internal constructor(
                 .put("continuation", pending.isContinuation)
                 .put("request", pending.request)
         }
-        write(writer, response)
+        reply.write(response)
     }
 
     private fun claimRequest(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val expectedSessionId = json.optString("sessionId").trim().ifBlank { null }
         val claimed = coordinator.claimRequest(expectedSessionId)
         if (claimed == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "No unclaimed running phone request matched the supplied sessionId.")
                     .put("code", BridgeErrorCodes.REQUEST_NOT_AVAILABLE),
             )
             return
         }
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "request_claimed")
                 .put("requestId", requestId)
@@ -958,7 +961,7 @@ class DevBridgeServer internal constructor(
     private fun pendingSteer(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         markCompanionSeen()
         val expectedSessionId = json.optString("sessionId").trim().ifBlank { null }
@@ -976,13 +979,13 @@ class DevBridgeServer internal constructor(
                 .put("steerId", pending.steerId)
                 .put("sessionId", pending.sessionId)
         }
-        write(writer, response)
+        reply.write(response)
     }
 
     private fun claimSteer(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val sessionId = json.optString("sessionId").trim()
         val steerId = json.optString("steerId").trim()
@@ -990,15 +993,13 @@ class DevBridgeServer internal constructor(
         require(steerId.isNotEmpty()) { "steerId is required." }
         val claimed = coordinator.claimSteer(sessionId, steerId)
         if (claimed == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "No unclaimed steer matched the supplied session and steer id.")
                     .put("code", BridgeErrorCodes.STEER_NOT_AVAILABLE),
             )
             return
         }
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "steer_claimed")
                 .put("requestId", requestId)
@@ -1012,15 +1013,14 @@ class DevBridgeServer internal constructor(
     private fun releaseSteer(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val sessionId = json.optString("sessionId").trim()
         val steerId = json.optString("steerId").trim()
         require(sessionId.isNotEmpty()) { "sessionId is required." }
         require(steerId.isNotEmpty()) { "steerId is required." }
         val released = coordinator.releaseSteer(sessionId, steerId)
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "steer_released")
                 .put("requestId", requestId)
@@ -1034,15 +1034,14 @@ class DevBridgeServer internal constructor(
     private fun completeSteer(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val sessionId = json.optString("sessionId").trim()
         val steerId = json.optString("steerId").trim()
         require(sessionId.isNotEmpty()) { "sessionId is required." }
         require(steerId.isNotEmpty()) { "steerId is required." }
         val completed = coordinator.completeSteer(sessionId, steerId)
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "steer_completed")
                 .put("requestId", requestId)
@@ -1056,13 +1055,12 @@ class DevBridgeServer internal constructor(
     private fun releaseRequest(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val sessionId = json.optString("sessionId").trim()
         require(sessionId.isNotEmpty()) { "sessionId is required." }
         val released = coordinator.releaseRequest(sessionId)
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "request_released")
                 .put("requestId", requestId)
@@ -1075,15 +1073,14 @@ class DevBridgeServer internal constructor(
     private fun bindCodexThread(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val conversationId = json.optString("conversationId").trim()
         val codexThreadId = json.optString("codexThreadId").trim()
         require(conversationId.isNotEmpty()) { "conversationId is required." }
         require(codexThreadId.isNotEmpty()) { "codexThreadId is required." }
         val bound = coordinator.bindCodexThread(conversationId, codexThreadId)
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "codex_thread_bound")
                 .put("requestId", requestId)
@@ -1096,13 +1093,12 @@ class DevBridgeServer internal constructor(
     private fun failSession(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val sessionId = json.optString("sessionId").trim()
         require(sessionId.isNotEmpty()) { "sessionId is required." }
         if (coordinator.state.value.sessionIdOrNull != sessionId) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The phone session is no longer active.")
                     .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
             )
@@ -1120,8 +1116,7 @@ class DevBridgeServer internal constructor(
             )
         }
         platform.reconcileServiceLifetime()
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "session_failed")
                 .put("requestId", requestId)
@@ -1133,7 +1128,7 @@ class DevBridgeServer internal constructor(
     private fun streamAgentMessage(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         markCompanionSeen()
         val sessionId = json.optString("sessionId").trim()
@@ -1147,16 +1142,14 @@ class DevBridgeServer internal constructor(
             "text must be at most $MAX_AGENT_FEEDBACK_CHARS characters."
         }
         if (coordinator.state.value.sessionIdOrNull != sessionId) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The phone session is no longer active.")
                     .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
             )
             return
         }
         val streamed = coordinator.streamAgentMessage(sessionId, messageId, text)
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "agent_message_streamed")
                 .put("requestId", requestId)
@@ -1169,7 +1162,7 @@ class DevBridgeServer internal constructor(
     private fun completeSession(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val sessionId = json.optString("sessionId").trim()
         require(sessionId.isNotEmpty()) { "sessionId is required." }
@@ -1187,8 +1180,7 @@ class DevBridgeServer internal constructor(
             ?.take(MAX_TEXT_CHARS)
         val activeSessionId = coordinator.state.value.sessionIdOrNull
         if (activeSessionId != sessionId) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The phone session is no longer active.")
                     .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
             )
@@ -1205,8 +1197,7 @@ class DevBridgeServer internal constructor(
         }
         platform.removeAttentionNotification()
         platform.reconcileServiceLifetime()
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "session_completed")
                 .put("requestId", requestId)
@@ -1221,7 +1212,7 @@ class DevBridgeServer internal constructor(
     private suspend fun requestAttention(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val reason = json.optString("reason")
             .trim()
@@ -1229,8 +1220,7 @@ class DevBridgeServer internal constructor(
             .take(MAX_TEXT_CHARS)
         val sessionId = coordinator.activeSessionId()
         if (sessionId == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The phone assistant has no active session to interrupt.")
                     .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING),
             )
@@ -1241,8 +1231,7 @@ class DevBridgeServer internal constructor(
             when (val resolution = resolveDisplayTarget(displayRef = requestedDisplayRef)) {
                 is TaskDisplayResolution.Ready -> resolution.target
                 is TaskDisplayResolution.Unavailable -> {
-                    write(
-                        writer,
+                    reply.write(
                         errorResponse(requestId, resolution.message).put("code", resolution.code),
                     )
                     return
@@ -1253,8 +1242,7 @@ class DevBridgeServer internal constructor(
         }
         val attention = coordinator.requestAttentionWaiter(reason)
         if (attention == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The phone assistant is already waiting for the user's attention.")
                     .put("code", BridgeErrorCodes.ATTENTION_ALREADY_PENDING),
             )
@@ -1262,8 +1250,7 @@ class DevBridgeServer internal constructor(
         }
         platform.showAttentionNotification(reason, coordinator.state.value.conversationIdOrNull)
         when (attention.await()) {
-            AttentionResolution.Cancelled -> write(
-                writer,
+            AttentionResolution.Cancelled -> reply.write(
                 JSONObject()
                     .put("type", "attention_cancelled")
                     .put("requestId", requestId)
@@ -1300,7 +1287,7 @@ class DevBridgeServer internal constructor(
                             .put("screenshotMimeType", "image/png")
                     }
                 }
-                write(writer, response)
+                reply.write(response)
             }
         }
     }
@@ -1308,7 +1295,7 @@ class DevBridgeServer internal constructor(
     private fun allowedApps(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val fullAccess = fullAccessProvider()
         val includeAll = json.optBoolean("includeAll", false)
@@ -1321,8 +1308,7 @@ class DevBridgeServer internal constructor(
             },
             toolName = ToolNames.LIST_ALLOWED_APPS,
         )
-        write(
-            writer,
+        reply.write(
             buildAllowedAppsResponse(
                 requestId = requestId,
                 fullAccess = fullAccess,
@@ -1341,12 +1327,11 @@ class DevBridgeServer internal constructor(
     private fun browseApps(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val query = json.optString("query").trim()
         if (query.isEmpty() || query.length > MAX_APP_QUERY_CHARS) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "App search requires a query between 1 and $MAX_APP_QUERY_CHARS characters.")
                     .put("code", BridgeErrorCodes.INVALID_APP_QUERY),
             )
@@ -1369,8 +1354,7 @@ class DevBridgeServer internal constructor(
             }
             .toList()
         val returnedApps = candidates.take(MAX_APP_BROWSE_RESULTS)
-        write(
-            writer,
+        reply.write(
             buildBrowseAppsResponse(
                 requestId = requestId,
                 query = query,
@@ -1385,12 +1369,11 @@ class DevBridgeServer internal constructor(
     private fun setAppDisplayLayout(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val packageName = json.optString("packageName").trim()
         if (!PACKAGE_PATTERN.matches(packageName)) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "packageName is not a valid Android package name.")
                     .put("code", BridgeErrorCodes.INVALID_PACKAGE),
             )
@@ -1402,8 +1385,7 @@ class DevBridgeServer internal constructor(
             "full_size" -> true
             "standard" -> false
             else -> {
-                write(
-                    writer,
+                reply.write(
                     errorResponse(requestId, "layout must be either full_size or standard.")
                         .put("code", BridgeErrorCodes.INVALID_APP_DISPLAY_LAYOUT),
                 )
@@ -1414,8 +1396,7 @@ class DevBridgeServer internal constructor(
         val app = platform.launchableApps()
             .firstOrNull { it.packageName == packageName }
         if (app == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "No launchable app matches packageName=$packageName.")
                     .put("code", BridgeErrorCodes.APP_NOT_FOUND),
             )
@@ -1425,8 +1406,7 @@ class DevBridgeServer internal constructor(
         val fullAccess = fullAccessProvider()
         val allowed = fullAccess || packageName in allowedPackagesProvider()
         if (!allowed) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The app is not allowed for the current DHD access mode.")
                     .put("code", BridgeErrorCodes.APP_NOT_ALLOWED),
             )
@@ -1440,8 +1420,7 @@ class DevBridgeServer internal constructor(
         )
         val changed = platform.isFullSizeLayoutEnabled(packageName) != enabled
         platform.setFullSizeLayoutEnabled(packageName, enabled)
-        write(
-            writer,
+        reply.write(
             buildAppDisplayLayoutResponse(
                 requestId = requestId,
                 packageName = packageName,
@@ -1454,20 +1433,18 @@ class DevBridgeServer internal constructor(
 
     private suspend fun listDisplays(
         requestId: String,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val backend = taskDisplayBackend
         if (backend == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The task display registry is unavailable.")
                     .put("code", BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE),
             )
             return
         }
         val displays = currentDisplayJson(backend)
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "displays")
                 .put("requestId", requestId)
@@ -1481,12 +1458,11 @@ class DevBridgeServer internal constructor(
     private suspend fun closeDisplay(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val backend = taskDisplayBackend
         if (backend == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The task display registry is unavailable.")
                     .put("code", BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE),
             )
@@ -1495,12 +1471,11 @@ class DevBridgeServer internal constructor(
         val displayRef = try {
             optionalDisplayRef(json)
         } catch (error: IllegalArgumentException) {
-            write(writer, errorResponse(requestId, error.message ?: "displayRef is invalid.").put("code", BridgeErrorCodes.INVALID_DISPLAY_REF))
+            reply.write(errorResponse(requestId, error.message ?: "displayRef is invalid.").put("code", BridgeErrorCodes.INVALID_DISPLAY_REF))
             return
         }
         if (displayRef == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "displayRef is required to close a display safely. Call dhd_list_displays first and use the matching displayRef.")
                     .put("code", BridgeErrorCodes.DISPLAY_REFERENCE_REQUIRED),
             )
@@ -1509,8 +1484,7 @@ class DevBridgeServer internal constructor(
         backend.activeDisplaySessions()
         val record = backend.displayRecords.value.firstOrNull { it.displayRef == displayRef }
         if (record == null) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "No task display matches the supplied displayRef. Call dhd_list_displays to see the available displays.")
                     .put("code", BridgeErrorCodes.DISPLAY_NOT_FOUND),
             )
@@ -1518,21 +1492,18 @@ class DevBridgeServer internal constructor(
         }
         val activeRunKey = coordinator.activeSessionId()
         if (activeRunKey != null && backend.isDisplayClaimedByRun(record.displayId, activeRunKey)) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "The selected task display is being used by an active DHD run. Stop the active run first, then close the display.")
                     .put("code", BridgeErrorCodes.DISPLAY_IN_USE),
             )
             return
         }
         when (val result = backend.closeTaskDisplay(record.displayId, displayRef)) {
-            is TaskDisplayCloseResult.Rejected -> write(
-                writer,
+            is TaskDisplayCloseResult.Rejected -> reply.write(
                 errorResponse(requestId, result.message).put("code", result.code),
             )
 
-            is TaskDisplayCloseResult.Closed -> write(
-                writer,
+            is TaskDisplayCloseResult.Closed -> reply.write(
                 JSONObject()
                     .put("type", "display_closed")
                     .put("requestId", requestId)
@@ -1654,7 +1625,7 @@ class DevBridgeServer internal constructor(
     private suspend fun observe(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val purpose = json.optString("purpose").trim().take(MAX_TEXT_CHARS)
             .ifBlank { "Observing current screen" }
@@ -1664,8 +1635,7 @@ class DevBridgeServer internal constructor(
             toolName = ToolNames.OBSERVE,
         )
         if (!coordinator.awaitPhoneAccessForTool()) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "Phone access is no longer available; DHD could not observe the phone.")
                     .put("code", BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE),
             )
@@ -1678,7 +1648,7 @@ class DevBridgeServer internal constructor(
             )) {
                 is TaskDisplayResolution.Ready -> resolution.target
                 is TaskDisplayResolution.Unavailable -> {
-                    write(writer, errorResponse(requestId, resolution.message).put("code", resolution.code))
+                    reply.write(errorResponse(requestId, resolution.message).put("code", resolution.code))
                     return
                 }
             }
@@ -1692,13 +1662,12 @@ class DevBridgeServer internal constructor(
             displayId = target?.session?.displayId,
             expectedDisplayRef = target?.displayRef,
         )) {
-            is ObservationCaptureResult.Failed -> write(
-                writer,
+            is ObservationCaptureResult.Failed -> reply.write(
                 errorResponse(requestId, captured.message).put("code", captured.code),
             )
             is ObservationCaptureResult.Succeeded -> {
                 remember(captured.snapshot)
-                writeObservation(writer, requestId, captured.snapshot, captured.screenshot)
+                writeObservation(reply, requestId, captured.snapshot, captured.screenshot)
             }
         }
     }
@@ -1706,15 +1675,14 @@ class DevBridgeServer internal constructor(
     private suspend fun foregroundApp(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         coordinator.recordPurpose(
             purpose = "Checking foreground app",
             toolName = ToolNames.FOREGROUND_APP,
         )
         if (!coordinator.awaitPhoneAccessForTool()) {
-            write(
-                writer,
+            reply.write(
                 errorResponse(requestId, "Phone access is no longer available; DHD could not check the phone.")
                     .put("code", BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE),
             )
@@ -1727,7 +1695,7 @@ class DevBridgeServer internal constructor(
             )) {
                 is TaskDisplayResolution.Ready -> resolution.target
                 is TaskDisplayResolution.Unavailable -> {
-                    write(writer, errorResponse(requestId, resolution.message).put("code", resolution.code))
+                    reply.write(errorResponse(requestId, resolution.message).put("code", resolution.code))
                     return
                 }
             }
@@ -1739,13 +1707,11 @@ class DevBridgeServer internal constructor(
             displayId = target?.session?.displayId,
             expectedDisplayRef = target?.displayRef,
         )) {
-            is ForegroundAppResult.Failed -> write(
-                writer,
+            is ForegroundAppResult.Failed -> reply.write(
                 errorResponse(requestId, result.message).put("code", result.code),
             )
 
-            is ForegroundAppResult.Succeeded -> write(
-                writer,
+            is ForegroundAppResult.Succeeded -> reply.write(
                 JSONObject()
                     .put("type", "foreground_app")
                     .put("requestId", requestId)
@@ -1772,7 +1738,7 @@ class DevBridgeServer internal constructor(
     private suspend fun executeAction(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val actionJson = json.optJSONObject("action")
             ?: throw IllegalArgumentException("action must be an object.")
@@ -1783,8 +1749,7 @@ class DevBridgeServer internal constructor(
         }
         val runSessionKey = coordinator.activeSessionId()
         if (taskDisplayRequiredProvider() && runSessionKey == null) {
-            write(
-                writer,
+            reply.write(
                 failedActionCompletion(
                     requestId = requestId,
                     action = wireActionName(parsedAction),
@@ -1822,8 +1787,7 @@ class DevBridgeServer internal constructor(
                 ) {
                     null
                 } else {
-                    write(
-                        writer,
+                    reply.write(
                         failedActionCompletion(
                             requestId = requestId,
                             action = wireActionName(parsedAction),
@@ -1839,8 +1803,7 @@ class DevBridgeServer internal constructor(
             (suppliedObservation.displayId != target.session.displayId ||
                 suppliedObservation.taskSessionKey != target.session.sessionKey)
         ) {
-            write(
-                writer,
+            reply.write(
                 failedActionCompletion(
                     requestId = requestId,
                     action = wireActionName(parsedAction),
@@ -1863,8 +1826,7 @@ class DevBridgeServer internal constructor(
                 null
             } else when (val captured = captureWithRetry(null, emptyList(), null)) {
                 is ObservationCaptureResult.Failed -> {
-                    write(
-                        writer,
+                    reply.write(
                         failedActionCompletion(
                             requestId = requestId,
                             action = "open_app",
@@ -1884,8 +1846,7 @@ class DevBridgeServer internal constructor(
             null
         }
         if (observation == null && parsedAction !is OpenAppAction) {
-            write(
-                writer,
+            reply.write(
                 failedActionCompletion(
                     requestId = requestId,
                     action = wireActionName(parsedAction),
@@ -1918,7 +1879,7 @@ class DevBridgeServer internal constructor(
             toolName = activityToolName,
             targetDisplay = target?.session,
         )
-        writeActionResult(writer, requestId, wireActionName(action), result)
+        writeActionResult(reply, requestId, wireActionName(action), result)
         if (!result.isSuccessful()) {
             val failureCode = result.failureCode()
             val response = JSONObject()
@@ -1947,7 +1908,7 @@ class DevBridgeServer internal constructor(
                     displays = displays,
                 )
             }
-            write(writer, response)
+            reply.write(response)
             return
         }
 
@@ -1970,8 +1931,7 @@ class DevBridgeServer internal constructor(
             expectedDisplayRef = postSession?.let { taskDisplayReference(it.sessionKey, it.displayId) },
         )) {
             is ObservationCaptureResult.Failed -> {
-                write(
-                    writer,
+                reply.write(
                     failedActionCompletion(
                         requestId = requestId,
                         action = wireActionName(action),
@@ -2012,7 +1972,7 @@ class DevBridgeServer internal constructor(
                     observation,
                     result.beforeScreenshotOrNull(),
                 )
-                write(writer, response)
+                reply.write(response)
             }
         }
     }
@@ -2020,12 +1980,12 @@ class DevBridgeServer internal constructor(
     private suspend fun executeSequence(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val request = try {
             parseSequenceRequest(json)
         } catch (error: InvalidSequencePayloadException) {
-            writeInvalidSequenceResult(writer, requestId, json, error)
+            writeInvalidSequenceResult(reply, requestId, json, error)
             return
         }
         val observation = synchronized(observations) {
@@ -2033,7 +1993,7 @@ class DevBridgeServer internal constructor(
         }
         if (observation == null) {
             writeSequenceResult(
-                writer,
+                reply,
                 requestId,
                 unstartedSequenceFailure(
                     actions = request.actions,
@@ -2046,7 +2006,7 @@ class DevBridgeServer internal constructor(
         val runSessionKey = coordinator.activeSessionId()
         if (taskDisplayRequiredProvider() && runSessionKey == null) {
             writeSequenceResult(
-                writer,
+                reply,
                 requestId,
                 unstartedSequenceFailure(
                     actions = request.actions,
@@ -2058,7 +2018,7 @@ class DevBridgeServer internal constructor(
         }
         if (!coordinator.awaitPhoneAccessForTool()) {
             writeSequenceResult(
-                writer,
+                reply,
                 requestId,
                 unstartedSequenceFailure(
                     actions = request.actions,
@@ -2079,7 +2039,7 @@ class DevBridgeServer internal constructor(
                 is TaskDisplayResolution.Ready -> resolution.target
                 is TaskDisplayResolution.Unavailable -> {
                     writeSequenceResult(
-                        writer,
+                        reply,
                         requestId,
                         unstartedSequenceFailure(
                             actions = request.actions,
@@ -2098,7 +2058,7 @@ class DevBridgeServer internal constructor(
                 observation.displayId != target.session.displayId)
         ) {
             writeSequenceResult(
-                writer,
+                reply,
                 requestId,
                 unstartedSequenceFailure(
                     actions = request.actions,
@@ -2130,7 +2090,7 @@ class DevBridgeServer internal constructor(
             rememberObservation = ::remember,
             settleAfterAction = ::settleAfterAction,
         ).execute(observation, request.actions)
-        writeSequenceResult(writer, requestId, result, observation)
+        writeSequenceResult(reply, requestId, result, observation)
     }
 
     private suspend fun settleAfterAction(action: PhoneAction) {
@@ -2144,7 +2104,7 @@ class DevBridgeServer internal constructor(
     private fun stopSession(
         requestId: String,
         json: JSONObject,
-        writer: BufferedWriter,
+        reply: BridgeReply,
     ) {
         val reason = json.optString("reason", "Stopped by the desktop assistant.")
             .trim()
@@ -2153,8 +2113,7 @@ class DevBridgeServer internal constructor(
         val stopped = coordinator.stop(reason)
         platform.removeAttentionNotification()
         platform.reconcileServiceLifetime()
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "stopped")
                 .put("requestId", requestId)
@@ -2165,7 +2124,7 @@ class DevBridgeServer internal constructor(
     }
 
     private fun writeInvalidSequenceResult(
-        writer: BufferedWriter,
+        reply: BridgeReply,
         requestId: String,
         json: JSONObject,
         error: InvalidSequencePayloadException,
@@ -2203,7 +2162,7 @@ class DevBridgeServer internal constructor(
             response.put("failedStep", index)
         }
         response.put("steps", steps)
-        write(writer, response)
+        reply.write(response)
     }
 
     private fun remember(snapshot: ObservationSnapshot) {
@@ -2266,13 +2225,12 @@ class DevBridgeServer internal constructor(
     }
 
     private fun writeObservation(
-        writer: BufferedWriter,
+        reply: BridgeReply,
         requestId: String,
         snapshot: ObservationSnapshot,
         screenshot: ByteArray,
     ) {
-        write(
-            writer,
+        reply.write(
             JSONObject()
                 .put("type", "observation")
                 .put("requestId", requestId)
@@ -2284,7 +2242,7 @@ class DevBridgeServer internal constructor(
     }
 
     private fun writeSequenceResult(
-        writer: BufferedWriter,
+        reply: BridgeReply,
         requestId: String,
         result: SequenceExecutionResult,
         beforeObservation: ObservationSnapshot? = null,
@@ -2336,7 +2294,7 @@ class DevBridgeServer internal constructor(
                 addBeforeDebug(response, beforeObservation, result.beforeScreenshot)
             }
         }
-        write(writer, response)
+        reply.write(response)
     }
 
     private fun snapshotJson(snapshot: ObservationSnapshot): JSONObject = JSONObject()
@@ -2369,10 +2327,10 @@ class DevBridgeServer internal constructor(
         is SessionState.Completed -> "completed"
     }
 
-    private suspend fun runDemo(request: DemoRequest, writer: BufferedWriter) {
+    private suspend fun runDemo(request: DemoRequest, reply: BridgeReply) {
         val startedSession = coordinator.start("Desktop Codex demo: ${request.purpose}")
         if (!startedSession) {
-            write(writer, errorResponse(request.requestId, "The phone already has an active session."))
+            reply.write(errorResponse(request.requestId, "The phone already has an active session."))
             return
         }
 
@@ -2385,9 +2343,9 @@ class DevBridgeServer internal constructor(
             ),
         )
         val openResult = coordinator.executeAction(open, null)
-        writeActionResult(writer, request.requestId, "open_app", openResult)
+        writeActionResult(reply, request.requestId, "open_app", openResult)
         if (!openResult.isSuccessful()) {
-            failSession(writer, request, openResult.resultMessage())
+            failSession(reply, request, openResult.resultMessage())
             return
         }
 
@@ -2399,7 +2357,7 @@ class DevBridgeServer internal constructor(
         )
         val tapSnapshot = when (afterOpen) {
             is ObservationCaptureResult.Failed -> {
-                failSession(writer, request, afterOpen.message)
+                failSession(reply, request, afterOpen.message)
                 return
             }
 
@@ -2416,9 +2374,9 @@ class DevBridgeServer internal constructor(
             ),
         )
         val tapResult = coordinator.executeAction(tap, tapSnapshot)
-        writeActionResult(writer, request.requestId, "tap", tapResult)
+        writeActionResult(reply, request.requestId, "tap", tapResult)
         if (!tapResult.isSuccessful()) {
-            failSession(writer, request, tapResult.resultMessage())
+            failSession(reply, request, tapResult.resultMessage())
             return
         }
 
@@ -2426,14 +2384,13 @@ class DevBridgeServer internal constructor(
         val afterTap = captureWithRetry(null, emptyList(), coordinator.activeSessionId())
         when (afterTap) {
             is ObservationCaptureResult.Failed -> {
-                failSession(writer, request, "Tap completed, but the post-action observation failed: ${afterTap.message}")
+                failSession(reply, request, "Tap completed, but the post-action observation failed: ${afterTap.message}")
                 return
             }
 
             is ObservationCaptureResult.Succeeded -> {
                 coordinator.complete("Demo completed; the phone returned a fresh observation.")
-                write(
-                    writer,
+                reply.write(
                     JSONObject()
                         .put("type", "completed")
                         .put("requestId", request.requestId)
@@ -2480,13 +2437,13 @@ class DevBridgeServer internal constructor(
         return last
     }
 
-    private fun failSession(writer: BufferedWriter, request: DemoRequest, message: String) {
+    private fun failSession(reply: BridgeReply, request: DemoRequest, message: String) {
         coordinator.stop("Demo stopped: $message")
-        write(writer, errorResponse(request.requestId, message))
+        reply.write(errorResponse(request.requestId, message))
     }
 
     private fun writeActionResult(
-        writer: BufferedWriter,
+        reply: BridgeReply,
         requestId: String,
         action: String,
         result: ActionExecutionResult,
@@ -2517,7 +2474,7 @@ class DevBridgeServer internal constructor(
                 .put("code", BridgeErrorCodes.SESSION_NOT_RUNNING)
                 .put("message", "The phone session is no longer running.")
         }
-        write(writer, response)
+        reply.write(response)
     }
 
     private fun parseRequest(json: JSONObject): DemoRequest {
@@ -2561,12 +2518,6 @@ class DevBridgeServer internal constructor(
         } else {
             BridgeErrorCodes.OBSERVATION_FAILED
         }
-
-    private fun write(writer: BufferedWriter, json: JSONObject) {
-        writer.write(json.toString())
-        writer.newLine()
-        writer.flush()
-    }
 
     internal fun isAuthorized(peerAddress: InetAddress, json: JSONObject): Boolean {
         // adb forward presents the desktop peer as loopback. Keep this local
