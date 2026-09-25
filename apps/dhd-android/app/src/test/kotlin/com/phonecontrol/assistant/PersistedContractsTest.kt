@@ -6,6 +6,7 @@ import com.phonecontrol.assistant.bridge.DevBridgeServer
 import com.phonecontrol.assistant.data.AssistantDatabase
 import com.phonecontrol.assistant.data.CONVERSATION_DATABASE_NAME
 import com.phonecontrol.assistant.data.ConversationStore
+import com.phonecontrol.assistant.data.PermissionSetupRepository
 import com.phonecontrol.assistant.data.RunStatus
 import com.phonecontrol.assistant.data.activityStatus
 import com.phonecontrol.assistant.adb.PhoneAccessController
@@ -55,9 +56,12 @@ class PersistedContractsTest {
 
     @Test
     fun `permission setup preference and saved state keys`() {
-        assertEquals("dhd_permission_setup", PERMISSION_SETUP_PREFERENCES)
-        assertEquals("first_run_permission_onboarding_completed", KEY_FIRST_RUN_PERMISSION_ONBOARDING_COMPLETED)
-        assertEquals("notification_setup_step_handled", KEY_NOTIFICATION_SETUP_STEP_HANDLED)
+        assertEquals("dhd_permission_setup", PermissionSetupRepository.PREFERENCES_NAME)
+        assertEquals(
+            "first_run_permission_onboarding_completed",
+            PermissionSetupRepository.KEY_FIRST_RUN_PERMISSION_ONBOARDING_COMPLETED,
+        )
+        assertEquals("notification_setup_step_handled", PermissionSetupRepository.KEY_NOTIFICATION_SETUP_STEP_HANDLED)
         assertEquals("permission_setup_step", STATE_PERMISSION_SETUP_STEP)
         assertEquals("notification_setup_step_handled", STATE_NOTIFICATION_SETUP_HANDLED)
         assertEquals("pending_overlay_enable", STATE_PENDING_OVERLAY_ENABLE)

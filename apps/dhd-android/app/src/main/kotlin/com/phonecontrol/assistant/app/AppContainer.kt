@@ -13,6 +13,7 @@ import com.phonecontrol.assistant.bridge.DevBridgeServer
 import com.phonecontrol.assistant.data.ConversationRepository
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
+import com.phonecontrol.assistant.data.PermissionSetupRepository
 import com.phonecontrol.assistant.display.DhdTaskDisplayBackend
 import com.phonecontrol.assistant.display.DhdVirtualDisplayManager
 import com.phonecontrol.assistant.display.PreviewSurfaceDispatcher
@@ -39,6 +40,9 @@ class AppContainer(context: Context) {
     val processRunner = DhdAdbProcessRunner(phoneAccessController)
     val conversationStore = ConversationStore(context)
     val conversationRepository = ConversationRepository(conversationStore)
+    val permissionSetupRepository = PermissionSetupRepository(
+        context.getSharedPreferences(PermissionSetupRepository.PREFERENCES_NAME, Context.MODE_PRIVATE),
+    )
     val taskDisplayLayoutPreferences = TaskDisplayLayoutPreferences(context)
     val taskDisplayBackend = DhdTaskDisplayBackend(
         context,

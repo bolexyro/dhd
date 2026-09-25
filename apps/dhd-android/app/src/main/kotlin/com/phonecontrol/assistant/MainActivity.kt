@@ -20,6 +20,7 @@ import androidx.compose.runtime.produceState
 import androidx.lifecycle.lifecycleScope
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.sessionIdOrNull
+import com.phonecontrol.assistant.data.PermissionSetupRepository
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.TaskPointerEvent
@@ -42,9 +43,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private const val CONVERSATION_EXPIRY_CHECK_INTERVAL_MS = 1_000L
-internal const val PERMISSION_SETUP_PREFERENCES = "dhd_permission_setup"
-internal const val KEY_FIRST_RUN_PERMISSION_ONBOARDING_COMPLETED = "first_run_permission_onboarding_completed"
-internal const val KEY_NOTIFICATION_SETUP_STEP_HANDLED = "notification_setup_step_handled"
 internal const val STATE_PERMISSION_SETUP_STEP = "permission_setup_step"
 internal const val STATE_NOTIFICATION_SETUP_HANDLED = "notification_setup_step_handled"
 internal const val STATE_PENDING_OVERLAY_ENABLE = "pending_overlay_enable"
@@ -61,6 +59,8 @@ class MainActivity : ComponentActivity() {
     private var notificationSetupStepHandled = false
     private var overlayActivityToken: OverlayVisibilityGate.Token? = null
     private var conversationExpiryMonitor: Job? = null
+    private val permissionSetup: PermissionSetupRepository
+        get() = (application as PhoneControlApplication).container.permissionSetupRepository
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -87,10 +87,9 @@ class MainActivity : ComponentActivity() {
             ?.getString(STATE_PERMISSION_SETUP_STEP)
             ?.let { savedStep -> PermissionSetupStep.entries.firstOrNull { it.name == savedStep } }
             ?.takeUnless { it == PermissionSetupStep.COMPLETE }
-        val permissionPreferences = getSharedPreferences(PERMISSION_SETUP_PREFERENCES, MODE_PRIVATE)
         notificationSetupStepHandled = savedInstanceState
             ?.getBoolean(STATE_NOTIFICATION_SETUP_HANDLED)
-            ?: permissionPreferences.getBoolean(KEY_NOTIFICATION_SETUP_STEP_HANDLED, false)
+            ?: permissionSetup.isNotificationStepHandled()
         pendingOverlayEnable = savedInstanceState
             ?.getBoolean(STATE_PENDING_OVERLAY_ENABLE)
             ?: false
@@ -303,15 +302,11 @@ class MainActivity : ComponentActivity() {
 
     /** Show the in-app explanation before asking Android for either permission. */
     private fun maybeStartFirstRunPermissionSetup() {
-        val preferences = getSharedPreferences(PERMISSION_SETUP_PREFERENCES, MODE_PRIVATE)
-        if (permissionSetupStep != null || preferences.getBoolean(KEY_FIRST_RUN_PERMISSION_ONBOARDING_COMPLETED, false)) {
+        if (permissionSetupStep != null || permissionSetup.isOnboardingCompleted()) {
             return
         }
 
-        notificationSetupStepHandled = preferences.getBoolean(
-            KEY_NOTIFICATION_SETUP_STEP_HANDLED,
-            notificationSetupStepHandled,
-        )
+        notificationSetupStepHandled = permissionSetup.isNotificationStepHandled(notificationSetupStepHandled)
         val nextStep = firstRunPermissionSetupStep(
             onboardingCompleted = false,
             sdkInt = Build.VERSION.SDK_INT,
@@ -394,18 +389,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun persistNotificationSetupStepHandled() {
-        getSharedPreferences(PERMISSION_SETUP_PREFERENCES, MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_NOTIFICATION_SETUP_STEP_HANDLED, notificationSetupStepHandled)
-            .apply()
+        permissionSetup.setNotificationStepHandled(notificationSetupStepHandled)
     }
 
     private fun markFirstRunPermissionSetupCompleted() {
-        getSharedPreferences(PERMISSION_SETUP_PREFERENCES, MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_FIRST_RUN_PERMISSION_ONBOARDING_COMPLETED, true)
-            .remove(KEY_NOTIFICATION_SETUP_STEP_HANDLED)
-            .apply()
+        permissionSetup.markOnboardingCompleted()
         notificationSetupStepHandled = false
     }
 
