@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { emptyToolAnswers, parsePollInterval } from "../src/assistant-companion.js";
+import { parsePollInterval } from "../src/assistant-companion.js";
 import { extractDynamicToolFailure, normalizeDynamicArguments } from "../src/codex/dynamic-tools.js";
 import {
   extractCompanionPlanUpdatedEvent,
@@ -18,6 +18,7 @@ import {
   quoteWindowsCommand,
   resolveCodexBin,
 } from "../src/codex/process.js";
+import { emptyToolAnswers } from "../src/codex/server-requests.js";
 import { normalizeCodexEffort } from "../src/codex/settings.js";
 
 afterEach(() => {

@@ -55,6 +55,7 @@ import {
   type DynamicToolCallResponse,
   type PhoneToolFailure,
 } from "./codex/dynamic-tools.js";
+import { answerServerRequest } from "./codex/server-requests.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -699,69 +700,17 @@ export class CodexAppServerClient {
     if (id === undefined || !method) return;
 
     try {
-      switch (method) {
-        case "item/tool/call": {
-          const result = await handleDynamicToolCall(message.params);
-          this.recordDynamicToolResult(message.params, result);
-          this.respond(id, result);
-          return;
-        }
-        case "item/commandExecution/requestApproval":
-          console.error(
-            "[codex-app-server] declined a command approval; phone turns may only use typed phone tools",
-          );
-          this.respond(id, { decision: "decline" });
-          return;
-        case "item/fileChange/requestApproval":
-          console.error(
-            "[codex-app-server] declined a file-change approval; the phone companion is not a coding host",
-          );
-          this.respond(id, { decision: "decline" });
-          return;
-        case "item/tool/requestUserInput":
-          console.error(
-            "[codex-app-server] answered tool user-input request with empty answers",
-          );
-          this.respond(id, { answers: emptyToolAnswers(message.params) });
-          return;
-        case "item/permissions/requestApproval":
-          console.error(
-            "[codex-app-server] declined an additional permission request",
-          );
-          this.respond(id, {
-            permissions: { network: null, fileSystem: null },
-            scope: "turn",
-          });
-          return;
-        case "mcpServer/elicitation/request":
-          console.error(
-            "[codex-app-server] declined an MCP elicitation request",
-          );
-          this.respond(id, { action: "decline", content: null });
-          return;
-        case "account/chatgptAuthTokens/refresh":
-          this.respondError(
-            id,
-            -32001,
-            "The phone companion does not manage ChatGPT auth token refresh.",
-          );
-          return;
-        case "attestation/generate":
-          this.respondError(
-            id,
-            -32001,
-            "The phone companion does not provide upstream attestation.",
-          );
-          return;
-        default:
-          console.error(
-            `[codex-app-server] unsupported server request: ${method}`,
-          );
-          this.respondError(
-            id,
-            -32601,
-            `Unsupported App Server request: ${method}`,
-          );
+      if (method === "item/tool/call") {
+        const result = await handleDynamicToolCall(message.params);
+        this.recordDynamicToolResult(message.params, result);
+        this.respond(id, result);
+        return;
+      }
+      const answer = answerServerRequest(method, message.params);
+      if ("error" in answer) {
+        this.respondError(id, answer.error.code, answer.error.message);
+      } else {
+        this.respond(id, answer.result);
       }
     } catch (error) {
       this.respondError(
@@ -877,19 +826,6 @@ export class CodexAppServerClient {
       });
     });
   }
-}
-
-export function emptyToolAnswers(
-  value: unknown,
-): Record<string, { answers: string[] }> {
-  const questions = asRecord(value ?? {})?.questions;
-  if (!Array.isArray(questions)) return {};
-  const answers: Record<string, { answers: string[] }> = {};
-  for (const question of questions) {
-    const id = asRecord(question)?.id;
-    if (typeof id === "string" && id) answers[id] = { answers: [] };
-  }
-  return answers;
 }
 
 function logServerNotification(message: JsonRpcMessage): void {
