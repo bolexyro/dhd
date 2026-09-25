@@ -3,6 +3,7 @@ package com.phonecontrol.assistant.bridge
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
+import com.phonecontrol.assistant.bridge.handlers.AppCatalogHandlers
 import com.phonecontrol.assistant.bridge.handlers.SessionHandlers
 import com.phonecontrol.assistant.bridge.handlers.SteerHandlers
 import com.phonecontrol.assistant.bridge.pairing.PairingProtocol
@@ -202,6 +203,7 @@ class DevBridgeServer internal constructor(
     )
     private val phoneActionLock = PhoneActionLock()
     private val toolCalls = ToolCallScope(coordinator, platform)
+    private val appCatalog = AppCatalogHandlers(coordinator, platform, allowedPackagesProvider, fullAccessProvider)
     private val steers = SteerHandlers(coordinator, presence)
     private val sessions = SessionHandlers(coordinator, platform, presence)
     private val bridgeJson = BridgeJson(base64)
@@ -344,13 +346,13 @@ class DevBridgeServer internal constructor(
                 "complete_session" -> sessions.completeSession(requestId, json, reply)
                 "fail_session" -> sessions.failSession(requestId, json, reply)
                 "allowed_apps" -> toolCalls.withDhdTool(json, ToolNames.LIST_ALLOWED_APPS) {
-                    allowedApps(requestId, json, reply)
+                    appCatalog.allowedApps(requestId, json, reply)
                 }
                 "browse_apps" -> toolCalls.withDhdTool(json, ToolNames.BROWSE_APP) {
-                    browseApps(requestId, json, reply)
+                    appCatalog.browseApps(requestId, json, reply)
                 }
                 "set_app_display_layout" -> toolCalls.withDhdTool(json, ToolNames.SET_APP_DISPLAY_LAYOUT) {
-                    setAppDisplayLayout(requestId, json, reply)
+                    appCatalog.setAppDisplayLayout(requestId, json, reply)
                 }
                 "list_displays" -> listDisplays(requestId, reply)
                 "close_display" -> closeDisplay(requestId, json, reply)
@@ -473,145 +475,6 @@ class DevBridgeServer internal constructor(
                 reply.write(response)
             }
         }
-    }
-
-    private fun allowedApps(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val fullAccess = fullAccessProvider()
-        val includeAll = json.optBoolean("includeAll", false)
-        val allowedPackages = if (fullAccess) emptySet() else allowedPackagesProvider()
-        coordinator.recordPurpose(
-            purpose = when {
-                includeAll && fullAccess -> "Listing all launchable apps"
-                includeAll -> "Listing all allowed launchable apps"
-                else -> "Listing allowed apps"
-            },
-            toolName = ToolNames.LIST_ALLOWED_APPS,
-        )
-        reply.write(
-            buildAllowedAppsResponse(
-                requestId = requestId,
-                fullAccess = fullAccess,
-                includeAll = includeAll,
-                allowedPackages = allowedPackages,
-                apps = if (includeAll) {
-                    platform.launchableApps()
-                        .filter { fullAccess || it.packageName in allowedPackages }
-                } else {
-                    emptyList()
-                },
-            ),
-        )
-    }
-
-    private fun browseApps(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val query = json.optString("query").trim()
-        if (query.isEmpty() || query.length > MAX_APP_QUERY_CHARS) {
-            reply.write(
-                errorResponse(requestId, "App search requires a query between 1 and $MAX_APP_QUERY_CHARS characters.")
-                    .put("code", BridgeErrorCodes.INVALID_APP_QUERY),
-            )
-            return
-        }
-
-        coordinator.recordPurpose(
-            purpose = "Browsing installed apps",
-            targetDescription = query,
-            toolName = ToolNames.BROWSE_APP,
-        )
-
-        val fullAccess = fullAccessProvider()
-        val allowedPackages = if (fullAccess) emptySet() else allowedPackagesProvider()
-        val candidates = platform.launchableApps()
-            .asSequence()
-            .filter {
-                it.label.contains(query, ignoreCase = true) ||
-                    it.packageName.contains(query, ignoreCase = true)
-            }
-            .toList()
-        val returnedApps = candidates.take(MAX_APP_BROWSE_RESULTS)
-        reply.write(
-            buildBrowseAppsResponse(
-                requestId = requestId,
-                query = query,
-                fullAccess = fullAccess,
-                allowedPackages = allowedPackages,
-                apps = returnedApps,
-                truncated = candidates.size > returnedApps.size,
-            ),
-        )
-    }
-
-    private fun setAppDisplayLayout(
-        requestId: String,
-        json: JSONObject,
-        reply: BridgeReply,
-    ) {
-        val packageName = json.optString("packageName").trim()
-        if (!PACKAGE_PATTERN.matches(packageName)) {
-            reply.write(
-                errorResponse(requestId, "packageName is not a valid Android package name.")
-                    .put("code", BridgeErrorCodes.INVALID_PACKAGE),
-            )
-            return
-        }
-
-        val layout = json.optString("layout").trim().lowercase(Locale.ROOT)
-        val enabled = when (layout) {
-            "full_size" -> true
-            "standard" -> false
-            else -> {
-                reply.write(
-                    errorResponse(requestId, "layout must be either full_size or standard.")
-                        .put("code", BridgeErrorCodes.INVALID_APP_DISPLAY_LAYOUT),
-                )
-                return
-            }
-        }
-
-        val app = platform.launchableApps()
-            .firstOrNull { it.packageName == packageName }
-        if (app == null) {
-            reply.write(
-                errorResponse(requestId, "No launchable app matches packageName=$packageName.")
-                    .put("code", BridgeErrorCodes.APP_NOT_FOUND),
-            )
-            return
-        }
-
-        val fullAccess = fullAccessProvider()
-        val allowed = fullAccess || packageName in allowedPackagesProvider()
-        if (!allowed) {
-            reply.write(
-                errorResponse(requestId, "The app is not allowed for the current DHD access mode.")
-                    .put("code", BridgeErrorCodes.APP_NOT_ALLOWED),
-            )
-            return
-        }
-
-        coordinator.recordPurpose(
-            purpose = if (enabled) "Saving full-size app layout" else "Restoring standard app layout",
-            targetDescription = app.label,
-            toolName = ToolNames.SET_APP_DISPLAY_LAYOUT,
-        )
-        val changed = platform.isFullSizeLayoutEnabled(packageName) != enabled
-        platform.setFullSizeLayoutEnabled(packageName, enabled)
-        reply.write(
-            buildAppDisplayLayoutResponse(
-                requestId = requestId,
-                packageName = packageName,
-                appLabel = app.label,
-                layout = layout,
-                changed = changed,
-            ),
-        )
     }
 
     private suspend fun listDisplays(
