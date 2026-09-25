@@ -513,7 +513,6 @@ class DhdTaskDisplayBackendBehaviorTest {
 
     @Test
     fun `focused window parsing is scoped to the requested display`() = runTest {
-        val backend = backend()
         val dump = """
             Display #0 (activities from top to bottom):
               mResumedActivity: ActivityRecord{a u0 com.example.home/.Home t1}
