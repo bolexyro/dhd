@@ -25,7 +25,6 @@ import {
 import {
   extractCompanionPlanUpdatedEvent,
   extractCompanionTokenUsageEvent,
-  extractText,
   extractThreadId,
   extractTurnId,
 } from "./codex/extract.js";
@@ -33,8 +32,6 @@ import {
   recordAgentMessageCompleted,
   recordAgentMessageDelta,
   recordAgentMessageStarted,
-  selectFinalAgentMessageText,
-  type AgentMessageState,
   type AgentMessageStreamUpdate,
 } from "./codex/agent-messages.js";
 import {
@@ -52,7 +49,6 @@ import {
   extractDynamicToolName,
   handleDynamicToolCall,
   type DynamicToolCallResponse,
-  type PhoneToolFailure,
 } from "./codex/dynamic-tools.js";
 import { answerServerRequest } from "./codex/server-requests.js";
 import { JsonRpcConnection, type JsonRpcMessage } from "./codex/json-rpc.js";
@@ -64,6 +60,7 @@ import {
   turnFailureError,
   unloadedThreadId,
 } from "./codex/notifications.js";
+import { TurnCompletion, type TurnResult } from "./codex/turn-completion.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -75,12 +72,6 @@ const MAX_STEER_CHARS = 4_000;
 const DEFAULT_COMPLETION_MESSAGE = "Your DHD task is ready to review.";
 const PREWARM_ATTEMPTS = 2;
 const PREWARM_RETRY_DELAY_MS = 500;
-interface TurnResult {
-  text: string;
-  threadId: string;
-  phoneToolFailures: PhoneToolFailure[];
-}
-
 export interface CodexAppServerClientOptions {
   spawnAppServer?: AppServerSpawner;
 }
@@ -103,14 +94,7 @@ export class CodexAppServerClient {
   private loadedThreadIds = new Set<string>();
   private readonly codexHome = codexHomeDirectory();
   private readonly runtimeCwd = codexRuntimeDirectory();
-  private turnCompletion: {
-    resolve: (result: TurnResult) => void;
-    reject: (error: Error) => void;
-    agentMessages: Map<string, AgentMessageState>;
-    nextAgentMessageOrder: number;
-    phoneToolFailures: PhoneToolFailure[];
-    onAgentMessageDelta?: (update: AgentMessageStreamUpdate) => void;
-  } | null = null;
+  private turnCompletion: TurnCompletion | null = null;
   private activeThreadId: string | null = null;
   private activeDhdThreadId: string | null = null;
   // Only trust the loaded-thread cache after this companion has established
@@ -210,16 +194,9 @@ export class CodexAppServerClient {
     this.interruptRequested = false;
     try {
       await this.start(logger);
-      const completion = new Promise<TurnResult>((resolve, reject) => {
-        this.turnCompletion = {
-          resolve,
-          reject,
-          agentMessages: new Map(),
-          nextAgentMessageOrder: 0,
-          phoneToolFailures: [],
-          onAgentMessageDelta,
-        };
-      });
+      const turnCompletion = new TurnCompletion(onAgentMessageDelta);
+      this.turnCompletion = turnCompletion;
+      const completion = turnCompletion.result;
 
       const model = resolveCodexModel();
       const serviceTier = serviceTierForFastMode(fastMode);
@@ -491,25 +468,16 @@ export class CodexAppServerClient {
     }
     if (message.method === "item/started") {
       this.logUserMessagePhase(message);
-      this.reportAgentMessageStream(
-        completion,
-        recordAgentMessageStarted(completion, message.params),
-      );
+      completion.streamFinalAnswer(recordAgentMessageStarted(completion, message.params));
       return;
     }
     if (message.method === "item/agentMessage/delta") {
-      this.reportAgentMessageStream(
-        completion,
-        recordAgentMessageDelta(completion, message.params),
-      );
+      completion.streamFinalAnswer(recordAgentMessageDelta(completion, message.params));
       return;
     }
     if (message.method === "item/completed") {
       this.logUserMessagePhase(message);
-      this.reportAgentMessageStream(
-        completion,
-        recordAgentMessageCompleted(completion, message.params),
-      );
+      completion.streamFinalAnswer(recordAgentMessageCompleted(completion, message.params));
       return;
     }
     if (message.method === "turn/completed") {
@@ -521,13 +489,7 @@ export class CodexAppServerClient {
       if (error) {
         completion.reject(error);
       } else {
-        completion.resolve({
-          text:
-            selectFinalAgentMessageText(completion.agentMessages) ||
-            extractText(message.params),
-          threadId: this.activeThreadId || "",
-          phoneToolFailures: [...(completion.phoneToolFailures ?? [])],
-        });
+        completion.resolve(completion.completedResult(message.params, this.activeThreadId || ""));
       }
       this.turnCompletion = null;
       return;
@@ -544,23 +506,6 @@ export class CodexAppServerClient {
       this.activeDhdThreadId = null;
       this.hasCurrentDhdThread = false;
     }
-  }
-
-  private reportAgentMessageStream(
-    completion: {
-      onAgentMessageDelta?: (update: AgentMessageStreamUpdate) => void;
-    },
-    state: AgentMessageState | null,
-  ): void {
-    if (
-      !state ||
-      state.phase !== "final_answer" ||
-      !state.text.trim() ||
-      !completion.onAgentMessageDelta
-    ) {
-      return;
-    }
-    completion.onAgentMessageDelta({ itemId: state.id, text: state.text });
   }
 
   private logUserMessagePhase(message: JsonRpcMessage): void {
