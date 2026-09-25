@@ -39,9 +39,9 @@ import java.net.NetworkInterface
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -69,6 +69,7 @@ class CompanionBridgeServer internal constructor(
     private val deviceInfo: DeviceInfo,
     private val newUuid: () -> UUID,
     private val lanAddressProvider: () -> List<String>,
+    private val bindHost: String = LAN_BIND_HOST,
 ) {
     internal constructor(
         platform: BridgePlatform,
@@ -117,7 +118,7 @@ class CompanionBridgeServer internal constructor(
         protocol = pairing,
         platform = platform,
         scope = scope,
-        bindHost = LAN_BIND_HOST,
+        bindHost = bindHost,
         port = PAIRING_DISCOVERY_PORT,
     )
     private val phoneActionLock = PhoneActionLock()
@@ -171,7 +172,7 @@ class CompanionBridgeServer internal constructor(
     )
     private val demo = DemoHandler(coordinator, captures, bridgeJson, newUuid)
     private val router = BridgeRouter(credentials, presence, platform, newUuid, requestHandlers())
-    private val tcpServer = BridgeTcpServer(port, LAN_BIND_HOST, scope, platform, router::handleRequestLine)
+    private val tcpServer = BridgeTcpServer(port, bindHost, scope, platform, router::handleRequestLine)
 
     val companionConnected: StateFlow<Boolean>
         get() = presence.companionConnected
@@ -198,7 +199,7 @@ class CompanionBridgeServer internal constructor(
         tcpServer.stop()
         pairingServer.stop()
         presence.release()
-        scope.coroutineContext[Job]?.cancel()
+        scope.coroutineContext.cancelChildren()
     }
 
     /**

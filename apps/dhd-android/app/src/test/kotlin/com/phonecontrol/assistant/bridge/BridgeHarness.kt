@@ -311,9 +311,9 @@ internal fun actionJson(
 }
 
 internal class BridgeHarness(
-    taskDisplayRequired: Boolean = false,
+    private val taskDisplayRequired: Boolean = false,
     fullAccess: Boolean = false,
-    withBackend: Boolean = true,
+    private val withBackend: Boolean = true,
     phoneAccessReady: Boolean = true,
     val platform: FakeBridgePlatform = FakeBridgePlatform(),
 ) {
@@ -336,12 +336,14 @@ internal class BridgeHarness(
         phoneAccessReadyProvider = { phoneAccessAvailable },
     )
 
-    val server = CompanionBridgeServer(
+    val server = serverOnPort(8765)
+
+    fun serverOnPort(port: Int, bindHost: String = "127.0.0.1"): CompanionBridgeServer = CompanionBridgeServer(
         platform = platform,
         coordinator = coordinator,
         observationProvider = observations,
         allowedPackagesProvider = { allowedPackages },
-        port = 8765,
+        port = port,
         fullAccessProvider = { fullAccessEnabled },
         taskDisplayRequiredProvider = { taskDisplayRequired },
         taskDisplayBackend = if (withBackend) backend else null,
@@ -350,6 +352,7 @@ internal class BridgeHarness(
         deviceInfo = FixedDeviceInfo(),
         newUuid = SequentialUuids(),
         lanAddressProvider = { listOf("192.168.1.42") },
+        bindHost = bindHost,
     )
 
     fun alias(actual: String, placeholder: String) {
