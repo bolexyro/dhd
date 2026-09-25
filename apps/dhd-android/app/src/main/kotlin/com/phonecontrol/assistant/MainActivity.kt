@@ -26,15 +26,9 @@ import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.session.SessionCommands
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.PhoneControlApp
-import com.phonecontrol.assistant.ui.displays.activeDisplayUiRecord
+import com.phonecontrol.assistant.ui.displays.DisplayUiSources
 import com.phonecontrol.assistant.ui.displays.applicationLabel
-import com.phonecontrol.assistant.ui.displays.currentPackageForSession
-import com.phonecontrol.assistant.ui.displays.displayPurpose
-import com.phonecontrol.assistant.ui.displays.latestToolNameForRun
-import com.phonecontrol.assistant.ui.displays.livePreviewForRun
-import com.phonecontrol.assistant.ui.displays.mergeActiveDisplayRecord
-import com.phonecontrol.assistant.ui.displays.selectDisplayForRun
-import com.phonecontrol.assistant.ui.displays.toUiRecord
+import com.phonecontrol.assistant.ui.displays.mapDisplayUi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -106,7 +100,6 @@ class MainActivity : ComponentActivity() {
             val sessionState by app.sessionCoordinator.state.collectAsState()
             val events by app.sessionCoordinator.events.collectAsState()
             val pointerEvent by app.sessionCoordinator.pointerEvent.collectAsState()
-            val purpose = sessionState.displayPurpose()
             val coordinatorSessionKey = sessionState.sessionIdOrNull
             // A new coordinator run can claim a retained display whose native
             // owner key belongs to the previous run. Resolve that binding for
@@ -124,56 +117,20 @@ class MainActivity : ComponentActivity() {
             ) {
                 value = coordinatorSessionKey?.let { app.taskDisplayBackend.current(it) }
             }
-            val displayForRun = selectDisplayForRun(
-                resolvedDisplayForRun = resolvedDisplayForRun,
-                activeDisplay = display,
-                coordinatorSessionKey = coordinatorSessionKey,
-                sessionState = sessionState,
-            )
-            val activeDisplayOwnerKey = displayForRun?.sessionKey
-            val currentToolName = latestToolNameForRun(events, coordinatorSessionKey)
-            val preview = displayForRun?.let { session ->
-                livePreviewForRun(
-                    session = session,
-                    previewStates = previewStates,
+            val displayUi = mapDisplayUi(
+                sources = DisplayUiSources(
+                    activeDisplay = display,
                     playback = playback,
+                    previewStates = previewStates,
                     records = backendDisplayRecords,
-                    coordinatorSessionKey = coordinatorSessionKey,
+                    sessionState = sessionState,
+                    events = events,
                     pointerEvent = pointerEvent,
-                    purpose = purpose,
-                    currentToolName = currentToolName,
-                    appLabelFor = { packageName -> packageName.applicationLabel(appPackageManager) },
-                )
-            }
-            val mappedRecords = backendDisplayRecords.map { record ->
-                record.toUiRecord(
-                    preview = previewStates[record.sessionKey],
-                    packageManager = appPackageManager,
-                    currentToolName = currentToolName.takeIf { record.sessionKey == activeDisplayOwnerKey },
-                )
-            }
-            // A newly created session may be visible through activeSession a
-            // frame before its durable registry record is published. Keep the
-            // manager populated during that small handoff window.
-            val displayRecordsForUi = displayForRun?.let { session ->
-                val currentPackage = currentPackageForSession(session, backendDisplayRecords)
-                mergeActiveDisplayRecord(
-                    records = mappedRecords,
-                    activeRecord = activeDisplayUiRecord(
-                        session = session,
-                        currentPackage = currentPackage,
-                        appLabel = currentPackage.applicationLabel(appPackageManager),
-                        sessionState = sessionState,
-                        purpose = purpose,
-                        currentToolName = currentToolName,
-                        preview = preview,
-                    ),
-                    runIsActive = sessionState is SessionState.Running || sessionState is SessionState.Paused,
-                    purpose = purpose,
-                    currentToolName = currentToolName,
-                    preview = preview,
-                )
-            } ?: mappedRecords
+                    resolvedDisplayForRun = resolvedDisplayForRun,
+                ),
+                appLabelFor = { packageName -> packageName.applicationLabel(appPackageManager) },
+            )
+            val displayForRun = displayUi.displayForRun
             PhoneControlApp(
                 initialConversationId = initialConversationId,
                 initialRoute = intent.getStringExtra(EXTRA_OPEN_ROUTE),
@@ -186,8 +143,8 @@ class MainActivity : ComponentActivity() {
                 onNotificationVisibilityChanged = { mainConversationVisible, attentionVisible ->
                     app.notificationVisibility.updateUi(mainConversationVisible, attentionVisible)
                 },
-                previewState = preview,
-                displayRecords = displayRecordsForUi,
+                previewState = displayUi.previewState,
+                displayRecords = displayUi.displayRecords,
                 onPreviewSurfaceAvailable = { surface ->
                     displayForRun?.let { app.attachTaskPreview(it, surface) }
                 },

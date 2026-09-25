@@ -10,6 +10,7 @@ import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
 import com.phonecontrol.assistant.execution.taskDisplayReference
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.displays.DisplayUiSources
 import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
 import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewStatus
 import com.phonecontrol.assistant.ui.displays.TaskDisplayLifecycle
@@ -20,6 +21,7 @@ import com.phonecontrol.assistant.ui.displays.displayPurpose
 import com.phonecontrol.assistant.ui.displays.forSession
 import com.phonecontrol.assistant.ui.displays.latestToolNameForRun
 import com.phonecontrol.assistant.ui.displays.livePreviewForRun
+import com.phonecontrol.assistant.ui.displays.mapDisplayUi
 import com.phonecontrol.assistant.ui.displays.mergeActiveDisplayRecord
 import com.phonecontrol.assistant.ui.displays.selectDisplayForRun
 import com.phonecontrol.assistant.ui.displays.startedAtEpochMsOrZero
@@ -282,5 +284,54 @@ class MainActivityDisplayMappingTest {
             listOf(other, active),
             mergeActiveDisplayRecord(listOf(other), active, true, "Opening Shop", null, null),
         )
+    }
+
+    @Test
+    fun `display ui maps the run display, its preview and the merged records`() {
+        val active = session("run-1")
+        val ui = mapDisplayUi(
+            DisplayUiSources(
+                activeDisplay = active,
+                playback = TaskPreviewState.Attached(active),
+                previewStates = emptyMap(),
+                records = listOf(record("owner-2", packageName = "com.example.mail", status = TaskDisplayStatus.COMPLETED)),
+                sessionState = running(),
+                events = listOf(event("run-1", "dhd_open_app")),
+                pointerEvent = null,
+                resolvedDisplayForRun = null,
+            ),
+        ) { "label:$it" }
+
+        assertSame(active, ui.displayForRun)
+        assertEquals(LiveDisplayPreviewStatus.LIVE, ui.previewState?.status)
+        assertEquals("label:com.example.shop", ui.previewState?.appLabel)
+        assertEquals(listOf("owner-2", "run-1"), ui.displayRecords.map { it.sessionKey })
+        assertEquals("label:com.example.mail", ui.displayRecords[0].appLabel)
+        assertNull(ui.displayRecords[0].currentToolName)
+        assertEquals(TaskDisplayLifecycle.COMPLETED, ui.displayRecords[0].lifecycle)
+        assertEquals(TaskDisplayLifecycle.RUNNING, ui.displayRecords[1].lifecycle)
+        assertEquals("dhd_open_app", ui.displayRecords[1].currentToolName)
+        assertSame(ui.previewState, ui.displayRecords[1].previewState)
+    }
+
+    @Test
+    fun `display ui without a run display keeps the backend records`() {
+        val ui = mapDisplayUi(
+            DisplayUiSources(
+                activeDisplay = null,
+                playback = TaskPreviewState.Detached,
+                previewStates = emptyMap(),
+                records = listOf(record("owner-1")),
+                sessionState = SessionState.Idle,
+                events = emptyList(),
+                pointerEvent = null,
+                resolvedDisplayForRun = null,
+            ),
+        ) { null }
+
+        assertNull(ui.displayForRun)
+        assertNull(ui.previewState)
+        assertEquals(listOf("owner-1"), ui.displayRecords.map { it.sessionKey })
+        assertNull(ui.displayRecords.single().appLabel)
     }
 }

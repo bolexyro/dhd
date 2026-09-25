@@ -2,6 +2,7 @@ package com.phonecontrol.assistant.ui.displays
 
 import android.content.pm.PackageManager
 import com.phonecontrol.assistant.core.ToolNames
+import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.TaskPointerEvent
@@ -10,6 +11,87 @@ import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
 import com.phonecontrol.assistant.execution.taskDisplayReference
 import com.phonecontrol.assistant.session.SessionState
+
+data class DisplayUiState(
+    val displayForRun: TaskDisplaySession? = null,
+    val previewState: LiveDisplayPreviewState? = null,
+    val displayRecords: List<TaskDisplayUiRecord> = emptyList(),
+)
+
+internal data class DisplayUiSources(
+    val activeDisplay: TaskDisplaySession?,
+    val playback: TaskPreviewState,
+    val previewStates: Map<String, TaskPreviewState>,
+    val records: List<TaskDisplayRecord>,
+    val sessionState: SessionState,
+    val events: List<ActivityEvent>,
+    val pointerEvent: TaskPointerEvent?,
+    val resolvedDisplayForRun: TaskDisplaySession?,
+)
+
+internal fun mapDisplayUi(
+    sources: DisplayUiSources,
+    appLabelFor: (String) -> String?,
+): DisplayUiState {
+    val sessionState = sources.sessionState
+    val purpose = sessionState.displayPurpose()
+    val coordinatorSessionKey = sessionState.sessionIdOrNull
+    val displayForRun = selectDisplayForRun(
+        resolvedDisplayForRun = sources.resolvedDisplayForRun,
+        activeDisplay = sources.activeDisplay,
+        coordinatorSessionKey = coordinatorSessionKey,
+        sessionState = sessionState,
+    )
+    val activeDisplayOwnerKey = displayForRun?.sessionKey
+    val currentToolName = latestToolNameForRun(sources.events, coordinatorSessionKey)
+    val preview = displayForRun?.let { session ->
+        livePreviewForRun(
+            session = session,
+            previewStates = sources.previewStates,
+            playback = sources.playback,
+            records = sources.records,
+            coordinatorSessionKey = coordinatorSessionKey,
+            pointerEvent = sources.pointerEvent,
+            purpose = purpose,
+            currentToolName = currentToolName,
+            appLabelFor = appLabelFor,
+        )
+    }
+    val mappedRecords = sources.records.map { record ->
+        record.toUiRecord(
+            preview = sources.previewStates[record.sessionKey],
+            appLabelFor = appLabelFor,
+            currentToolName = currentToolName.takeIf { record.sessionKey == activeDisplayOwnerKey },
+        )
+    }
+    // A newly created session may be visible through activeSession a
+    // frame before its durable registry record is published. Keep the
+    // manager populated during that small handoff window.
+    val displayRecordsForUi = displayForRun?.let { session ->
+        val currentPackage = currentPackageForSession(session, sources.records)
+        mergeActiveDisplayRecord(
+            records = mappedRecords,
+            activeRecord = activeDisplayUiRecord(
+                session = session,
+                currentPackage = currentPackage,
+                appLabel = appLabelFor(currentPackage),
+                sessionState = sessionState,
+                purpose = purpose,
+                currentToolName = currentToolName,
+                preview = preview,
+            ),
+            runIsActive = sessionState is SessionState.Running || sessionState is SessionState.Paused,
+            purpose = purpose,
+            currentToolName = currentToolName,
+            preview = preview,
+        )
+    } ?: mappedRecords
+    return DisplayUiState(
+        displayForRun = displayForRun,
+        previewState = preview,
+        displayRecords = displayRecordsForUi,
+    )
+}
 
 internal fun displayRecordsWithPreviewFallback(
     displayRecords: List<TaskDisplayUiRecord>,
@@ -193,13 +275,13 @@ internal fun mergeActiveDisplayRecord(
 
 internal fun TaskDisplayRecord.toUiRecord(
     preview: TaskPreviewState?,
-    packageManager: PackageManager,
+    appLabelFor: (String) -> String?,
     currentToolName: String? = null,
 ): TaskDisplayUiRecord = TaskDisplayUiRecord(
     sessionKey = sessionKey,
     taskId = taskId,
     packageName = packageName,
-    appLabel = packageName.applicationLabel(packageManager),
+    appLabel = appLabelFor(packageName),
     displayId = displayId,
     displayRef = this.displayRef,
     geometry = geometry,
@@ -213,7 +295,7 @@ internal fun TaskDisplayRecord.toUiRecord(
     previewState = preview.toUiPreview(
         geometry = geometry,
         sessionKey = sessionKey,
-        appLabel = packageName.applicationLabel(packageManager),
+        appLabel = appLabelFor(packageName),
         purpose = lastPurpose,
         currentToolName = currentToolName,
     ),
