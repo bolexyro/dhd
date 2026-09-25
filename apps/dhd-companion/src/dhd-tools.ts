@@ -30,6 +30,7 @@ import {
   type ScreenshotMarkerPoint,
   type ScreenshotEvidenceMetadata,
 } from "@dhd/screenshot-markers";
+import { errorMessage } from "./shared/errors.js";
 
 export * from "./dhd-tool-contract.js";
 
@@ -507,9 +508,7 @@ function renderScreenshot(
     };
   } catch (error) {
     console.error(
-      `[phone-assistant-mcp] screenshot marker render failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`
+      `[phone-assistant-mcp] screenshot marker render failed: ${errorMessage(error)}`
     );
     return { screenshot };
   }
@@ -542,9 +541,7 @@ export function toMcpResult(
       );
     } catch (debugError) {
       console.error(
-        `[phone-assistant-mcp] before-screenshot evidence ignored: ${
-          debugError instanceof Error ? debugError.message : String(debugError)
-        }`,
+        `[phone-assistant-mcp] before-screenshot evidence ignored: ${errorMessage(debugError)}`,
       );
     }
   }
@@ -602,9 +599,7 @@ export function toMcpResult(
         }
       } catch (evidenceError) {
         console.error(
-          `[phone-assistant-mcp] before-tap crop failed: ${
-            evidenceError instanceof Error ? evidenceError.message : String(evidenceError)
-          }`,
+          `[phone-assistant-mcp] before-tap crop failed: ${errorMessage(evidenceError)}`,
         );
       }
     } else if (options.includeDebugImages) {
@@ -636,7 +631,7 @@ export function toMcpResult(
   if (screenshotEvidence) responseMessage.screenshotEvidence = screenshotEvidence;
   content[0] = {
     type: "text",
-    text: JSON.stringify(error ? { ok: false, message: error instanceof Error ? error.message : String(error) } : responseMessage)
+    text: JSON.stringify(error ? { ok: false, message: errorMessage(error) } : responseMessage)
   };
   if (beforeTapImage) {
     content.push({ type: "image", data: beforeTapImage.base64, mimeType: beforeTapImage.mimeType });
@@ -648,7 +643,7 @@ export function toMcpResult(
     ...(isError ? { isError: true } : {}),
     content,
     structuredContent: error
-      ? { ok: false, message: error instanceof Error ? error.message : String(error) }
+      ? { ok: false, message: errorMessage(error) }
       : responseMessage,
     ...(debugImages ? { debugImages } : {})
   };
@@ -662,7 +657,7 @@ async function safely(
   try {
     return toMcpResult(await work(), undefined, markerContext?.(), options);
   } catch (error) {
-    console.error(`[phone-assistant-mcp] ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[phone-assistant-mcp] ${errorMessage(error)}`);
     return toMcpResult({ ok: false }, error);
   }
 }
@@ -966,7 +961,7 @@ function isMainModule(): boolean {
 if (isMainModule()) {
   const server = createDhdMcpServer();
   void server.connect(new StdioServerTransport()).catch((error: unknown) => {
-    console.error(`[phone-assistant-mcp] startup failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[phone-assistant-mcp] startup failed: ${errorMessage(error)}`);
     process.exitCode = 1;
   });
 }

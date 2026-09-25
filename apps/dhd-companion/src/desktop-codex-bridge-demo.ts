@@ -1,5 +1,6 @@
 import net from "node:net";
 import { randomUUID } from "node:crypto";
+import { errorMessage } from "./shared/errors.js";
 
 interface DemoOptions {
   host: string;
@@ -145,7 +146,7 @@ const isMainModule = process.argv[1]?.endsWith("desktop-codex-bridge-demo.ts") |
 
 if (isMainModule) {
   runDesktopCodexBridgeDemo().catch((error: unknown) => {
-    console.error(`[desktop-bridge] ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[desktop-bridge] ${errorMessage(error)}`);
     process.exitCode = 1;
   });
 }

@@ -45,6 +45,7 @@ import {
   requestBridge,
   type BridgeMessage,
 } from "./phone-assistant-bridge.js";
+import { errorMessage, toError } from "./shared/errors.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const BRIDGE_POLL_TIMEOUT_MS = 5_000;
@@ -360,7 +361,7 @@ export class CodexAppServerClient {
           // discard a valid stored context merely because it has no local
           // loaded-thread cache.
           console.error(
-            `[codex-app-server] could not resume stored thread ${existingThreadId}: ${error instanceof Error ? error.message : String(error)}`,
+            `[codex-app-server] could not resume stored thread ${existingThreadId}: ${errorMessage(error)}`,
           );
           logger.log("resume:failed", `threadId=${existingThreadId}`);
         }
@@ -394,7 +395,7 @@ export class CodexAppServerClient {
           });
         } catch (error) {
           console.error(
-            `[codex-app-server] could not name thread: ${error instanceof Error ? error.message : String(error)}`,
+            `[codex-app-server] could not name thread: ${errorMessage(error)}`,
           );
         }
       }
@@ -434,7 +435,7 @@ export class CodexAppServerClient {
         }
       } catch (error) {
         this.turnCompletion?.reject(
-          error instanceof Error ? error : new Error(String(error)),
+          toError(error),
         );
         this.turnCompletion = null;
         throw error;
@@ -815,7 +816,7 @@ export class CodexAppServerClient {
       timing.log("thread/unsubscribe:error", `threadId=${threadId}`);
       console.error(
         `[codex-app-server] could not unsubscribe superseded thread ${threadId}: ` +
-          `${error instanceof Error ? error.message : String(error)}`,
+          `${errorMessage(error)}`,
       );
     } finally {
       this.loadedThreadIds.delete(threadId);
@@ -900,7 +901,7 @@ export class CodexAppServerClient {
       this.respondError(
         id,
         -32000,
-        error instanceof Error ? error.message : String(error),
+        errorMessage(error),
       );
     }
   }
@@ -930,7 +931,7 @@ export class CodexAppServerClient {
       // error must not become an unhandled rejection that kills the phone
       // companion worker during an otherwise expected shutdown.
       console.error(
-        `[codex-app-server] could not send server-request error: ${error instanceof Error ? error.message : String(error)}`,
+        `[codex-app-server] could not send server-request error: ${errorMessage(error)}`,
       );
     }
   }
@@ -955,7 +956,7 @@ export class CodexAppServerClient {
       } catch (error) {
         this.pending.delete(id);
         clearTimeout(timer);
-        reject(error instanceof Error ? error : new Error(String(error)));
+        reject(toError(error));
       }
     });
   }
@@ -1354,7 +1355,7 @@ export async function handleDynamicToolCall(
       callId,
       tool: mappedName,
       ...(result ? { result } : {}),
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
       completedAt: Date.now(),
     });
     throw error;
@@ -1549,7 +1550,7 @@ class AgentMessageStreamer {
         // turn a healthy Codex turn into a failed phone session; the final
         // complete_session call remains authoritative.
         console.error(
-          `[phone-assistant-companion] could not stream agent message: ${error instanceof Error ? error.message : String(error)}`,
+          `[phone-assistant-companion] could not stream agent message: ${errorMessage(error)}`,
         );
       }
     }
@@ -1599,7 +1600,7 @@ async function maintainCompanionHeartbeat(
     } catch (error) {
       if (lastHealthy !== false) {
         console.error(
-          `[phone-assistant-companion] phone bridge heartbeat unavailable: ${error instanceof Error ? error.message : String(error)}`,
+          `[phone-assistant-companion] phone bridge heartbeat unavailable: ${errorMessage(error)}`,
         );
       }
       lastHealthy = false;
@@ -1620,7 +1621,7 @@ export async function runAssistantCompanion(
     if (active) {
       void active.client.interrupt().catch((error) => {
         console.error(
-          `[phone-assistant-companion] could not interrupt on shutdown: ${error instanceof Error ? error.message : String(error)}`,
+          `[phone-assistant-companion] could not interrupt on shutdown: ${errorMessage(error)}`,
         );
       });
     }
@@ -1641,7 +1642,7 @@ export async function runAssistantCompanion(
       },
       (error) => {
         console.error(
-          `[phone-assistant-companion] Codex warmup runner failed: ${error instanceof Error ? error.message : String(error)}`,
+          `[phone-assistant-companion] Codex warmup runner failed: ${errorMessage(error)}`,
         );
         if (codexWarmup === operation) codexWarmup = null;
       },
@@ -1697,7 +1698,7 @@ export async function runAssistantCompanion(
             pendingRun = processPendingRequest(pending, codexClient)
               .catch((error) => {
                 console.error(
-                  `[phone-assistant-companion] phone request runner failed: ${error instanceof Error ? error.message : String(error)}`,
+                  `[phone-assistant-companion] phone request runner failed: ${errorMessage(error)}`,
                 );
               })
               .finally(() => {
@@ -1719,7 +1720,7 @@ export async function runAssistantCompanion(
         // The phone may be disconnected or the bridge may not be running yet.
         // Keep polling so reconnecting the device does not require a restart.
         console.error(
-          `[phone-assistant-companion] ${error instanceof Error ? error.message : String(error)}`,
+          `[phone-assistant-companion] ${errorMessage(error)}`,
         );
       }
       if (!stopping) await delay(pollIntervalMs);
@@ -1747,7 +1748,7 @@ async function prewarmCodexClient(
       timing.log("error", `attempt=${attempt}`);
       console.error(
         `[phone-assistant-companion] Codex prewarm attempt ${attempt}/${PREWARM_ATTEMPTS} failed: ` +
-          `${error instanceof Error ? error.message : String(error)}`,
+          `${errorMessage(error)}`,
       );
       if (attempt < PREWARM_ATTEMPTS) await delay(PREWARM_RETRY_DELAY_MS);
     }
@@ -1892,18 +1893,18 @@ export async function processPendingRequest(
     }
   } catch (error) {
     console.error(
-      `[phone-assistant-companion] Codex turn failed: ${error instanceof Error ? error.message : String(error)}`,
+      `[phone-assistant-companion] Codex turn failed: ${errorMessage(error)}`,
     );
     try {
       await requestBridge({
         type: "fail_session",
         requestId: randomUUID(),
         sessionId,
-        reason: error instanceof Error ? error.message : String(error),
+        reason: errorMessage(error),
       });
     } catch (failureError) {
       console.error(
-        `[phone-assistant-companion] could not mark the phone session failed: ${failureError instanceof Error ? failureError.message : String(failureError)}`,
+        `[phone-assistant-companion] could not mark the phone session failed: ${errorMessage(failureError)}`,
       );
     }
   } finally {
@@ -1935,7 +1936,7 @@ export async function processPendingSteer(active: ActiveCodexTurn): Promise<void
   if (shouldInterruptForPhoneStop(pending) && active.client.isTurnInFlight) {
     await active.client.interrupt().catch((error) => {
       console.error(
-        `[phone-assistant-companion] could not interrupt stopped phone session: ${error instanceof Error ? error.message : String(error)}`,
+        `[phone-assistant-companion] could not interrupt stopped phone session: ${errorMessage(error)}`,
       );
     });
     return;
@@ -1991,7 +1992,7 @@ export async function processPendingSteer(active: ActiveCodexTurn): Promise<void
     );
   } catch (error) {
     console.error(
-      `[phone-assistant-companion] Codex steer failed: ${error instanceof Error ? error.message : String(error)}`,
+      `[phone-assistant-companion] Codex steer failed: ${errorMessage(error)}`,
     );
     await releaseSteer(steerId, active.sessionId);
   }
@@ -2007,7 +2008,7 @@ async function releaseSteer(steerId: string, sessionId: string): Promise<void> {
     });
   } catch (error) {
     console.error(
-      `[phone-assistant-companion] could not release steer ${steerId}: ${error instanceof Error ? error.message : String(error)}`,
+      `[phone-assistant-companion] could not release steer ${steerId}: ${errorMessage(error)}`,
     );
   }
 }
@@ -2021,7 +2022,7 @@ async function releaseRequest(sessionId: string): Promise<void> {
     });
   } catch (error) {
     console.error(
-      `[phone-assistant-companion] could not release request: ${error instanceof Error ? error.message : String(error)}`,
+      `[phone-assistant-companion] could not release request: ${errorMessage(error)}`,
     );
   }
 }
@@ -2448,7 +2449,7 @@ const isMainModule =
 if (isMainModule) {
   runAssistantCompanion().catch((error: unknown) => {
     console.error(
-      `[phone-assistant-companion] ${error instanceof Error ? error.message : String(error)}`,
+      `[phone-assistant-companion] ${errorMessage(error)}`,
     );
     process.exitCode = 1;
   });

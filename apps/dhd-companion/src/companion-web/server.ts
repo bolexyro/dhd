@@ -45,6 +45,7 @@ import type {
   CompanionTokenUsageSnapshot,
   DiscoveredPhoneSnapshot,
 } from "./api.js";
+import { errorMessage, toError } from "../shared/errors.js";
 
 export interface ConnectionConfig {
   host: string;
@@ -384,7 +385,7 @@ export function ingestCompanionToolCallEvent(value: unknown): void {
     try {
       response = dashboardToolResponse(event.callId, event.result);
     } catch (error) {
-      conversionError = error instanceof Error ? error.message : String(error);
+      conversionError = errorMessage(error);
     }
   }
   const error = event.error || conversionError;
@@ -657,10 +658,6 @@ function bridgeOptions(timeoutMs: number, target: ConnectionConfig = connection)
   };
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function statusCheckError(result: BridgeMessage): Error {
   return new Error(
     typeof result.message === "string"
@@ -754,7 +751,7 @@ async function requestStatusWithRetry(
       }
     }
   }
-  throw (lastError instanceof Error ? lastError : new Error(String(lastError)));
+  throw toError(lastError);
 }
 
 /** Tell the phone that the worker owning the liveness lease has stopped. */
@@ -1308,7 +1305,7 @@ export function createCompanionWebServer(): http.Server {
         res.end(JSON.stringify(response));
       } catch (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ message: err instanceof Error ? err.message : String(err) }));
+        res.end(JSON.stringify({ message: errorMessage(err) }));
       }
       return;
     }
@@ -1321,7 +1318,7 @@ export function createCompanionWebServer(): http.Server {
         res.end(JSON.stringify(nextState));
       } catch (err) {
         res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ message: err instanceof Error ? err.message : String(err) }));
+        res.end(JSON.stringify({ message: errorMessage(err) }));
       }
       return;
     }
@@ -1336,7 +1333,7 @@ export function createCompanionWebServer(): http.Server {
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: false, message: err instanceof Error ? err.message : String(err) }));
+        res.end(JSON.stringify({ ok: false, message: errorMessage(err) }));
       }
       return;
     }
@@ -1348,7 +1345,7 @@ export function createCompanionWebServer(): http.Server {
         res.end(JSON.stringify(nextState));
       } catch (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ message: err instanceof Error ? err.message : String(err) }));
+        res.end(JSON.stringify({ message: errorMessage(err) }));
       }
       return;
     }
@@ -1360,7 +1357,7 @@ export function createCompanionWebServer(): http.Server {
         res.end(JSON.stringify(nextState));
       } catch (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ message: err instanceof Error ? err.message : String(err) }));
+        res.end(JSON.stringify({ message: errorMessage(err) }));
       }
       return;
     }
@@ -1488,7 +1485,7 @@ function shutdownDashboard(exitCode: number): void {
     .catch((error: unknown) => {
       console.error(
         "Failed to stop the companion worker during dashboard shutdown:",
-        error instanceof Error ? error.message : String(error),
+        errorMessage(error),
       );
     })
     .then(() => {
