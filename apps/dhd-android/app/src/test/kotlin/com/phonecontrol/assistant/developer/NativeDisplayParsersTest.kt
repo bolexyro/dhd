@@ -120,7 +120,7 @@ class NativeDisplayParsersTest {
         val service = DhdNativeDisplayService()
         fun stderr(vararg command: String): String =
             service.execute(command.toList(), false).also {
-                assertEquals(DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE, it.exitCode)
+                assertEquals(DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED, it.exitCode)
             }.stderr
         assertEquals("DHD display command is invalid.", service.execute(null, false).stderr)
         assertEquals("DHD display command is invalid.", stderr("dhd-display"))

@@ -44,7 +44,7 @@ final class DhdNativeDisplayService implements Closeable {
         }
 
         static CommandResult failure(String stderr) {
-            return new CommandResult(DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE, false,
+            return new CommandResult(DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED, false,
                     new byte[0], stderr);
         }
     }

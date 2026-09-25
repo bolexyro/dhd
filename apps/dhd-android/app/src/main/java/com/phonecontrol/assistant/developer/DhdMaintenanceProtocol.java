@@ -20,6 +20,7 @@ final class DhdMaintenanceProtocol {
     static final int MAGIC = 0x44484431; // DHD1
     static final int VERSION = 1;
     static final int EXIT_CODE_UNAVAILABLE = -1;
+    static final int EXIT_CODE_COMMAND_FAILED = -2;
     static final int MAX_ARGUMENTS = 32;
     static final int MAX_ARGUMENT_BYTES = 4096;
     static final int MAX_TOKEN_BYTES = 128;

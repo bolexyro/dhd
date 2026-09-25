@@ -151,22 +151,20 @@ class DhdMaintenanceProtocolTest {
         val capabilities = DhdMaintenanceDaemon.execute(listOf("dhd-capabilities"), false, service)
         assertEquals(0, capabilities.exitCode)
         assertEquals(
-            "DHD-MAINTENANCE/10 display-lifecycle=1 live-avc=1 display-capture=1 display-density-override=1 display-reconciliation=1 display-logical-canvas=1",
+            "DHD-MAINTENANCE/11 display-lifecycle=1 live-avc=1 display-capture=1 display-density-override=1 display-reconciliation=1 display-logical-canvas=1",
             String(capabilities.stdout),
         )
         assertEquals(DhdMaintenanceDaemon.CAPABILITIES, String(capabilities.stdout))
 
         val rejected = DhdMaintenanceDaemon.execute(listOf("sh", "-c", "id"), false, service)
-        assertEquals(DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE, rejected.exitCode)
+        assertEquals(DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED, rejected.exitCode)
         assertEquals("DHD maintenance rejected executable: sh", rejected.stderr)
-        assertEquals(
-            "DHD maintenance rejected an empty command.",
-            DhdMaintenanceDaemon.execute(emptyList(), false, service).stderr,
-        )
-        assertEquals(
-            "DHD display operation is unsupported: resize",
-            DhdMaintenanceDaemon.execute(listOf("dhd-display", "resize"), false, service).stderr,
-        )
+        val empty = DhdMaintenanceDaemon.execute(emptyList(), false, service)
+        assertEquals(DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED, empty.exitCode)
+        assertEquals("DHD maintenance rejected an empty command.", empty.stderr)
+        val unsupported = DhdMaintenanceDaemon.execute(listOf("dhd-display", "resize"), false, service)
+        assertEquals(DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED, unsupported.exitCode)
+        assertEquals("DHD display operation is unsupported: resize", unsupported.stderr)
     }
 
     @Test
@@ -189,7 +187,7 @@ class DhdMaintenanceProtocolTest {
                 client.checkCompatibility(),
             )
             val rejected = client.execute(listOf("sh"))
-            assertNull(rejected.exitCode)
+            assertEquals(DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED, rejected.exitCode)
             assertEquals("DHD maintenance rejected executable: sh", rejected.stderr)
 
             val wrongToken = DhdMaintenanceClient(server.localPort, "wrong").execute(listOf("dhd-capabilities"))
@@ -208,7 +206,7 @@ class DhdMaintenanceProtocolTest {
         val current = client.parseCapabilities("  ${DhdMaintenanceDaemon.CAPABILITIES}\n")!!
         assertEquals(
             DhdMaintenanceClient.Capabilities(
-                version = 10,
+                version = 11,
                 displayLifecycle = true,
                 liveAvc = true,
                 displayCapture = true,
@@ -225,7 +223,12 @@ class DhdMaintenanceProtocolTest {
         )
         assertFalse(
             client.parseCapabilities(
-                "DHD-MAINTENANCE/10 display-lifecycle=1 live-avc=1 display-capture=1 display-reconciliation=1",
+                "DHD-MAINTENANCE/10 display-lifecycle=1 live-avc=1 display-capture=1 display-density-override=1 display-reconciliation=1 display-logical-canvas=1",
+            )!!.supportsNativeDisplay,
+        )
+        assertFalse(
+            client.parseCapabilities(
+                "DHD-MAINTENANCE/11 display-lifecycle=1 live-avc=1 display-capture=1 display-reconciliation=1",
             )!!.supportsNativeDisplay,
         )
         assertTrue(
@@ -236,7 +239,7 @@ class DhdMaintenanceProtocolTest {
         assertNull(client.parseCapabilities("DHD-MAINTENANCE/x display-lifecycle=1"))
         assertNull(client.parseCapabilities(""))
         assertEquals(7, client.parseCapabilities("7")!!.version)
-        assertEquals(10, DhdMaintenanceClient.REQUIRED_CAPABILITY_VERSION)
+        assertEquals(11, DhdMaintenanceClient.REQUIRED_CAPABILITY_VERSION)
     }
 
     @Test

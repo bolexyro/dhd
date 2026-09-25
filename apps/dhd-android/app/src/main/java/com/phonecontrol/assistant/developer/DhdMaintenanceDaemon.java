@@ -27,7 +27,7 @@ public final class DhdMaintenanceDaemon {
     private static final long COMMAND_TIMEOUT_MS = 15_000L;
     /** Bumped when the long-lived daemon gains logical app-canvas profiles. */
     static final String CAPABILITIES =
-            "DHD-MAINTENANCE/10 display-lifecycle=1 live-avc=1 display-capture=1 " +
+            "DHD-MAINTENANCE/11 display-lifecycle=1 live-avc=1 display-capture=1 " +
                     "display-density-override=1 display-reconciliation=1 display-logical-canvas=1";
     private static final Set<String> ALLOWED_EXECUTABLES = new HashSet<>(Arrays.asList(
             "am",
@@ -139,7 +139,7 @@ public final class DhdMaintenanceDaemon {
             }
             if (result.overflowed) {
                 return new CommandResult(
-                        DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE,
+                        DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED,
                         false,
                         result.stdout,
                         "DHD maintenance command output was too large."
@@ -188,7 +188,7 @@ public final class DhdMaintenanceDaemon {
 
         static CommandResult failure(String message) {
             return new CommandResult(
-                    DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE,
+                    DhdMaintenanceProtocol.EXIT_CODE_COMMAND_FAILED,
                     false,
                     new byte[0],
                     message
