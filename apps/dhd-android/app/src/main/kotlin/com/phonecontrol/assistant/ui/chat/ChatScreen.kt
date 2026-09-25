@@ -87,6 +87,8 @@ import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 fun ChatScreen(
     viewModel: ChatViewModel,
     onRunRequest: (String, String?, String?, Boolean) -> Unit,
+    restoredRequest: String? = null,
+    onRestoredRequestConsumed: () -> Unit = {},
     reasoningEffort: ReasoningEffort,
     visibleReasoningEfforts: List<ReasoningEffort>,
     onSelectReasoningEffort: (ReasoningEffort) -> Unit,
@@ -142,6 +144,11 @@ fun ChatScreen(
     var steerDraftSessionId by rememberSaveable { mutableStateOf<String?>(null) }
     var carrySteerDraftsToNextRun by rememberSaveable { mutableStateOf(false) }
     var composerEditText by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(restoredRequest) {
+        if (restoredRequest == null) return@LaunchedEffect
+        composerEditText = restoredRequest
+        onRestoredRequestConsumed()
+    }
     var showReasoningSelector by rememberSaveable { mutableStateOf(false) }
     var topRecoverySlotHeightPx by remember { mutableStateOf(0) }
     val activeSessionId = state.sessionIdOrNull

@@ -69,6 +69,8 @@ import kotlinx.coroutines.launch
 fun PhoneControlApp(
     initialRoute: String? = null,
     onRunRequest: (String, String?, String?, Boolean) -> Unit,
+    restoredRequest: String? = null,
+    onRestoredRequestConsumed: () -> Unit = {},
     onStopSession: () -> Unit,
     onContinueSession: () -> Unit = {},
     onStartFresh: (() -> Unit)? = null,
@@ -248,6 +250,8 @@ fun PhoneControlApp(
                         ChatScreen(
                             viewModel = viewModel(factory = ChatViewModel.factory(container)),
                             onRunRequest = onRunRequest,
+                            restoredRequest = restoredRequest,
+                            onRestoredRequestConsumed = onRestoredRequestConsumed,
                             reasoningEffort = reasoningEffort,
                             visibleReasoningEfforts = visibleReasoningEfforts,
                             onSelectReasoningEffort = setReasoningEffort,

@@ -24,6 +24,7 @@ import com.phonecontrol.assistant.overlay.OverlayVisibilityGate
 import com.phonecontrol.assistant.session.SessionCommands
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.AppViewModel
+import com.phonecontrol.assistant.ui.PendingRunRequest
 import com.phonecontrol.assistant.ui.PhoneControlApp
 import com.phonecontrol.assistant.ui.displays.applicationLabel
 import com.phonecontrol.assistant.ui.displays.mapDisplayUi
@@ -38,10 +39,6 @@ internal const val STATE_NOTIFICATION_SETUP_HANDLED = "notification_setup_step_h
 internal const val STATE_PENDING_OVERLAY_ENABLE = "pending_overlay_enable"
 
 class MainActivity : ComponentActivity() {
-    private var pendingRequest: String? = null
-    private var pendingConversationId: String? = null
-    private var pendingReasoningEffort: String? = null
-    private var pendingFastMode: Boolean = false
     private var overlayEnabled by mutableStateOf(false)
     private var overlayPermissionGranted by mutableStateOf(false)
     private var permissionSetupStep by mutableStateOf<PermissionSetupStep?>(null)
@@ -64,15 +61,9 @@ class MainActivity : ComponentActivity() {
             updatePermissionSetupStep()
             return@registerForActivityResult
         }
-        if (granted) {
-            pendingRequest?.let {
-                launchSession(it, pendingConversationId, pendingReasoningEffort, pendingFastMode)
-            }
+        appViewModel.onNotificationPermissionResult(granted)?.let { pending ->
+            launchSession(pending.request, pending.conversationId, pending.reasoningEffort, pending.fastMode)
         }
-        pendingRequest = null
-        pendingConversationId = null
-        pendingReasoningEffort = null
-        pendingFastMode = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -94,6 +85,7 @@ class MainActivity : ComponentActivity() {
         val appPackageManager = packageManager
         setContent {
             val uiState by appViewModel.uiState.collectAsState()
+            val restoredRequest by appViewModel.restoredRequest.collectAsState()
             val displayUi = mapDisplayUi(
                 sources = uiState.displaySources,
                 appLabelFor = { packageName -> packageName.applicationLabel(appPackageManager) },
@@ -102,6 +94,8 @@ class MainActivity : ComponentActivity() {
             PhoneControlApp(
                 initialRoute = intent.getStringExtra(EXTRA_OPEN_ROUTE),
                 onRunRequest = ::startSession,
+                restoredRequest = restoredRequest,
+                onRestoredRequestConsumed = appViewModel::consumeRestoredRequest,
                 onStopSession = ::stopSession,
                 onContinueSession = ::continueSession,
                 onStartFresh = ::startFresh,
@@ -212,10 +206,9 @@ class MainActivity : ComponentActivity() {
     ) {
         if (request.isBlank()) return
         if (!hasNotificationPermission()) {
-            pendingRequest = request
-            pendingConversationId = conversationId
-            pendingReasoningEffort = reasoningEffort
-            pendingFastMode = fastMode
+            appViewModel.holdForNotificationPermission(
+                PendingRunRequest(request, conversationId, reasoningEffort, fastMode),
+            )
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             launchSession(request, conversationId, reasoningEffort, fastMode)

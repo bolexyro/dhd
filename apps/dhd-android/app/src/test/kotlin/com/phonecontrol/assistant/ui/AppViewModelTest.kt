@@ -135,4 +135,27 @@ class AppViewModelTest {
         assertEquals(null, viewModel.uiState.value.displaySources.resolvedDisplayForRun)
         assertEquals(listOf("run-1", "run-1", "run-1"), resolvedKeys)
     }
+
+    @Test
+    fun `a request held for the notification permission starts once it is granted`() {
+        val viewModel = viewModel()
+        val request = PendingRunRequest("Buy milk", "conversation-1", "high", fastMode = true)
+        viewModel.holdForNotificationPermission(request)
+
+        assertEquals(request, viewModel.onNotificationPermissionResult(granted = true))
+        assertEquals(null, viewModel.restoredRequest.value)
+        assertEquals(null, viewModel.onNotificationPermissionResult(granted = true))
+    }
+
+    @Test
+    fun `a request refused the notification permission goes back to the composer`() {
+        val viewModel = viewModel()
+        viewModel.holdForNotificationPermission(PendingRunRequest("Buy milk", null, null, fastMode = false))
+
+        assertEquals(null, viewModel.onNotificationPermissionResult(granted = false))
+        assertEquals("Buy milk", viewModel.restoredRequest.value)
+
+        viewModel.consumeRestoredRequest()
+        assertEquals(null, viewModel.restoredRequest.value)
+    }
 }

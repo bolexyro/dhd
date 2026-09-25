@@ -15,8 +15,10 @@ import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.ui.displays.DisplayUiSources
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
@@ -24,6 +26,13 @@ import kotlinx.coroutines.flow.stateIn
 
 internal data class AppUiState(
     val displaySources: DisplayUiSources,
+)
+
+internal data class PendingRunRequest(
+    val request: String,
+    val conversationId: String?,
+    val reasoningEffort: String?,
+    val fastMode: Boolean,
 )
 
 class AppViewModel internal constructor(
@@ -70,6 +79,26 @@ class AppViewModel internal constructor(
                 ),
             ),
         )
+
+    private var requestAwaitingNotificationPermission: PendingRunRequest? = null
+    private val _restoredRequest = MutableStateFlow<String?>(null)
+    val restoredRequest: StateFlow<String?> = _restoredRequest.asStateFlow()
+
+    internal fun holdForNotificationPermission(request: PendingRunRequest) {
+        requestAwaitingNotificationPermission = request
+    }
+
+    internal fun onNotificationPermissionResult(granted: Boolean): PendingRunRequest? {
+        val request = requestAwaitingNotificationPermission ?: return null
+        requestAwaitingNotificationPermission = null
+        if (granted) return request
+        _restoredRequest.value = request.request
+        return null
+    }
+
+    fun consumeRestoredRequest() {
+        _restoredRequest.value = null
+    }
 
     companion object {
         fun factory(container: AppContainer): ViewModelProvider.Factory =
