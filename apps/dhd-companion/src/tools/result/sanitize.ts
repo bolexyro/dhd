@@ -1,6 +1,8 @@
 import type { BridgeMessage } from "../../phone/protocol.js";
 import { isRecord } from "../../shared/guards.js";
 
+const AGENT_HIDDEN_KEYS = new Set(["requestId", "taskId", "taskSessionKey", "sessionKey", "displayId"]);
+
 export function withoutScreenshot(message: BridgeMessage): Record<string, unknown> {
   const copy = sanitizeAgentValue(message) as Record<string, unknown>;
   delete copy.screenshotBase64;
@@ -17,9 +19,7 @@ function sanitizeAgentValue(value: unknown): unknown {
   if (!isRecord(value)) return value;
   const sanitized: Record<string, unknown> = {};
   for (const [key, nested] of Object.entries(value)) {
-    if (key === "requestId" || key === "taskId" || key === "taskSessionKey" || key === "sessionKey" || key === "displayId") {
-      continue;
-    }
+    if (AGENT_HIDDEN_KEYS.has(key)) continue;
     sanitized[key] = sanitizeAgentValue(nested);
   }
   return sanitized;
