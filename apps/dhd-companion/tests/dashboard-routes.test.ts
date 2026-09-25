@@ -1,4 +1,4 @@
-import type { AddressInfo } from "node:net";
+import net, { type AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,6 +50,19 @@ afterEach(async () => {
   server.closeAllConnections();
   await new Promise<void>((resolve) => server.close(() => resolve()));
 });
+
+function rawRequest(lines: string[]): Promise<string> {
+  const { port } = server.address() as AddressInfo;
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host: "127.0.0.1", port });
+    let response = "";
+    socket.setEncoding("utf8");
+    socket.on("data", (chunk: string) => { response += chunk; });
+    socket.on("end", () => resolve(response));
+    socket.on("error", reject);
+    socket.write(`${lines.join("\r\n")}\r\n\r\n`);
+  });
+}
 
 function headersOf(response: Response, names: string[]): Record<string, string | null> {
   return Object.fromEntries(names.map((name) => [name, response.headers.get(name)]));
@@ -253,5 +266,13 @@ describe("dashboard route contract", () => {
     expect(response.headers.get("content-type")).toBe("text/plain");
     expect(await response.text()).toBe("Not Found");
     expectCors(response);
+  });
+
+  it("rejects a malformed Host header without crashing", async () => {
+    const response = await rawRequest(["GET /api/state HTTP/1.1", "Host: [", "Connection: close"]);
+
+    expect(response.split("\r\n")[0]).toBe("HTTP/1.1 400 Bad Request");
+    expect(response.slice(response.indexOf("\r\n\r\n"))).toContain("Bad Request");
+    expect((await fetch(`${baseUrl}/api/state`)).status).toBe(200);
   });
 });

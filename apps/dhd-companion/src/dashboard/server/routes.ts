@@ -117,13 +117,25 @@ function serveToolImage(
   res.end(image.bytes);
 }
 
+function requestUrl(req: http.IncomingMessage): URL | undefined {
+  try {
+    return new URL(req.url ?? "/", `http://${req.headers.host || "localhost"}`);
+  } catch {
+    return undefined;
+  }
+}
+
 async function handleRequest(
   dashboard: CompanionDashboard,
   routes: Record<string, JsonRoute>,
   req: http.IncomingMessage,
   res: http.ServerResponse,
 ): Promise<void> {
-  const url = new URL(req.url ?? "/", `http://${req.headers.host || "localhost"}`);
+  const url = requestUrl(req);
+  if (!url) {
+    writeText(res, 400, "Bad Request");
+    return;
+  }
   const pathname = url.pathname;
 
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -165,5 +177,11 @@ async function handleRequest(
 
 export function createCompanionWebServer(dashboard: CompanionDashboard): http.Server {
   const routes = jsonPostRoutes(dashboard);
-  return http.createServer((req, res) => handleRequest(dashboard, routes, req, res));
+  return http.createServer((req, res) => {
+    handleRequest(dashboard, routes, req, res).catch((error: unknown) => {
+      console.error(`Companion dashboard request failed: ${errorMessage(error)}`);
+      if (!res.headersSent) writeText(res, 500, "Internal Server Error");
+      else res.end();
+    });
+  });
 }
