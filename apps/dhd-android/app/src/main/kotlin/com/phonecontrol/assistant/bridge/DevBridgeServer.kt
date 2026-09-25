@@ -200,12 +200,7 @@ class DevBridgeServer internal constructor(
     private val overlayVisibilityGate
         get() = platform.overlayVisibilityGate()
     private val bridgeJson = BridgeJson(base64)
-    private val observations = Collections.synchronizedMap(
-        object : LinkedHashMap<String, ObservationSnapshot>(MAX_OBSERVATIONS + 1, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ObservationSnapshot>?): Boolean =
-                size > MAX_OBSERVATIONS
-        },
-    )
+    private val captures = CaptureService(coordinator, observationProvider, taskDisplayRequiredProvider)
 
     val companionConnected: StateFlow<Boolean>
         get() = presence.companionConnected
@@ -965,7 +960,7 @@ class DevBridgeServer internal constructor(
                     .put("sessionId", sessionId)
                     .put("acknowledged", true)
                     .put("message", "The user confirmed that the attention step is complete. Observe the phone before taking the next action.")
-                when (val captured = captureWithRetry(
+                when (val captured = captures.captureWithRetry(
                     expectedPackageName = null,
                     guardRegions = emptyList(),
                     taskSessionKey = target?.session?.sessionKey ?: sessionId,
@@ -976,7 +971,7 @@ class DevBridgeServer internal constructor(
                         .put("observationError", captured.message)
                         .put("observationErrorCode", captured.code)
                     is ObservationCaptureResult.Succeeded -> {
-                        remember(captured.snapshot)
+                        captures.remember(captured.snapshot)
                         response
                             .put("observation", bridgeJson.snapshotJson(captured.snapshot))
                             .put("screenshotBase64", base64.encode(captured.screenshot))
@@ -1351,7 +1346,7 @@ class DevBridgeServer internal constructor(
         } else {
             null
         }
-        when (val captured = captureWithRetry(
+        when (val captured = captures.captureWithRetry(
             expectedPackageName = null,
             guardRegions = emptyList(),
             taskSessionKey = target?.session?.sessionKey ?: coordinator.activeSessionId(),
@@ -1362,7 +1357,7 @@ class DevBridgeServer internal constructor(
                 errorResponse(requestId, captured.message).put("code", captured.code),
             )
             is ObservationCaptureResult.Succeeded -> {
-                remember(captured.snapshot)
+                captures.remember(captured.snapshot)
                 reply.write(bridgeJson.observationResponse(requestId, captured.snapshot, captured.screenshot))
             }
         }
@@ -1440,9 +1435,7 @@ class DevBridgeServer internal constructor(
             ?: throw IllegalArgumentException("action must be an object.")
         val parsedAction = parsePhoneAction(actionJson)
         val observationId = parsedAction.metadata.observationId.trim()
-        val suppliedObservation = synchronized(observations) {
-            observationId.takeIf(String::isNotBlank)?.let { observations[it] }
-        }
+        val suppliedObservation = observationId.takeIf(String::isNotBlank)?.let(captures::lookup)
         val runSessionKey = coordinator.activeSessionId()
         if (taskDisplayRequiredProvider() && runSessionKey == null) {
             reply.write(
@@ -1520,7 +1513,7 @@ class DevBridgeServer internal constructor(
             // without a task session retain the physical baseline behavior.
             if (taskSessionKey != null) {
                 null
-            } else when (val captured = captureWithRetry(null, emptyList(), null)) {
+            } else when (val captured = captures.captureWithRetry(null, emptyList(), null)) {
                 is ObservationCaptureResult.Failed -> {
                     reply.write(
                         failedActionCompletion(
@@ -1534,7 +1527,7 @@ class DevBridgeServer internal constructor(
                 }
 
                 is ObservationCaptureResult.Succeeded -> {
-                    remember(captured.snapshot)
+                    captures.remember(captured.snapshot)
                     captured.snapshot
                 }
             }
@@ -1619,7 +1612,7 @@ class DevBridgeServer internal constructor(
         val postSession = taskSessionKey?.let { key ->
             taskDisplayBackend?.current(key)
         } ?: target?.session
-        when (val captured = captureWithRetry(
+        when (val captured = captures.captureWithRetry(
             expectedPackageName = null,
             guardRegions = emptyList(),
             taskSessionKey = postSession?.sessionKey ?: taskSessionKey,
@@ -1645,7 +1638,7 @@ class DevBridgeServer internal constructor(
                 } else {
                     null
                 }
-                remember(captured.snapshot)
+                captures.remember(captured.snapshot)
                 val response = JSONObject()
                     .put("type", "completed")
                     .put("requestId", requestId)
@@ -1684,9 +1677,7 @@ class DevBridgeServer internal constructor(
             reply.write(bridgeJson.invalidSequenceResponse(requestId, json, error))
             return
         }
-        val observation = synchronized(observations) {
-            observations[request.observationId]
-        }
+        val observation = captures.lookup(request.observationId)
         if (observation == null) {
             reply.write(
                 bridgeJson.sequenceResultResponse(
@@ -1780,7 +1771,7 @@ class DevBridgeServer internal constructor(
                 )
             },
             captureAfterAction = { guardRegions ->
-                captureWithRetry(
+                captures.captureWithRetry(
                     expectedPackageName = null,
                     guardRegions = guardRegions,
                     taskSessionKey = target?.session?.sessionKey ?: runSessionKey,
@@ -1788,7 +1779,7 @@ class DevBridgeServer internal constructor(
                     expectedDisplayRef = target?.displayRef,
                 )
             },
-            rememberObservation = ::remember,
+            rememberObservation = captures::remember,
             settleAfterAction = ::settleAfterAction,
         ).execute(observation, request.actions)
         reply.write(bridgeJson.sequenceResultResponse(requestId, result, observation))
@@ -1824,12 +1815,6 @@ class DevBridgeServer internal constructor(
         )
     }
 
-    private fun remember(snapshot: ObservationSnapshot) {
-        synchronized(observations) {
-            observations[snapshot.id] = snapshot
-        }
-    }
-
     private suspend fun runDemo(request: DemoRequest, reply: BridgeReply) {
         val startedSession = coordinator.start("Desktop Codex demo: ${request.purpose}")
         if (!startedSession) {
@@ -1853,7 +1838,7 @@ class DevBridgeServer internal constructor(
         }
 
         delay(OPEN_SETTLE_DELAY_MS)
-        val afterOpen = captureWithRetry(
+        val afterOpen = captures.captureWithRetry(
             request.packageName,
             request.guardRegions,
             coordinator.activeSessionId(),
@@ -1884,7 +1869,7 @@ class DevBridgeServer internal constructor(
         }
 
         delay(POST_ACTION_SETTLE_DELAY_MS)
-        val afterTap = captureWithRetry(null, emptyList(), coordinator.activeSessionId())
+        val afterTap = captures.captureWithRetry(null, emptyList(), coordinator.activeSessionId())
         when (afterTap) {
             is ObservationCaptureResult.Failed -> {
                 failSession(reply, request, "Tap completed, but the post-action observation failed: ${afterTap.message}")
@@ -1904,40 +1889,6 @@ class DevBridgeServer internal constructor(
                 )
             }
         }
-    }
-
-    private suspend fun captureWithRetry(
-        expectedPackageName: String?,
-        guardRegions: List<GuardRegion>,
-        taskSessionKey: String? = coordinator.activeSessionId(),
-        displayId: Int? = null,
-        expectedDisplayRef: String? = null,
-    ): ObservationCaptureResult {
-        if (taskDisplayRequiredProvider() && taskSessionKey == null) {
-            return ObservationCaptureResult.Failed(
-                message = "No active task display is available; refusing to use the physical display.",
-                code = BridgeErrorCodes.TASK_DISPLAY_UNAVAILABLE,
-            )
-        }
-        if (!coordinator.awaitPhoneAccessForTool()) {
-            return ObservationCaptureResult.Failed(
-                message = "Phone access is no longer available; the observation was not captured.",
-                code = BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE,
-            )
-        }
-        var last: ObservationCaptureResult = ObservationCaptureResult.Failed("No capture attempted.")
-        repeat(CAPTURE_ATTEMPTS) {
-            last = observationProvider.capture(
-                expectedPackageName = expectedPackageName,
-                guardRegions = guardRegions,
-                taskSessionKey = taskSessionKey,
-                displayId = displayId,
-                expectedDisplayRef = expectedDisplayRef,
-            )
-            if (last is ObservationCaptureResult.Succeeded) return last
-            delay(CAPTURE_RETRY_DELAY_MS)
-        }
-        return last
     }
 
     private fun failSession(reply: BridgeReply, request: DemoRequest, message: String) {
@@ -1971,15 +1922,6 @@ class DevBridgeServer internal constructor(
             guardRegions = parseGuardRegions(json.optJSONArray("guardRegions")),
         )
     }
-
-    private fun observationFailureCode(message: String): String =
-        if (message.contains("Wireless Debugging", ignoreCase = true) ||
-            message.contains("DHD could not execute", ignoreCase = true)
-        ) {
-            BridgeErrorCodes.DEVELOPER_MODE_UNAVAILABLE
-        } else {
-            BridgeErrorCodes.OBSERVATION_FAILED
-        }
 
     /** Return currently usable IPv4 addresses that the desktop can dial. */
     fun lanIpv4Addresses(): List<String> = lanAddressProvider()
