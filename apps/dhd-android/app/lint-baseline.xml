@@ -612,23 +612,12 @@
     <issue
         id="UseKtx"
         message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="            preferences.edit().putString(KEY_AUTH_TOKEN, token).apply()"
+        errorLine1="        preferences.edit().putString(key, value).apply()"
         errorLine2="            ~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/bridge/DevBridgeServer.kt"
-            line="124"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="            preferences.edit().putString(KEY_DEVICE_ID, id).apply()"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/phonecontrol/assistant/bridge/DevBridgeServer.kt"
-            line="130"
-            column="13"/>
+            file="src/main/kotlin/com/phonecontrol/assistant/bridge/BridgePlatform.kt"
+            line="48"
+            column="9"/>
     </issue>
 
     <issue
@@ -688,28 +677,6 @@
 
     <issue
         id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        getSharedPreferences(PERMISSION_SETUP_PREFERENCES, MODE_PRIVATE)"
-        errorLine2="        ^">
-        <location
-            file="src/main/kotlin/com/phonecontrol/assistant/MainActivity.kt"
-            line="452"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        getSharedPreferences(PERMISSION_SETUP_PREFERENCES, MODE_PRIVATE)"
-        errorLine2="        ^">
-        <location
-            file="src/main/kotlin/com/phonecontrol/assistant/MainActivity.kt"
-            line="459"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
         message="Use the KTX extension function `String.toUri` instead?"
         errorLine1="                Uri.parse(&quot;package:$packageName&quot;),"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
@@ -717,28 +684,6 @@
             file="src/main/kotlin/com/phonecontrol/assistant/MainActivity.kt"
             line="563"
             column="17"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        preferences(context).edit().putBoolean(KEY_OVERLAY_ENABLED, enabled).apply()"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPreferences.kt"
-            line="22"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        preferences(context).edit()"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/phonecontrol/assistant/overlay/OverlayPreferences.kt"
-            line="34"
-            column="9"/>
     </issue>
 
     <issue
