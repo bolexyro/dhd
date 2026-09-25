@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.bridge
 
-import com.phonecontrol.assistant.bridge.protocol.BridgeErrorCodes
 import com.phonecontrol.assistant.bridge.auth.BridgeCredentials
 import com.phonecontrol.assistant.bridge.handlers.AppCatalogHandlers
 import com.phonecontrol.assistant.bridge.handlers.AttentionHandler
@@ -17,11 +16,10 @@ import com.phonecontrol.assistant.bridge.pairing.PairingUdpServer
 import com.phonecontrol.assistant.bridge.pairing.PendingCompanionPairing
 import com.phonecontrol.assistant.bridge.presence.CompanionPresence
 import com.phonecontrol.assistant.bridge.protocol.BridgeJson
-import com.phonecontrol.assistant.bridge.protocol.BridgeLimits.MAX_REQUEST_CHARS
-import com.phonecontrol.assistant.bridge.protocol.errorResponse
+import com.phonecontrol.assistant.bridge.routing.BridgeHandler
+import com.phonecontrol.assistant.bridge.routing.BridgeRouter
 import com.phonecontrol.assistant.bridge.routing.PhoneActionLock
 import com.phonecontrol.assistant.bridge.routing.ToolCallScope
-import com.phonecontrol.assistant.bridge.transport.BridgeReply
 import com.phonecontrol.assistant.bridge.transport.NdjsonWriter
 import com.phonecontrol.assistant.core.AndroidBase64Codec
 import com.phonecontrol.assistant.core.Base64Codec
@@ -52,9 +50,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.sync.withLock
-import org.json.JSONException
-import org.json.JSONObject
 
 /**
  * Authenticated LAN NDJSON bridge used by the development desktop companion.
@@ -178,6 +173,7 @@ class DevBridgeServer internal constructor(
         base64,
     )
     private val demo = DemoHandler(coordinator, captures, bridgeJson, newUuid)
+    private val router = BridgeRouter(credentials, presence, platform, newUuid, requestHandlers())
 
     val companionConnected: StateFlow<Boolean>
         get() = presence.companionConnected
@@ -238,7 +234,7 @@ class DevBridgeServer internal constructor(
         client.use { socket ->
             val reader = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.UTF_8))
             val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), Charsets.UTF_8))
-            handleRequestLine(reader.readLine(), socket.inetAddress, NdjsonWriter(writer))
+            router.handleRequestLine(reader.readLine(), socket.inetAddress, NdjsonWriter(writer))
         }
     }
 
@@ -247,121 +243,83 @@ class DevBridgeServer internal constructor(
         peerAddress: InetAddress,
         writer: BufferedWriter,
     ) {
-        handleRequestLine(line, peerAddress, NdjsonWriter(writer))
+        router.handleRequestLine(line, peerAddress, NdjsonWriter(writer))
     }
 
-    private suspend fun handleRequestLine(
-        line: String?,
-        peerAddress: InetAddress,
-        reply: BridgeReply,
-    ) {
-        if (line == null) {
-            reply.write(errorResponse(null, "The bridge received an empty request."))
-            return
-        }
-        if (line.length > MAX_REQUEST_CHARS) {
-            reply.write(errorResponse(null, "The bridge request is too large."))
-            return
-        }
-        val json = try {
-            JSONObject(line)
-        } catch (error: IllegalArgumentException) {
-            reply.write(errorResponse(null, error.message ?: "Invalid bridge request."))
-            return
-        } catch (error: JSONException) {
-            reply.write(errorResponse(null, "The bridge request must be valid JSON."))
-            return
-        }
-        val requestId = json.optString("requestId").ifBlank { newUuid().toString() }
-
-        if (!credentials.isAuthorized(peerAddress, json)) {
-            reply.write(
-                errorResponse(requestId, "The phone bridge rejected this network connection. Pair the desktop companion in DHD settings.")
-                    .put("code", BridgeErrorCodes.AUTH_REQUIRED),
-            )
-            return
-        }
-
-        // Dashboard status checks are read-only health probes and must not
-        // keep the worker's liveness lease alive after the worker stops.
-        // Worker traffic still refreshes presence independently of the
-        // current task or Codex polling phase.
-        val requestType = json.optString("type")
-        if (requestType != "status" && requestType != "companion_disconnected") {
-            presence.markSeen()
-        }
-        reply.write(
-            JSONObject()
-                .put("type", "accepted")
-                .put("requestId", requestId)
-                .put("message", "${requestType.ifBlank { "bridge" }} accepted by the phone."),
-        )
-        try {
-            when (requestType) {
-                "demo_run" -> phoneActionLock.withLock { demo.run(json, reply) }
-                "start_session" -> sessions.startSession(requestId, json, reply)
-                "status" -> sessions.status(requestId, reply)
-                "heartbeat" -> sessions.heartbeat(requestId, reply)
-                "companion_disconnected" -> sessions.companionDisconnected(requestId, reply)
-                "pending_request" -> sessions.pendingRequest(requestId, reply)
-                "claim_request" -> sessions.claimRequest(requestId, json, reply)
-                "pending_steer" -> steers.pendingSteer(requestId, json, reply)
-                "claim_steer" -> steers.claimSteer(requestId, json, reply)
-                "release_steer" -> steers.releaseSteer(requestId, json, reply)
-                "complete_steer" -> steers.completeSteer(requestId, json, reply)
-                "bind_codex_thread" -> sessions.bindCodexThread(requestId, json, reply)
-                "release_request" -> sessions.releaseRequest(requestId, json, reply)
-                "stream_agent_message" -> sessions.streamAgentMessage(requestId, json, reply)
-                "complete_session" -> sessions.completeSession(requestId, json, reply)
-                "fail_session" -> sessions.failSession(requestId, json, reply)
-                "allowed_apps" -> toolCalls.withDhdTool(json, ToolNames.LIST_ALLOWED_APPS) {
-                    appCatalog.allowedApps(requestId, json, reply)
-                }
-                "browse_apps" -> toolCalls.withDhdTool(json, ToolNames.BROWSE_APP) {
-                    appCatalog.browseApps(requestId, json, reply)
-                }
-                "set_app_display_layout" -> toolCalls.withDhdTool(json, ToolNames.SET_APP_DISPLAY_LAYOUT) {
-                    appCatalog.setAppDisplayLayout(requestId, json, reply)
-                }
-                "list_displays" -> displays.listDisplays(requestId, reply)
-                "close_display" -> displays.closeDisplay(requestId, json, reply)
-                "foreground_app" -> toolCalls.withDhdTool(json, ToolNames.FOREGROUND_APP) {
-                    observations.foregroundApp(requestId, json, reply)
-                }
-                "observe" -> toolCalls.withDhdTool(
-                    json = json,
-                    fallbackToolName = ToolNames.OBSERVE,
-                ) {
-                    observations.observe(requestId, json, reply)
-                }
-                "execute_action" -> toolCalls.withDhdTool(
-                    json = json,
-                    fallbackToolName = toolCalls.fallbackActionToolName(json),
-                ) {
-                    phoneActionLock.withLock { executeActions.executeAction(requestId, json, reply) }
-                }
-                "execute_sequence" -> toolCalls.withDhdTool(
-                    json = json,
-                    fallbackToolName = ToolNames.EXECUTE_SEQUENCE,
-                ) {
-                    phoneActionLock.withLock { executeSequences.executeSequence(requestId, json, reply) }
-                }
-                "request_attention" -> toolCalls.withDhdTool(
-                    json = json,
-                    fallbackToolName = ToolNames.REQUEST_ATTENTION,
-                    terminalStatus = DhdToolCallStatus.ATTENTION,
-                ) {
-                    attention.requestAttention(requestId, json, reply)
-                }
-                "stop_session" -> sessions.stopSession(requestId, json, reply)
-                else -> reply.write(errorResponse(requestId, "Unsupported bridge request type."))
+    private fun requestHandlers(): Map<String, BridgeHandler> = mapOf(
+        "demo_run" to BridgeHandler { _, json, reply -> phoneActionLock.withLock { demo.run(json, reply) } },
+        "start_session" to BridgeHandler { requestId, json, reply -> sessions.startSession(requestId, json, reply) },
+        "status" to BridgeHandler { requestId, _, reply -> sessions.status(requestId, reply) },
+        "heartbeat" to BridgeHandler { requestId, _, reply -> sessions.heartbeat(requestId, reply) },
+        "companion_disconnected" to BridgeHandler { requestId, _, reply -> sessions.companionDisconnected(requestId, reply) },
+        "pending_request" to BridgeHandler { requestId, _, reply -> sessions.pendingRequest(requestId, reply) },
+        "claim_request" to BridgeHandler { requestId, json, reply -> sessions.claimRequest(requestId, json, reply) },
+        "pending_steer" to BridgeHandler { requestId, json, reply -> steers.pendingSteer(requestId, json, reply) },
+        "claim_steer" to BridgeHandler { requestId, json, reply -> steers.claimSteer(requestId, json, reply) },
+        "release_steer" to BridgeHandler { requestId, json, reply -> steers.releaseSteer(requestId, json, reply) },
+        "complete_steer" to BridgeHandler { requestId, json, reply -> steers.completeSteer(requestId, json, reply) },
+        "bind_codex_thread" to BridgeHandler { requestId, json, reply -> sessions.bindCodexThread(requestId, json, reply) },
+        "release_request" to BridgeHandler { requestId, json, reply -> sessions.releaseRequest(requestId, json, reply) },
+        "stream_agent_message" to BridgeHandler { requestId, json, reply -> sessions.streamAgentMessage(requestId, json, reply) },
+        "complete_session" to BridgeHandler { requestId, json, reply -> sessions.completeSession(requestId, json, reply) },
+        "fail_session" to BridgeHandler { requestId, json, reply -> sessions.failSession(requestId, json, reply) },
+        "allowed_apps" to BridgeHandler { requestId, json, reply ->
+            toolCalls.withDhdTool(json, ToolNames.LIST_ALLOWED_APPS) {
+                appCatalog.allowedApps(requestId, json, reply)
             }
-        } catch (error: Throwable) {
-            val message = error.message ?: error::class.java.simpleName
-            platform.logError(BRIDGE_LOG_TAG, "Bridge request failed", error)
-            reply.write(errorResponse(requestId, "The phone bridge failed: $message"))
-        }
-    }
+        },
+        "browse_apps" to BridgeHandler { requestId, json, reply ->
+            toolCalls.withDhdTool(json, ToolNames.BROWSE_APP) {
+                appCatalog.browseApps(requestId, json, reply)
+            }
+        },
+        "set_app_display_layout" to BridgeHandler { requestId, json, reply ->
+            toolCalls.withDhdTool(json, ToolNames.SET_APP_DISPLAY_LAYOUT) {
+                appCatalog.setAppDisplayLayout(requestId, json, reply)
+            }
+        },
+        "list_displays" to BridgeHandler { requestId, _, reply -> displays.listDisplays(requestId, reply) },
+        "close_display" to BridgeHandler { requestId, json, reply -> displays.closeDisplay(requestId, json, reply) },
+        "foreground_app" to BridgeHandler { requestId, json, reply ->
+            toolCalls.withDhdTool(json, ToolNames.FOREGROUND_APP) {
+                observations.foregroundApp(requestId, json, reply)
+            }
+        },
+        "observe" to BridgeHandler { requestId, json, reply ->
+            toolCalls.withDhdTool(
+                json = json,
+                fallbackToolName = ToolNames.OBSERVE,
+            ) {
+                observations.observe(requestId, json, reply)
+            }
+        },
+        "execute_action" to BridgeHandler { requestId, json, reply ->
+            toolCalls.withDhdTool(
+                json = json,
+                fallbackToolName = toolCalls.fallbackActionToolName(json),
+            ) {
+                phoneActionLock.withLock { executeActions.executeAction(requestId, json, reply) }
+            }
+        },
+        "execute_sequence" to BridgeHandler { requestId, json, reply ->
+            toolCalls.withDhdTool(
+                json = json,
+                fallbackToolName = ToolNames.EXECUTE_SEQUENCE,
+            ) {
+                phoneActionLock.withLock { executeSequences.executeSequence(requestId, json, reply) }
+            }
+        },
+        "request_attention" to BridgeHandler { requestId, json, reply ->
+            toolCalls.withDhdTool(
+                json = json,
+                fallbackToolName = ToolNames.REQUEST_ATTENTION,
+                terminalStatus = DhdToolCallStatus.ATTENTION,
+            ) {
+                attention.requestAttention(requestId, json, reply)
+            }
+        },
+        "stop_session" to BridgeHandler { requestId, json, reply -> sessions.stopSession(requestId, json, reply) },
+    )
 
     /** Return currently usable IPv4 addresses that the desktop can dial. */
     fun lanIpv4Addresses(): List<String> = lanAddressProvider()
