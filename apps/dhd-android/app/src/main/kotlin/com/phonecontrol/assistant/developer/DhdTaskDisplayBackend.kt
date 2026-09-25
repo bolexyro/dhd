@@ -4,6 +4,7 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.view.Display
 import android.view.Surface
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.execution.ForegroundAppInfo
 import com.phonecontrol.assistant.execution.PhoneProcessRunner
@@ -273,7 +274,7 @@ class DhdTaskDisplayBackend internal constructor(
                 lastPurpose = conversationStore?.currentPurpose(runSessionKey)
                     ?.take(MAX_RECORD_PURPOSE_CHARS)
                     ?.ifBlank { null }
-                    ?: "Preparing request",
+                    ?: CoordinatorCopy.PREPARING_REQUEST,
             )
             val shouldClose = stateLock.withLock {
                 synchronized(bindingsLock) {
@@ -1839,7 +1840,7 @@ class DhdTaskDisplayBackend internal constructor(
         private const val TASK_LIVENESS_POLL_MS = 1_000L
         private const val TASK_LIVENESS_MISSING_CONFIRMATIONS = 3
         private val DUMPSYS_ACTIVITY_COMMAND = listOf("dumpsys", "activity", "activities")
-        private const val DEFAULT_PURPOSE = "Preparing request"
+        private const val DEFAULT_PURPOSE = CoordinatorCopy.PREPARING_REQUEST
         private const val MAX_RECORD_PURPOSE_CHARS = 240
         private const val MAX_RECORD_ERROR_CHARS = 4_000
         private const val RECONCILIATION_ATTEMPTS = 4

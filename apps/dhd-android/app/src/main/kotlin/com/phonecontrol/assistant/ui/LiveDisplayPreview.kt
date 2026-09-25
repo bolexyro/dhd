@@ -63,6 +63,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplayGeometry
 import com.phonecontrol.assistant.R
@@ -725,7 +726,7 @@ private fun String.withTrailingEllipsis(): String {
 }
 
 private fun String?.isAttentionPurpose(): Boolean =
-    this?.equals("Needs your attention", ignoreCase = true) == true
+    this?.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true) == true
 
 @Composable
 private fun FullScreenPreviewSurface(

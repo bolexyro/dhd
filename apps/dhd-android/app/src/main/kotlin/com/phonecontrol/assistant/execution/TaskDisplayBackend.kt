@@ -1,5 +1,6 @@
 package com.phonecontrol.assistant.execution
 
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import android.view.Surface
 import kotlinx.coroutines.flow.StateFlow
 
@@ -105,7 +106,7 @@ data class TaskDisplayRecord(
     val createdAtEpochMs: Long,
     val terminalAtEpochMs: Long? = null,
     val expiresAtEpochMs: Long? = null,
-    val lastPurpose: String = "Preparing request",
+    val lastPurpose: String = CoordinatorCopy.PREPARING_REQUEST,
     val error: String? = null,
     /** Original package owned by the native session when this display later opens another app. */
     val ownerPackageName: String? = null,
@@ -216,7 +217,7 @@ fun TaskDisplayRecord.terminalized(
         terminalAtEpochMs = firstTerminalAt,
         expiresAtEpochMs = expiresAt,
         lastPurpose = lastPurpose
-            .takeIf { it.isNotBlank() && it != "Preparing request" }
+            .takeIf { it.isNotBlank() && it != CoordinatorCopy.PREPARING_REQUEST }
             ?: status.terminalPurpose(),
         error = error?.trim()?.take(MAX_TASK_DISPLAY_ERROR_CHARS),
     )
@@ -228,7 +229,7 @@ private fun TaskDisplayStatus.terminalPurpose(): String = when (this) {
     TaskDisplayStatus.STOPPED -> "Task stopped"
     TaskDisplayStatus.ENDED -> "Display ended"
     TaskDisplayStatus.EXPIRED -> "Display expired"
-    else -> "Preparing request"
+    else -> CoordinatorCopy.PREPARING_REQUEST
 }
 
 private const val MAX_TASK_DISPLAY_ERROR_CHARS = 4_000

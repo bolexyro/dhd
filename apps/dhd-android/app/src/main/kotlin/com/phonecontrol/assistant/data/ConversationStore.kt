@@ -16,6 +16,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.ActivityEventKind
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.domain.ActionType
 import com.phonecontrol.assistant.execution.TaskDisplayRecord
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
@@ -459,7 +460,7 @@ class ConversationStore(context: Context) {
                 conversationId = conversation.id,
                 userMessageId = messageId,
                 status = RunStatus.RUNNING.name,
-                currentPurpose = "Preparing request",
+                currentPurpose = CoordinatorCopy.PREPARING_REQUEST,
                 startedAtEpochMs = now,
             ),
         )
@@ -483,7 +484,7 @@ class ConversationStore(context: Context) {
                 conversationId = conversation.id,
                 userMessageId = "",
                 status = RunStatus.RUNNING.name,
-                currentPurpose = "Preparing request",
+                currentPurpose = CoordinatorCopy.PREPARING_REQUEST,
                 startedAtEpochMs = now,
             ),
         )

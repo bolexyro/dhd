@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.phonecontrol.assistant.developer.TaskPreviewState
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.developer.DeveloperModeStatus
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.domain.TaskPointerEvent
@@ -656,7 +657,7 @@ private fun FloatingRecoveryCard(
     when (kind) {
         OverlayRecoveryKind.ATTENTION -> {
             val attentionActionLabel = state.attentionActionLabelOrNull()
-            val phoneAccessRecovery = attentionActionLabel.equals("View instructions", ignoreCase = true)
+            val phoneAccessRecovery = attentionActionLabel.equals(CoordinatorCopy.VIEW_INSTRUCTIONS, ignoreCase = true)
             title = if (phoneAccessRecovery) {
                 developerStatus.recoveryTitle
             } else {
@@ -2719,7 +2720,7 @@ private fun SessionState.attentionActionLabelOrNull(): String? = when (this) {
 }
 
 private fun SessionState.needsAttention(): Boolean =
-    currentPurposeOrNull()?.equals("Needs your attention", ignoreCase = true) == true
+    currentPurposeOrNull()?.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true) == true
 
 internal fun overlayRecoveryKind(
     state: SessionState,

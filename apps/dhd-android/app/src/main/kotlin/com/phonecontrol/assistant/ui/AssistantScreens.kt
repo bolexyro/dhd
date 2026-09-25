@@ -154,6 +154,7 @@ import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.bridge.DevBridgeServer
 import com.phonecontrol.assistant.bridge.PendingCompanionPairing
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.DHD_BROWSE_APP_TOOL
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
@@ -1319,7 +1320,7 @@ private fun TaskGroupCard(
                 is SessionState.Paused -> if (
                     state.attentionReason != null &&
                     !(phoneRecoveryShownAtTop &&
-                            state.attentionActionLabel.equals("View instructions", ignoreCase = true))
+                            state.attentionActionLabel.equals(CoordinatorCopy.VIEW_INSTRUCTIONS, ignoreCase = true))
                 ) {
                     AttentionRecoveryCard(
                         reason = state.attentionReason,
@@ -1397,9 +1398,9 @@ private fun RunningStatusIndicator(
     // A pending attention request owns the next step. Keep Done visible even
     // if the companion or developer-status poll changes while the user is
     // completing a biometric/PIN prompt.
-    if (currentPurpose.equals("Needs your attention", ignoreCase = true)) {
+    if (currentPurpose.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true)) {
         val phoneAccessInstructionsAtTop = phoneAccessRecoveryShownAtTop &&
-                attentionActionLabel.equals("View instructions", ignoreCase = true)
+                attentionActionLabel.equals(CoordinatorCopy.VIEW_INSTRUCTIONS, ignoreCase = true)
         if (!phoneAccessInstructionsAtTop) {
             AttentionRecoveryCard(
                 reason = attentionReason,
@@ -1818,7 +1819,7 @@ private fun AttentionRecoveryCard(
     onStopSession: () -> Unit,
 ) {
     val colors = LocalAssistantColors.current
-    val usesPhoneAccessInstructions = actionLabel.equals("View instructions", ignoreCase = true) &&
+    val usesPhoneAccessInstructions = actionLabel.equals(CoordinatorCopy.VIEW_INSTRUCTIONS, ignoreCase = true) &&
             onOpenPhoneAccess != null
     if (usesPhoneAccessInstructions) {
         PhoneAccessPausedCard(
@@ -2008,12 +2009,12 @@ internal fun accumulatedElapsedSeconds(
         ) / 1_000L
 
 private fun thinkingDetail(currentPurpose: String, elapsedSeconds: Long): String = when {
-    currentPurpose.equals("Preparing request", ignoreCase = true) && elapsedSeconds >= COMPANION_WAIT_CALLOUT_SECONDS ->
+    currentPurpose.equals(CoordinatorCopy.PREPARING_REQUEST, ignoreCase = true) && elapsedSeconds >= COMPANION_WAIT_CALLOUT_SECONDS ->
         "Waiting for the desktop companion"
 
-    currentPurpose.equals("Preparing request", ignoreCase = true) -> "Connecting to the desktop companion"
-    currentPurpose.equals("Codex is planning", ignoreCase = true) || currentPurpose.equals(
-        "DHD is planning",
+    currentPurpose.equals(CoordinatorCopy.PREPARING_REQUEST, ignoreCase = true) -> "Connecting to the desktop companion"
+    currentPurpose.equals(CoordinatorCopy.CODEX_PLANNING, ignoreCase = true) || currentPurpose.equals(
+        CoordinatorCopy.DHD_PLANNING,
         ignoreCase = true
     ) -> "Thinking…"
 
@@ -5436,11 +5437,11 @@ internal fun shouldShowTopRecoveryBanner(
         !companionConnected
 
 private fun SessionState.showsPhoneAccessRecovery(): Boolean = when (this) {
-    is SessionState.Running -> currentPurpose.equals("Needs your attention", ignoreCase = true) &&
-            attentionActionLabel.equals("View instructions", ignoreCase = true)
+    is SessionState.Running -> currentPurpose.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true) &&
+            attentionActionLabel.equals(CoordinatorCopy.VIEW_INSTRUCTIONS, ignoreCase = true)
 
     is SessionState.Paused -> attentionReason != null &&
-            attentionActionLabel.equals("View instructions", ignoreCase = true)
+            attentionActionLabel.equals(CoordinatorCopy.VIEW_INSTRUCTIONS, ignoreCase = true)
 
     else -> false
 }

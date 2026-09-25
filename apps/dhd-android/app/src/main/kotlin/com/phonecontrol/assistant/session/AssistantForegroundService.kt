@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import com.phonecontrol.assistant.MainActivity
 import com.phonecontrol.assistant.PhoneControlApplication
 import com.phonecontrol.assistant.R
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.overlay.OverlayPreferences
 import com.phonecontrol.assistant.overlay.OverlayWindowController
@@ -433,7 +434,7 @@ private fun SessionState.preferredNotificationPurpose(toolCalls: List<DhdToolCal
         is SessionState.Paused -> currentPurpose
         else -> return null
     }
-    if (currentPurpose.equals("Needs your attention", ignoreCase = true)) return null
+    if (currentPurpose.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true)) return null
 
     val metadataPurpose = when (this) {
         is SessionState.Running -> currentToolMetadataPurpose
@@ -444,10 +445,10 @@ private fun SessionState.preferredNotificationPurpose(toolCalls: List<DhdToolCal
 }
 
 internal fun notificationPurpose(purpose: String): String = when {
-    purpose.equals("Preparing request", ignoreCase = true) -> "Connecting to Codex…"
-    purpose.equals("Codex is planning", ignoreCase = true) || purpose.equals("DHD is planning", ignoreCase = true) -> "DHD-ing…"
-    purpose.equals("Waiting for desktop Codex bridge", ignoreCase = true) -> "Companion not connected"
-    purpose.equals("Needs your attention", ignoreCase = true) -> "DHD needs your attention"
+    purpose.equals(CoordinatorCopy.PREPARING_REQUEST, ignoreCase = true) -> "Connecting to Codex…"
+    purpose.equals(CoordinatorCopy.CODEX_PLANNING, ignoreCase = true) || purpose.equals(CoordinatorCopy.DHD_PLANNING, ignoreCase = true) -> "DHD-ing…"
+    purpose.equals(CoordinatorCopy.WAITING_FOR_COMPANION, ignoreCase = true) -> "Companion not connected"
+    purpose.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true) -> "DHD needs your attention"
     else -> purpose
 }
 

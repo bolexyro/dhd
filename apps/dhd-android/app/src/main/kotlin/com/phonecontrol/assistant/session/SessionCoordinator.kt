@@ -11,6 +11,7 @@ import com.phonecontrol.assistant.domain.TapAction
 import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.domain.StaleObservationDiagnostics
 import com.phonecontrol.assistant.domain.userFacingActivityLabel
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.data.ConversationStore
 import com.phonecontrol.assistant.data.RunStatus
 import com.phonecontrol.assistant.policy.PolicyContext
@@ -212,7 +213,7 @@ class SessionCoordinator(
         _state.value = SessionState.Running(
             sessionId = sessionId,
             request = request.trim(),
-            currentPurpose = "Preparing request",
+            currentPurpose = CoordinatorCopy.PREPARING_REQUEST,
             startedAtEpochMs = now,
             conversationId = startedRun?.conversationId ?: conversationId,
             reasoningEffort = normalizedReasoningEffort,
@@ -372,10 +373,10 @@ class SessionCoordinator(
         if (claimedRequestSessionId == running.sessionId) return@synchronized null
         claimedRequestSessionId = running.sessionId
         _state.value = running.copy(
-            currentPurpose = "DHD is planning",
+            currentPurpose = CoordinatorCopy.DHD_PLANNING,
             currentToolMetadataPurpose = null,
         )
-        taskDisplayBackend?.updatePurposeForRun(running.sessionId, "DHD is planning")
+        taskDisplayBackend?.updatePurposeForRun(running.sessionId, CoordinatorCopy.DHD_PLANNING)
         appendEvent(
             ActivityEventKind.SYSTEM,
             "Desktop Codex companion claimed the request.",
@@ -396,10 +397,10 @@ class SessionCoordinator(
         if (_state.value is SessionState.Running) {
             val running = _state.value as SessionState.Running
             _state.value = running.copy(
-                currentPurpose = "Waiting for desktop Codex bridge",
+                currentPurpose = CoordinatorCopy.WAITING_FOR_COMPANION,
                 currentToolMetadataPurpose = null,
             )
-            taskDisplayBackend?.updatePurposeForRun(sessionId, "Waiting for desktop Codex bridge")
+            taskDisplayBackend?.updatePurposeForRun(sessionId, CoordinatorCopy.WAITING_FOR_COMPANION)
         }
         appendEvent(
             ActivityEventKind.SYSTEM,
@@ -702,13 +703,13 @@ class SessionCoordinator(
         pendingAttention = PendingAttention(sessionId, message, completion)
         val updated = when (current) {
             is SessionState.Running -> current.copy(
-                currentPurpose = "Needs your attention",
+                currentPurpose = CoordinatorCopy.NEEDS_ATTENTION,
                 currentToolMetadataPurpose = null,
                 attentionReason = message,
                 attentionActionLabel = safeActionLabel,
             )
             is SessionState.Paused -> current.copy(
-                currentPurpose = "Needs your attention",
+                currentPurpose = CoordinatorCopy.NEEDS_ATTENTION,
                 currentToolMetadataPurpose = null,
                 attentionReason = message,
                 attentionActionLabel = safeActionLabel,
@@ -716,8 +717,8 @@ class SessionCoordinator(
             else -> return@synchronized null
         }
         _state.value = updated
-        conversationStore?.setCurrentPurpose(sessionId, "Needs your attention")
-        taskDisplayBackend?.updatePurposeForRun(sessionId, "Needs your attention")
+        conversationStore?.setCurrentPurpose(sessionId, CoordinatorCopy.NEEDS_ATTENTION)
+        taskDisplayBackend?.updatePurposeForRun(sessionId, CoordinatorCopy.NEEDS_ATTENTION)
         cleanupScope.launch {
             transport.updateSessionDisplayStatusForRun(sessionId, TaskDisplayStatus.PAUSED)
         }
@@ -750,7 +751,7 @@ class SessionCoordinator(
         pendingAttention = null
         _state.value = when (current) {
             is SessionState.Running -> current.copy(
-                currentPurpose = "DHD is planning",
+                currentPurpose = CoordinatorCopy.DHD_PLANNING,
                 currentToolMetadataPurpose = null,
                 attentionReason = null,
                 attentionActionLabel = null,
@@ -766,7 +767,7 @@ class SessionCoordinator(
         val resumedPurpose = when (val after = _state.value) {
             is SessionState.Running -> after.currentPurpose
             is SessionState.Paused -> after.currentPurpose
-            else -> "DHD is planning"
+            else -> CoordinatorCopy.DHD_PLANNING
         }
         val resumedDisplayStatus = if (_state.value is SessionState.Paused) {
             TaskDisplayStatus.PAUSED
@@ -1269,7 +1270,7 @@ class SessionCoordinator(
         const val MAX_PHONE_ACCESS_RECOVERY_ATTEMPTS = 3
         const val PHONE_ACCESS_STATUS_POLL_INTERVAL_MS = 500L
         const val DEFAULT_ATTENTION_ACTION_LABEL = "Done"
-        const val PHONE_ACCESS_INSTRUCTIONS_ACTION_LABEL = "View instructions"
+        const val PHONE_ACCESS_INSTRUCTIONS_ACTION_LABEL = CoordinatorCopy.VIEW_INSTRUCTIONS
         const val PHONE_ACCESS_RECOVERY_MESSAGE =
             "DHD paused this task because it needs phone access. Turn on Wi-Fi and Wireless debugging in Android Settings, then return to DHD. Your phone action has not been sent."
     }

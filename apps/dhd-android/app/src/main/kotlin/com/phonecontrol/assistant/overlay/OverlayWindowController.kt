@@ -28,6 +28,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.phonecontrol.assistant.MainActivity
+import com.phonecontrol.assistant.core.CoordinatorCopy
 import com.phonecontrol.assistant.data.DHD_CONVERSATION_ID
 import com.phonecontrol.assistant.developer.DeveloperModeStatus
 import com.phonecontrol.assistant.developer.TaskPreviewState
@@ -790,8 +791,8 @@ private fun SessionState.isActiveForOverlay(): Boolean =
 
 private fun SessionState.needsAttention(): Boolean =
     when (this) {
-        is SessionState.Running -> currentPurpose.equals("Needs your attention", ignoreCase = true)
-        is SessionState.Paused -> currentPurpose.equals("Needs your attention", ignoreCase = true)
+        is SessionState.Running -> currentPurpose.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true)
+        is SessionState.Paused -> currentPurpose.equals(CoordinatorCopy.NEEDS_ATTENTION, ignoreCase = true)
         else -> false
     }
 
