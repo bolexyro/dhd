@@ -46,20 +46,14 @@ internal class DhdMaintenanceClient(
             socket.connect(InetSocketAddress(LOOPBACK, port), connectTimeoutMs)
             val input = DataInputStream(socket.getInputStream())
             val output = DataOutputStream(socket.getOutputStream())
-            DhdMaintenanceProtocol.writeRequest(output, token, command, binaryOutput)
+            DhdMaintenanceWire.writeRequest(output, token, command, binaryOutput)
             output.flush()
             // The request is now on the daemon's loopback socket. This is the
             // closest boundary the app can observe before the daemon starts
             // the actual /system/bin process, and avoids showing the press
             // pulse while the client is still connecting or serializing args.
             onStarted?.invoke()
-            val response = DhdMaintenanceProtocol.readResponse(input)
-            return PhoneProcessResult(
-                exitCode = response.exitCode.takeUnless { it == DhdMaintenanceProtocol.EXIT_CODE_UNAVAILABLE },
-                stdout = response.stdout,
-                stderr = String(response.stderr, Charsets.UTF_8).trim(),
-                timedOut = response.timedOut,
-            )
+            return DhdMaintenanceWire.readResult(input)
         }
     }
 
