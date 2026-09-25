@@ -28,6 +28,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
@@ -257,39 +258,15 @@ private fun CombinedRecoverySection(
         }
     } else {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                    tint = colors.warningAmber,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(9.dp))
-                Text(
-                    text = title,
-                    color = colors.textPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                trailing?.let { Text(text = it, color = colors.textSecondary, fontSize = 11.sp) }
-            }
-            Text(
-                text = detail,
-                color = colors.textSecondary,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                modifier = Modifier.padding(start = 27.dp, top = 5.dp),
+            RecoveryDetails(
+                icon = icon,
+                title = title,
+                detail = detail,
+                accent = colors.warningAmber,
+                actionLabel = actionLabel,
+                onAction = onAction,
+                trailing = trailing,
             )
-            Button(
-                onClick = onAction,
-                colors = ButtonDefaults.buttonColors(containerColor = colors.warningAmber),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp),
-                modifier = Modifier.padding(start = 27.dp, top = 9.dp),
-            ) {
-                Text(actionLabel, fontSize = 12.sp)
-            }
         }
     }
 }
@@ -337,48 +314,17 @@ private fun PhoneAccessPausedCard(
     onOpenPhoneAccess: () -> Unit,
 ) {
     val colors = LocalAssistantColors.current
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = Color.Transparent,
+    RecoveryCard(
+        icon = R.drawable.ic_info,
+        title = title,
+        detail = detail,
+        accent = colors.warningAmber,
+        actionLabel = "View instructions",
+        onAction = onOpenPhoneAccess,
+        containerColor = Color.Transparent,
         border = BorderStroke(1.dp, colors.warningAmber.copy(alpha = 0.55f)),
-        shadowElevation = 0.dp,
-        tonalElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_info),
-                    contentDescription = null,
-                    tint = colors.warningAmber,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(9.dp))
-                Text(
-                    text = title,
-                    color = colors.textPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            Text(
-                text = detail,
-                color = colors.textSecondary,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                modifier = Modifier.padding(start = 27.dp, top = 5.dp),
-            )
-            Button(
-                onClick = onOpenPhoneAccess,
-                colors = ButtonDefaults.buttonColors(containerColor = colors.warningAmber),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp),
-                modifier = Modifier.padding(start = 27.dp, top = 9.dp),
-            ) {
-                Text("View instructions", fontSize = 12.sp)
-            }
-        }
-    }
+        verticalPadding = 12.dp,
+    )
 }
 
 @Composable
@@ -393,65 +339,93 @@ private fun RecoveryCard(
     secondaryActionLabel: String? = null,
     onSecondaryAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    containerColor: Color = LocalAssistantColors.current.surfaceCard,
+    border: BorderStroke = BorderStroke(1.dp, LocalAssistantColors.current.borderColor),
+    verticalPadding: Dp = 13.dp,
 ) {
-    val colors = LocalAssistantColors.current
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = colors.surfaceCard,
-        border = BorderStroke(1.dp, colors.borderColor),
+        color = containerColor,
+        border = border,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp,
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(9.dp))
-                Text(
-                    text = title,
-                    color = colors.textPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                trailing?.let {
-                    Text(text = it, color = colors.textSecondary, fontSize = 11.sp)
-                }
-            }
-            Text(
-                text = detail,
-                color = colors.textSecondary,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                modifier = Modifier.padding(start = 27.dp, top = 5.dp),
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = verticalPadding)) {
+            RecoveryDetails(
+                icon = icon,
+                title = title,
+                detail = detail,
+                accent = accent,
+                actionLabel = actionLabel,
+                onAction = onAction,
+                trailing = trailing,
+                secondaryActionLabel = secondaryActionLabel,
+                onSecondaryAction = onSecondaryAction,
             )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(start = 27.dp, top = 9.dp),
+        }
+    }
+}
+
+@Composable
+private fun RecoveryDetails(
+    icon: Int,
+    title: String,
+    detail: String,
+    accent: Color,
+    actionLabel: String,
+    onAction: () -> Unit,
+    trailing: String? = null,
+    secondaryActionLabel: String? = null,
+    onSecondaryAction: (() -> Unit)? = null,
+) {
+    val colors = LocalAssistantColors.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(9.dp))
+        Text(
+            text = title,
+            color = colors.textPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        trailing?.let {
+            Text(text = it, color = colors.textSecondary, fontSize = 11.sp)
+        }
+    }
+    Text(
+        text = detail,
+        color = colors.textSecondary,
+        fontSize = 12.sp,
+        lineHeight = 17.sp,
+        modifier = Modifier.padding(start = 27.dp, top = 5.dp),
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(start = 27.dp, top = 9.dp),
+    ) {
+        Button(
+            onClick = onAction,
+            colors = ButtonDefaults.buttonColors(containerColor = accent),
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp),
+        ) {
+            Text(actionLabel, fontSize = 12.sp)
+        }
+        if (secondaryActionLabel != null && onSecondaryAction != null) {
+            OutlinedButton(
+                onClick = onSecondaryAction,
+                border = BorderStroke(1.dp, colors.borderColor),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp),
             ) {
-                Button(
-                    onClick = onAction,
-                    colors = ButtonDefaults.buttonColors(containerColor = accent),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp),
-                ) {
-                    Text(actionLabel, fontSize = 12.sp)
-                }
-                if (secondaryActionLabel != null && onSecondaryAction != null) {
-                    OutlinedButton(
-                        onClick = onSecondaryAction,
-                        border = BorderStroke(1.dp, colors.borderColor),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp),
-                    ) {
-                        Text(secondaryActionLabel, color = colors.textSecondary, fontSize = 12.sp)
-                    }
-                }
+                Text(secondaryActionLabel, color = colors.textSecondary, fontSize = 12.sp)
             }
         }
     }
