@@ -20,6 +20,7 @@ import com.phonecontrol.assistant.bridge.routing.BridgeHandler
 import com.phonecontrol.assistant.bridge.routing.BridgeRouter
 import com.phonecontrol.assistant.bridge.routing.PhoneActionLock
 import com.phonecontrol.assistant.bridge.routing.ToolCallScope
+import com.phonecontrol.assistant.bridge.transport.BridgeTcpServer
 import com.phonecontrol.assistant.bridge.transport.NdjsonWriter
 import com.phonecontrol.assistant.core.AndroidBase64Codec
 import com.phonecontrol.assistant.core.Base64Codec
@@ -32,21 +33,14 @@ import com.phonecontrol.assistant.session.DhdToolCallStatus
 import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.observation.PhoneObservationSource
 import com.phonecontrol.assistant.execution.TaskDisplayBackend
-import java.io.BufferedReader
 import java.io.BufferedWriter
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
-import java.net.ServerSocket
-import java.net.Socket
-import java.net.SocketException
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
@@ -109,7 +103,6 @@ class DevBridgeServer internal constructor(
         get() = credentials.deviceId
     val listeningPort: Int = port
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    @Volatile private var serverSocket: ServerSocket? = null
     @Volatile private var started = false
     private val presence = CompanionPresence(clock)
     private val pairing = PairingProtocol<PairingReturnAddress>(
@@ -174,6 +167,7 @@ class DevBridgeServer internal constructor(
     )
     private val demo = DemoHandler(coordinator, captures, bridgeJson, newUuid)
     private val router = BridgeRouter(credentials, presence, platform, newUuid, requestHandlers())
+    private val tcpServer = BridgeTcpServer(port, LAN_BIND_HOST, scope, platform, router::handleRequestLine)
 
     val companionConnected: StateFlow<Boolean>
         get() = presence.companionConnected
@@ -190,32 +184,14 @@ class DevBridgeServer internal constructor(
     fun start() {
         if (started) return
         started = true
-        scope.launch {
-            try {
-                val socket = ServerSocket(
-                    port,
-                    16,
-                    InetAddress.getByName(LAN_BIND_HOST),
-                )
-                serverSocket = socket
-                while (isActive) {
-                    val client = socket.accept()
-                    launch { handleClient(client) }
-                }
-            } catch (_: java.net.SocketException) {
-                // Closing the server socket is the normal shutdown path.
-            } catch (error: Throwable) {
-                platform.logError(BRIDGE_LOG_TAG, "Development bridge stopped", error)
-            }
-        }
+        tcpServer.start()
         scope.launch { pairingServer.run() }
         scope.launch { presence.monitor() }
     }
 
     fun stop() {
         started = false
-        serverSocket?.close()
-        serverSocket = null
+        tcpServer.stop()
         pairingServer.stop()
         presence.release()
         scope.coroutineContext[Job]?.cancel()
@@ -228,14 +204,6 @@ class DevBridgeServer internal constructor(
      */
     fun requestCodexWarmup() {
         presence.requestCodexWarmup()
-    }
-
-    private suspend fun handleClient(client: Socket) {
-        client.use { socket ->
-            val reader = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.UTF_8))
-            val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), Charsets.UTF_8))
-            router.handleRequestLine(reader.readLine(), socket.inetAddress, NdjsonWriter(writer))
-        }
     }
 
     internal suspend fun handleRequestLine(
