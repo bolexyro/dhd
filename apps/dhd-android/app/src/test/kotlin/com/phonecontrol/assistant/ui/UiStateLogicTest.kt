@@ -5,6 +5,12 @@ import androidx.compose.ui.geometry.Offset
 import com.phonecontrol.assistant.data.TimelineItem
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.execution.TaskDisplayGeometry
+import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
+import com.phonecontrol.assistant.ui.components.reasoning.reasoningEffortAtFraction
+import com.phonecontrol.assistant.ui.components.reasoning.reasoningTrackEfforts
+import com.phonecontrol.assistant.ui.components.reasoning.reasoningTrackFraction
+import com.phonecontrol.assistant.ui.components.reasoning.reasoningTrackPosition
+import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
 import com.phonecontrol.assistant.ui.navigation.supportedInitialRoute
 import com.phonecontrol.assistant.ui.theme.ThemeMode
 import org.junit.Assert.assertEquals

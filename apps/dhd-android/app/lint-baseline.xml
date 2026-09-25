@@ -348,8 +348,8 @@
         errorLine1="        ) {"
         errorLine2="          ^">
         <location
-            file="src/main/kotlin/com/phonecontrol/assistant/ui/AssistantScreens.kt"
-            line="3293"
+            file="src/main/kotlin/com/phonecontrol/assistant/ui/components/reasoning/ReasoningEffortTrack.kt"
+            line="107"
             column="11"/>
     </issue>
 

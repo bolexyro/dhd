@@ -47,29 +47,14 @@ import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.KEY_VIS
 import com.phonecontrol.assistant.data.UiPreferencesRepository.Companion.PREFS_NAME
 import com.phonecontrol.assistant.domain.ReasoningEffort
 import com.phonecontrol.assistant.session.SessionState
+import com.phonecontrol.assistant.ui.components.reasoning.effectiveReasoningEffort
+import com.phonecontrol.assistant.ui.components.reasoning.visibleReasoningEffortsFromStorage
 import com.phonecontrol.assistant.ui.navigation.AppRoutes
 import com.phonecontrol.assistant.ui.navigation.supportedInitialRoute
 import com.phonecontrol.assistant.ui.theme.DarkAssistantColors
 import com.phonecontrol.assistant.ui.theme.LightAssistantColors
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.ThemeMode
-
-internal fun visibleReasoningEffortsFromStorage(value: String?): List<ReasoningEffort> {
-    val storedValues = value
-        ?.split(",")
-        ?.map(String::trim)
-        ?.filter(String::isNotEmpty)
-        ?.toSet()
-        .orEmpty()
-    val configured = ReasoningEffort.entries.filter { it.storageValue in storedValues }
-    return configured.ifEmpty { ReasoningEffort.entries }
-}
-
-internal fun effectiveReasoningEffort(
-    storedValue: String?,
-    visibleEfforts: List<ReasoningEffort>,
-): ReasoningEffort = ReasoningEffort.fromStorage(storedValue).takeIf { it in visibleEfforts }
-    ?: visibleEfforts.first()
 
 internal fun displayRecordsWithPreviewFallback(
     displayRecords: List<TaskDisplayUiRecord>,

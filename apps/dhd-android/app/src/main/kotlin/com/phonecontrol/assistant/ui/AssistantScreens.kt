@@ -11,31 +11,25 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.DragInteraction
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -60,7 +54,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -93,7 +86,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -108,7 +100,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
@@ -116,8 +107,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
@@ -165,6 +154,10 @@ import com.phonecontrol.assistant.session.SessionCoordinator
 import com.phonecontrol.assistant.session.SessionState
 import com.phonecontrol.assistant.adb.DeveloperConnectionState
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
+import com.phonecontrol.assistant.ui.components.reasoning.FastModeButton
+import com.phonecontrol.assistant.ui.components.reasoning.ReasoningEffortButton
+import com.phonecontrol.assistant.ui.components.reasoning.ReasoningEffortOverlay
+import com.phonecontrol.assistant.ui.components.reasoning.ReasoningMeterIcon
 import com.phonecontrol.assistant.ui.theme.AssistantColorScheme
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.ThemeMode
@@ -172,9 +165,7 @@ import com.phonecontrol.assistant.ui.theme.assistantSwitchColors
 import com.phonecontrol.assistant.ui.theme.toolActivityColor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
-import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlin.random.Random
 
 private const val STALE_CONVERSATION_COUNTDOWN_SECONDS = 5
@@ -3037,370 +3028,6 @@ private fun AttachButton(
                 tint = colors.textPrimary,
                 modifier = Modifier.size(24.dp),
             )
-        }
-    }
-}
-
-@Composable
-internal fun FastModeButton(
-    enabled: Boolean,
-    selected: Boolean,
-    onToggle: () -> Unit,
-) {
-    val colors = LocalAssistantColors.current
-    val shape = RoundedCornerShape(18.dp)
-    Surface(
-        shape = shape,
-        color = if (selected) colors.accentBlue else Color.Transparent,
-        border = if (selected) null else BorderStroke(1.dp, colors.borderColor),
-        modifier = Modifier
-            .size(36.dp)
-            .clip(shape)
-            .toggleable(
-                value = selected,
-                enabled = enabled,
-                role = Role.Switch,
-                onValueChange = { onToggle() },
-            )
-            .semantics {
-                contentDescription = "Fast mode: ${if (selected) "On" else "Off"}"
-            },
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                painter = painterResource(R.drawable.ic_fast_mode),
-                contentDescription = null,
-                tint = if (selected) Color.White else if (enabled) colors.textPrimary else colors.textSecondary.copy(
-                    alpha = 0.45f
-                ),
-                modifier = Modifier.size(18.dp),
-            )
-        }
-    }
-}
-
-@Composable
-internal fun ReasoningEffortButton(
-    effort: ReasoningEffort,
-    visibleEfforts: List<ReasoningEffort>,
-    enabled: Boolean,
-    expanded: Boolean,
-    onClick: () -> Unit,
-) {
-    val colors = LocalAssistantColors.current
-    Surface(
-        shape = CircleShape,
-        color = if (expanded) colors.sendButtonInactiveBg else Color.Transparent,
-        modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick)
-            .semantics {
-                contentDescription = "Reasoning effort: ${effort.label}"
-            },
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            ReasoningMeterIcon(
-                effort = effort,
-                visibleEfforts = visibleEfforts,
-                tint = if (enabled) colors.textPrimary else colors.textSecondary.copy(alpha = 0.45f),
-                modifier = Modifier.size(36.dp),
-            )
-        }
-    }
-}
-
-@Composable
-internal fun ReasoningMeterIcon(
-    effort: ReasoningEffort,
-    visibleEfforts: List<ReasoningEffort> = ReasoningEffort.entries,
-    tint: Color,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LocalAssistantColors.current
-    Canvas(modifier = modifier) {
-        val center = Offset(size.width / 2f, size.height / 2f + size.minDimension * 0.08f)
-        val arcRadius = size.minDimension * 0.38f
-        val strokeWidth = size.minDimension * 0.1f
-        val startAngle = 180f
-        val sweepAngle = 180f
-        val orderedEfforts = visibleEfforts.distinct().sortedBy(ReasoningEffort::ordinal)
-            .ifEmpty { ReasoningEffort.entries }
-        val selectedIndex = orderedEfforts.indexOf(effort).coerceAtLeast(0)
-        val position = if (orderedEfforts.size == 1) {
-            1.0f
-        } else {
-            selectedIndex.toFloat() / orderedEfforts.lastIndex.toFloat()
-        }
-        val needleAngle = Math.toRadians((startAngle + sweepAngle * position).toDouble())
-        val needleEnd = Offset(
-            x = center.x + cos(needleAngle).toFloat() * arcRadius * 0.78f,
-            y = center.y + sin(needleAngle).toFloat() * arcRadius * 0.78f,
-        )
-        val blueSweepAngle = sweepAngle * position
-
-        // Background grey semicircle arc
-        drawArc(
-            color = tint.copy(alpha = 0.32f),
-            startAngle = startAngle,
-            sweepAngle = sweepAngle,
-            useCenter = false,
-            topLeft = Offset(center.x - arcRadius, center.y - arcRadius),
-            size = androidx.compose.ui.geometry.Size(arcRadius * 2f, arcRadius * 2f),
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-        )
-        // Active blue arc
-        if (blueSweepAngle > 0f) {
-            drawArc(
-                color = colors.accentBlue,
-                startAngle = startAngle,
-                sweepAngle = blueSweepAngle,
-                useCenter = false,
-                topLeft = Offset(center.x - arcRadius, center.y - arcRadius),
-                size = androidx.compose.ui.geometry.Size(arcRadius * 2f, arcRadius * 2f),
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-            )
-        }
-        // Needle line
-        drawLine(
-            color = tint,
-            start = center,
-            end = needleEnd,
-            strokeWidth = strokeWidth * 0.9f,
-            cap = StrokeCap.Round,
-        )
-        drawCircle(color = tint, radius = strokeWidth * 1.05f, center = center)
-    }
-}
-
-@Composable
-private fun ReasoningEffortOverlay(
-    selectedEffort: ReasoningEffort,
-    visibleEfforts: List<ReasoningEffort>,
-    onSelect: (ReasoningEffort) -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LocalAssistantColors.current
-    val availableEfforts = visibleEfforts
-        .distinct()
-        .sortedBy(ReasoningEffort::ordinal)
-        .ifEmpty { listOf(ReasoningEffort.default) }
-    val effectiveSelectedEffort = selectedEffort.takeIf { it in availableEfforts }
-        ?: availableEfforts.first()
-
-    BackHandler(enabled = true, onBack = onDismiss)
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss,
-            ),
-    ) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(start = 28.dp, end = 28.dp, bottom = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = effectiveSelectedEffort.label,
-                    color = colors.accentBlue,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = " effort",
-                    color = colors.textPrimary,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            Spacer(Modifier.height(16.dp))
-            ReasoningEffortTrack(
-                selectedEffort = effectiveSelectedEffort,
-                visibleEfforts = availableEfforts,
-                onSelect = onSelect,
-            )
-        }
-    }
-}
-
-internal fun reasoningTrackEfforts(visibleEfforts: List<ReasoningEffort>): List<ReasoningEffort> =
-    visibleEfforts.distinct().sortedBy(ReasoningEffort::ordinal)
-        .ifEmpty { listOf(ReasoningEffort.default) }
-
-internal fun reasoningTrackPosition(orderedEfforts: List<ReasoningEffort>, selectedEffort: ReasoningEffort): Float {
-    val selectedIndex = orderedEfforts.indexOf(selectedEffort).coerceAtLeast(0)
-    return if (orderedEfforts.size == 1) {
-        1.0f
-    } else {
-        selectedIndex.toFloat() / orderedEfforts.lastIndex.toFloat()
-    }
-}
-
-internal fun reasoningTrackFraction(x: Float, width: Float, innerMargin: Float, thumbRadius: Float): Float {
-    val startX = innerMargin + thumbRadius
-    val endX = width - innerMargin - thumbRadius
-    val usableWidth = (endX - startX).coerceAtLeast(1f)
-    return ((x - startX) / usableWidth).coerceIn(0f, 1f)
-}
-
-internal fun reasoningEffortAtFraction(fraction: Float, orderedEfforts: List<ReasoningEffort>): ReasoningEffort {
-    val nearestIndex = (fraction * orderedEfforts.lastIndex).roundToInt()
-        .coerceIn(0, orderedEfforts.lastIndex)
-    return orderedEfforts[nearestIndex]
-}
-
-@Composable
-internal fun ReasoningEffortTrack(
-    selectedEffort: ReasoningEffort,
-    visibleEfforts: List<ReasoningEffort>,
-    onSelect: (ReasoningEffort) -> Unit,
-) {
-    val colors = LocalAssistantColors.current
-    val density = LocalDensity.current
-    val orderedEfforts = reasoningTrackEfforts(visibleEfforts)
-    val trackShape = CircleShape
-    val innerMargin = with(density) { 6.dp.toPx() }
-    val thumbRadius = with(density) { 23.dp.toPx() }
-    val targetPosition = reasoningTrackPosition(orderedEfforts, selectedEffort)
-
-    var isDragging by remember { mutableStateOf(false) }
-    var dragFraction by remember { mutableFloatStateOf(0f) }
-
-    val animatedPosition by animateFloatAsState(
-        targetValue = if (isDragging) dragFraction else targetPosition,
-        animationSpec = if (isDragging) spring(stiffness = Spring.StiffnessHigh) else spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "reasoning_slider_position",
-    )
-
-    val trackBg = if (colors.isDark) colors.composerBackground else Color(0xFFE5E5EA)
-    val trackBorder = if (colors.isDark) colors.borderColor else Color(0xFFD1D1D6)
-
-    Surface(
-        shape = trackShape,
-        color = trackBg,
-        border = BorderStroke(1.dp, trackBorder),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(58.dp),
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(trackShape),
-        ) {
-            val updateFractionAndEffort: (Float, Float) -> Unit = { x, width ->
-                if (orderedEfforts.size > 1) {
-                    val fraction = reasoningTrackFraction(x, width, innerMargin, thumbRadius)
-                    dragFraction = fraction
-                    onSelect(reasoningEffortAtFraction(fraction, orderedEfforts))
-                }
-            }
-
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .semantics {
-                        contentDescription =
-                            "Reasoning effort selector. Selected ${selectedEffort.label}. Swipe to choose."
-                    }
-                    .pointerInput(orderedEfforts) {
-                        detectTapGestures(
-                            onTap = { offset ->
-                                updateFractionAndEffort(offset.x, size.width.toFloat())
-                            },
-                        )
-                    }
-                    .pointerInput(orderedEfforts) {
-                        detectHorizontalDragGestures(
-                            onDragStart = { offset ->
-                                isDragging = true
-                                updateFractionAndEffort(offset.x, size.width.toFloat())
-                            },
-                            onDragEnd = {
-                                isDragging = false
-                            },
-                            onDragCancel = {
-                                isDragging = false
-                            },
-                            onHorizontalDrag = { change, _ ->
-                                change.consume()
-                                updateFractionAndEffort(change.position.x, size.width.toFloat())
-                            },
-                        )
-                    },
-            ) {
-                val startX = innerMargin + thumbRadius
-                val endX = size.width - innerMargin - thumbRadius
-                val usableWidth = (endX - startX).coerceAtLeast(1f)
-                val currentFraction = animatedPosition.coerceIn(0f, 1f)
-                val selectedX = startX + usableWidth * currentFraction
-                val centerY = size.height / 2f
-                val pillHeight = size.height - 2f * innerMargin
-
-                // Active blue pill track
-                if (currentFraction > 0.001f) {
-                    val pillWidth =
-                        (selectedX + thumbRadius - innerMargin).coerceIn(pillHeight, size.width - 2f * innerMargin)
-                    drawRoundRect(
-                        color = colors.accentBlue,
-                        topLeft = Offset(innerMargin, innerMargin),
-                        size = androidx.compose.ui.geometry.Size(
-                            width = if (currentFraction >= 0.999f) size.width - 2f * innerMargin else pillWidth,
-                            height = pillHeight,
-                        ),
-                        cornerRadius = CornerRadius(pillHeight / 2f, pillHeight / 2f),
-                    )
-                }
-
-                // Reasoning level dots
-                orderedEfforts.forEachIndexed { index, effort ->
-                    val dotPosition = if (orderedEfforts.size == 1) {
-                        1.0f
-                    } else {
-                        index.toFloat() / orderedEfforts.lastIndex.toFloat()
-                    }
-                    val x = startX + usableWidth * dotPosition
-                    val dotRadius = with(density) { 4.5.dp.toPx() }
-                    if (kotlin.math.abs(x - selectedX) > thumbRadius * 0.65f) {
-                        drawCircle(
-                            color = if (x < selectedX) {
-                                Color.White.copy(alpha = 0.5f)
-                            } else {
-                                if (colors.isDark) colors.textSecondary.copy(alpha = 0.75f) else Color(0xFF8E8E93)
-                            },
-                            radius = dotRadius,
-                            center = Offset(x, centerY),
-                        )
-                    }
-                }
-
-                // In light mode, add a subtle soft shadow/outline ring around the white knob for crisp definition
-                if (!colors.isDark) {
-                    drawCircle(
-                        color = Color(0x18000000),
-                        radius = thumbRadius + with(density) { 1.5.dp.toPx() },
-                        center = Offset(selectedX, centerY + with(density) { 0.75.dp.toPx() }),
-                    )
-                }
-
-                // Solid white circular knob
-                drawCircle(
-                    color = Color.White,
-                    radius = thumbRadius,
-                    center = Offset(selectedX, centerY),
-                )
-            }
         }
     }
 }
