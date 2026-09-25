@@ -1,7 +1,6 @@
 package com.phonecontrol.assistant.ui.chat.timeline
 
 import androidx.compose.runtime.key
-import androidx.compose.ui.semantics.role
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.data.TimelineItem
 

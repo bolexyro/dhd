@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.ui.chat.trace
 
-import androidx.compose.foundation.layout.size
 import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.data.TimelineItem
 import com.phonecontrol.assistant.session.DhdToolCall

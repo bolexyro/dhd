@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.ui.chat.composer
 
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.saveable.listSaver
 
 internal data class PendingSteerDraft(

@@ -1,6 +1,5 @@
 package com.phonecontrol.assistant.ui.components
 
-import androidx.compose.foundation.layout.size
 import kotlin.random.Random
 
 internal val THINKING_WORDS = listOf(
