@@ -207,7 +207,18 @@ describe("dashboard route contract", () => {
     expect((await response.text()).toLowerCase().startsWith(prefix)).toBe(true);
   });
 
-  it.each(["/renderer.js", "/renderer.ts", "/api.js", "/api.ts", "/pricing.js", "/tool-images.js"])(
+  it.each([
+    "/renderer.js",
+    "/renderer.ts",
+    "/api.js",
+    "/api.ts",
+    "/pricing.js",
+    "/tool-images.js",
+    "/state-sync.js",
+    "/views/discovery.js",
+    "/shared/errors.js",
+    "/shared/single-flight.js",
+  ])(
     "serves browser module %s as JavaScript",
     async (path) => {
       const response = await fetch(`${baseUrl}${path}`);
@@ -230,6 +241,10 @@ describe("dashboard route contract", () => {
     ["GET", "/renderer"],
     ["GET", "/server.js"],
     ["GET", "/Renderer.js"],
+    ["GET", "/main.js"],
+    ["GET", "/views/missing.js"],
+    ["GET", "/shared/guards.js"],
+    ["GET", "/shared/../config/env.js"],
   ])("returns a plain 404 for %s %s", async (method, path) => {
     const response = await fetch(`${baseUrl}${path}`, { method });
 
