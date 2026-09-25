@@ -28,6 +28,7 @@ data class LiveDisplayPreviewState(
     val runSessionKey: String? = null,
     /** Latest pointer feedback to render above the read-only stream. */
     val pointerEvent: TaskPointerEvent? = null,
+    val followsRunPointer: Boolean = false,
     /** Sanitized purpose shown in the full-screen viewer footer. */
     val purpose: String? = null,
     /** The latest tool associated with [purpose], used for its activity tint. */

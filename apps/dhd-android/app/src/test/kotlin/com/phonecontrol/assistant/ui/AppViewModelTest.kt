@@ -3,7 +3,6 @@ package com.phonecontrol.assistant.ui
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
 import com.phonecontrol.assistant.domain.ActivityEventKind
-import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplayGeometry
 import com.phonecontrol.assistant.execution.TaskDisplayRecord
 import com.phonecontrol.assistant.execution.TaskDisplaySession
@@ -18,6 +17,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
 
@@ -30,8 +30,8 @@ class AppViewModelTest {
     private val displayRecords = MutableStateFlow<List<TaskDisplayRecord>>(emptyList())
     private val sessionState = MutableStateFlow<SessionState>(SessionState.Idle)
     private val events = MutableStateFlow<List<ActivityEvent>>(emptyList())
-    private val pointerEvent = MutableStateFlow<TaskPointerEvent?>(null)
     private val resolvedKeys = mutableListOf<String>()
+    private val labelLookups = mutableListOf<String>()
 
     @Before
     fun setUp() {
@@ -79,11 +79,15 @@ class AppViewModelTest {
         displayRecords = displayRecords,
         sessionState = sessionState,
         events = events,
-        pointerEvent = pointerEvent,
         resolveDisplay = { key ->
             resolvedKeys += key
             session("owner-of-$key")
         },
+        appLabelFor = { packageName ->
+            labelLookups += packageName
+            "label:$packageName"
+        },
+        mappingDispatcher = Dispatchers.Main,
     )
 
     @Test
@@ -104,7 +108,6 @@ class AppViewModelTest {
                 records = listOf(record("retained")),
                 sessionState = SessionState.Idle,
                 events = listOf(event),
-                pointerEvent = null,
                 resolvedDisplayForRun = null,
             ),
             viewModel.uiState.value.displaySources,
@@ -157,5 +160,30 @@ class AppViewModelTest {
 
         viewModel.consumeRestoredRequest()
         assertEquals(null, viewModel.restoredRequest.value)
+    }
+
+    @Test
+    fun `display ui is mapped in the view model and looks up each app label once`() {
+        displayRecords.value = listOf(record("retained"))
+        val viewModel = viewModel()
+        assertEquals(listOf("retained"), viewModel.displayUi.value.displayRecords.map { it.sessionKey })
+        assertEquals("label:com.example.shop", viewModel.displayUi.value.displayRecords.single().appLabel)
+
+        events.value = listOf(ActivityEvent("e1", null, 1L, ActivityEventKind.SYSTEM, "m"))
+        displayRecords.value = listOf(record("retained"), record("second"))
+
+        assertEquals(listOf("retained", "second"), viewModel.displayUi.value.displayRecords.map { it.sessionKey }.sorted())
+        assertEquals(listOf("com.example.shop"), labelLookups)
+    }
+
+    @Test
+    fun `an event that does not change the mapped display ui publishes nothing new`() {
+        displayRecords.value = listOf(record("retained"))
+        val viewModel = viewModel()
+        val before = viewModel.displayUi.value
+
+        events.value = listOf(ActivityEvent("e1", null, 1L, ActivityEventKind.SYSTEM, "m"))
+
+        assertSame(before, viewModel.displayUi.value)
     }
 }

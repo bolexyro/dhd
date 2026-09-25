@@ -5,7 +5,6 @@ import com.phonecontrol.assistant.core.ToolNames
 import com.phonecontrol.assistant.core.sessionIdOrNull
 import com.phonecontrol.assistant.display.TaskPreviewState
 import com.phonecontrol.assistant.domain.ActivityEvent
-import com.phonecontrol.assistant.domain.TaskPointerEvent
 import com.phonecontrol.assistant.execution.TaskDisplayRecord
 import com.phonecontrol.assistant.execution.TaskDisplaySession
 import com.phonecontrol.assistant.execution.TaskDisplayStatus
@@ -25,7 +24,6 @@ internal data class DisplayUiSources(
     val records: List<TaskDisplayRecord>,
     val sessionState: SessionState,
     val events: List<ActivityEvent>,
-    val pointerEvent: TaskPointerEvent?,
     val resolvedDisplayForRun: TaskDisplaySession?,
 )
 
@@ -51,7 +49,6 @@ internal fun mapDisplayUi(
             playback = sources.playback,
             records = sources.records,
             coordinatorSessionKey = coordinatorSessionKey,
-            pointerEvent = sources.pointerEvent,
             purpose = purpose,
             currentToolName = currentToolName,
             appLabelFor = appLabelFor,
@@ -180,7 +177,6 @@ internal fun livePreviewForRun(
     playback: TaskPreviewState,
     records: List<TaskDisplayRecord>,
     coordinatorSessionKey: String?,
-    pointerEvent: TaskPointerEvent?,
     purpose: String?,
     currentToolName: String?,
     appLabelFor: (String) -> String?,
@@ -209,9 +205,7 @@ internal fun livePreviewForRun(
         appLabel = appLabel,
         sessionKey = session.sessionKey,
         runSessionKey = coordinatorSessionKey,
-        pointerEvent = pointerEvent?.takeIf {
-            it.sessionId == coordinatorSessionKey || it.sessionId == session.sessionKey
-        },
+        followsRunPointer = true,
         purpose = purpose,
         currentToolName = currentToolName,
     )

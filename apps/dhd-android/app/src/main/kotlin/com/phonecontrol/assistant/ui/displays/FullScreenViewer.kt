@@ -388,7 +388,7 @@ private fun FullScreenPreviewSurface(
                 update = { view -> view.contentDescription = "Full-screen live app preview" },
             )
             if (state.status == LiveDisplayPreviewStatus.LIVE) {
-                TaskPointerOverlay(event = state.pointerEvent)
+                TaskPointerOverlay(event = pointerEventFor(state))
             }
             if (state.status != LiveDisplayPreviewStatus.LIVE) {
                 PreviewStatusOverlay(state)

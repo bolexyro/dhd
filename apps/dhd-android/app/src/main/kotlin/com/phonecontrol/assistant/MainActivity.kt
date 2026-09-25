@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -27,7 +28,7 @@ import com.phonecontrol.assistant.ui.AppViewModel
 import com.phonecontrol.assistant.ui.PendingRunRequest
 import com.phonecontrol.assistant.ui.PhoneControlApp
 import com.phonecontrol.assistant.ui.displays.applicationLabel
-import com.phonecontrol.assistant.ui.displays.mapDisplayUi
+import com.phonecontrol.assistant.ui.displays.LocalRunPointerEvents
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -65,7 +66,9 @@ class MainActivity : ComponentActivity() {
     private var openRoute = OpenRouteConsumption(alreadyConsumed = false)
     private val sessionCommands = SessionCommands(this)
     private val appViewModel: AppViewModel by viewModels {
-        AppViewModel.factory((application as PhoneControlApplication).container)
+        AppViewModel.factory((application as PhoneControlApplication).container) { packageName ->
+            packageName.applicationLabel(packageManager)
+        }
     }
     private val permissionSetup: PermissionSetupRepository
         get() = (application as PhoneControlApplication).container.permissionSetupRepository
@@ -104,56 +107,53 @@ class MainActivity : ComponentActivity() {
         refreshOverlayState()
         maybeStartFirstRunPermissionSetup()
         val app = (application as PhoneControlApplication).container
-        val appPackageManager = packageManager
         setContent {
-            val uiState by appViewModel.uiState.collectAsState()
+            val displayUi by appViewModel.displayUi.collectAsState()
             val restoredRequest by appViewModel.restoredRequest.collectAsState()
-            val displayUi = mapDisplayUi(
-                sources = uiState.displaySources,
-                appLabelFor = { packageName -> packageName.applicationLabel(appPackageManager) },
-            )
             val displayForRun = displayUi.displayForRun
-            PhoneControlApp(
-                initialRoute = initialRoute,
-                onRunRequest = ::startSession,
-                restoredRequest = restoredRequest,
-                onRestoredRequestConsumed = appViewModel::consumeRestoredRequest,
-                onStopSession = ::stopSession,
-                onContinueSession = ::continueSession,
-                onStartFresh = ::startFresh,
-                onAcknowledgeAttention = { app.sessionCoordinator.acknowledgeAttention() },
-                onSteerRequest = ::steerSession,
-                onNotificationVisibilityChanged = { mainConversationVisible, attentionVisible ->
-                    app.notificationVisibility.updateUi(mainConversationVisible, attentionVisible)
-                },
-                previewState = displayUi.previewState,
-                displayRecords = displayUi.displayRecords,
-                onPreviewSurfaceAvailable = { surface ->
-                    displayForRun?.let { app.attachTaskPreview(it, surface) }
-                },
-                onPreviewSurfaceDestroyed = { surface, release ->
-                    app.detachTaskPreview(surface, release)
-                },
-                onTaskDisplaySurfaceAvailable = { record, surface ->
-                    app.attachTaskPreview(record.sessionKey, surface)
-                },
-                onTaskDisplaySurfaceDestroyed = { _, surface, release ->
-                    app.detachTaskPreview(surface, release)
-                },
-                onEndTaskDisplay = { record ->
-                    app.endTaskDisplay(record.displayId, record.displayRef, record.sessionKey)
-                },
-                onRetryTaskDisplayPreview = { record ->
-                    app.retryTaskPreview(record.sessionKey)
-                },
-                overlayEnabled = overlayEnabled,
-                overlayPermissionGranted = overlayPermissionGranted,
-                onSetOverlayEnabled = ::handleOverlayToggle,
-                permissionSetupStep = permissionSetupStep,
-                onPermissionSetupPrimaryAction = ::handlePermissionSetupPrimaryAction,
-                onShowOverlayPermissionSetup = ::showOverlayPermissionSetup,
-                onPermissionSetupBack = ::navigateBackInPermissionSetup,
-            )
+            CompositionLocalProvider(LocalRunPointerEvents provides app.sessionCoordinator.pointerEvent) {
+                PhoneControlApp(
+                    initialRoute = initialRoute,
+                    onRunRequest = ::startSession,
+                    restoredRequest = restoredRequest,
+                    onRestoredRequestConsumed = appViewModel::consumeRestoredRequest,
+                    onStopSession = ::stopSession,
+                    onContinueSession = ::continueSession,
+                    onStartFresh = ::startFresh,
+                    onAcknowledgeAttention = { app.sessionCoordinator.acknowledgeAttention() },
+                    onSteerRequest = ::steerSession,
+                    onNotificationVisibilityChanged = { mainConversationVisible, attentionVisible ->
+                        app.notificationVisibility.updateUi(mainConversationVisible, attentionVisible)
+                    },
+                    previewState = displayUi.previewState,
+                    displayRecords = displayUi.displayRecords,
+                    onPreviewSurfaceAvailable = { surface ->
+                        displayForRun?.let { app.attachTaskPreview(it, surface) }
+                    },
+                    onPreviewSurfaceDestroyed = { surface, release ->
+                        app.detachTaskPreview(surface, release)
+                    },
+                    onTaskDisplaySurfaceAvailable = { record, surface ->
+                        app.attachTaskPreview(record.sessionKey, surface)
+                    },
+                    onTaskDisplaySurfaceDestroyed = { _, surface, release ->
+                        app.detachTaskPreview(surface, release)
+                    },
+                    onEndTaskDisplay = { record ->
+                        app.endTaskDisplay(record.displayId, record.displayRef, record.sessionKey)
+                    },
+                    onRetryTaskDisplayPreview = { record ->
+                        app.retryTaskPreview(record.sessionKey)
+                    },
+                    overlayEnabled = overlayEnabled,
+                    overlayPermissionGranted = overlayPermissionGranted,
+                    onSetOverlayEnabled = ::handleOverlayToggle,
+                    permissionSetupStep = permissionSetupStep,
+                    onPermissionSetupPrimaryAction = ::handlePermissionSetupPrimaryAction,
+                    onShowOverlayPermissionSetup = ::showOverlayPermissionSetup,
+                    onPermissionSetupBack = ::navigateBackInPermissionSetup,
+                )
+            }
         }
     }
 

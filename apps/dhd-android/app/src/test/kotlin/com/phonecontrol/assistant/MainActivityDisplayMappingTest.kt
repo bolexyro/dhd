@@ -23,6 +23,7 @@ import com.phonecontrol.assistant.ui.displays.latestToolNameForRun
 import com.phonecontrol.assistant.ui.displays.livePreviewForRun
 import com.phonecontrol.assistant.ui.displays.mapDisplayUi
 import com.phonecontrol.assistant.ui.displays.mergeActiveDisplayRecord
+import com.phonecontrol.assistant.ui.displays.runPointerFor
 import com.phonecontrol.assistant.ui.displays.selectDisplayForRun
 import com.phonecontrol.assistant.ui.displays.startedAtEpochMsOrZero
 import com.phonecontrol.assistant.ui.displays.toUiDisplayLifecycle
@@ -120,18 +121,15 @@ class MainActivityDisplayMappingTest {
     @Test
     fun `preview for run maps per session playback`() {
         val displaySession = session("owner-1")
-        val pointer = TaskPointerEvent.Click(1L, "run-1", 10, 20, 720, 1560)
         fun preview(
             states: Map<String, TaskPreviewState> = emptyMap(),
             playback: TaskPreviewState = TaskPreviewState.Detached,
-            pointerEvent: TaskPointerEvent? = pointer,
         ) = livePreviewForRun(
             session = displaySession,
             previewStates = states,
             playback = playback,
             records = listOf(record("owner-1", packageName = "com.example.mail")),
             coordinatorSessionKey = "run-1",
-            pointerEvent = pointerEvent,
             purpose = "Opening Shop",
             currentToolName = "dhd_open_app",
             appLabelFor = { "label:$it" },
@@ -144,7 +142,7 @@ class MainActivityDisplayMappingTest {
                 appLabel = "label:com.example.mail",
                 sessionKey = "owner-1",
                 runSessionKey = "run-1",
-                pointerEvent = pointer,
+                followsRunPointer = true,
                 purpose = "Opening Shop",
                 currentToolName = "dhd_open_app",
             ),
@@ -166,9 +164,23 @@ class MainActivityDisplayMappingTest {
             LiveDisplayPreviewStatus.CONNECTING,
             preview(playback = TaskPreviewState.Attached(session("other"))).status,
         )
-        assertNull(preview(pointerEvent = TaskPointerEvent.Click(1L, "run-9", 1, 1, 720, 1560)).pointerEvent)
+    }
+
+    @Test
+    fun `the run preview follows pointer feedback for its run or its display only`() {
+        val state = LiveDisplayPreviewState(
+            status = LiveDisplayPreviewStatus.LIVE,
+            sessionKey = "owner-1",
+            runSessionKey = "run-1",
+            followsRunPointer = true,
+        )
+        val runPointer = TaskPointerEvent.Click(1L, "run-1", 10, 20, 720, 1560)
         val ownerPointer = TaskPointerEvent.Click(2L, "owner-1", 1, 1, 720, 1560)
-        assertEquals(ownerPointer, preview(pointerEvent = ownerPointer).pointerEvent)
+
+        assertEquals(runPointer, runPointerFor(state, runPointer))
+        assertEquals(ownerPointer, runPointerFor(state, ownerPointer))
+        assertNull(runPointerFor(state, TaskPointerEvent.Click(1L, "run-9", 1, 1, 720, 1560)))
+        assertNull(runPointerFor(state, null))
     }
 
     @Test
@@ -297,7 +309,6 @@ class MainActivityDisplayMappingTest {
                 records = listOf(record("owner-2", packageName = "com.example.mail", status = TaskDisplayStatus.COMPLETED)),
                 sessionState = running(),
                 events = listOf(event("run-1", "dhd_open_app")),
-                pointerEvent = null,
                 resolvedDisplayForRun = null,
             ),
         ) { "label:$it" }
@@ -324,7 +335,6 @@ class MainActivityDisplayMappingTest {
                 records = listOf(record("owner-1")),
                 sessionState = SessionState.Idle,
                 events = emptyList(),
-                pointerEvent = null,
                 resolvedDisplayForRun = null,
             ),
         ) { null }

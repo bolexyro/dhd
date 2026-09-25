@@ -178,7 +178,7 @@ fun LiveDisplayPreview(
                 }
 
                 if (state.status == LiveDisplayPreviewStatus.LIVE) {
-                    TaskPointerOverlay(event = state.pointerEvent)
+                    TaskPointerOverlay(event = pointerEventFor(state))
                 }
             }
         }
