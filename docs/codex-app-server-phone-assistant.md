@@ -11,12 +11,15 @@ The desktop side of the pivot has two small local processes:
 The Android app remains the authority for its DHD-owned Wireless Debugging ADB
 connection, app allowlisting, confirmation boundaries, and stop/pause state. A
 request is kept queued on the phone until the developer-mode connection is
-ready; the companion's normal poll is also the heartbeat
-used by the existing desktop-companion recovery card. The companion claims a
-request before starting a turn and releases it if the desktop side fails, so a
-temporary disconnect does not silently lose the user's request. A completed
-App Server turn is not treated as phone-task success when any DHD tool returned
-an error; the companion closes that session as failed instead.
+ready. Independently of task polling, the companion sends a heartbeat every few
+seconds that keeps its presence on the phone's desktop-companion recovery card
+current. The companion claims a request before starting a turn, releases a
+claimed request that turns out to be empty, and marks the session failed when
+the Codex turn itself fails, so a temporary disconnect does not silently lose
+the user's request. A DHD tool error does not fail the session: the companion
+logs which tools failed and still closes the session with `complete_session`
+and the final Codex message, so the model's account of the error reaches the
+phone.
 
 ```text
 Android app (typed request)
@@ -129,31 +132,42 @@ its loopback port instead:
 adb forward tcp:8765 tcp:8765
 ```
 
-Codex App Server can then discover this eight-tool DHD surface from the `dhd`
-MCP server:
+Codex App Server can then discover the eleven DHD tools from the `dhd` MCP
+server:
 
-- `dhd_list_allowed_apps` — show the phone-side packages currently enabled in
-  the per-app allowlist (all apps start disabled).
-- `dhd_observe` — return the current screenshot and foreground context for the
-  next action. The returned observation ID is the action's preflight baseline.
-- `dhd_get_foreground_app` — read the current foreground package, activity, and
+- `dhd_list_allowed_apps`: report the phone's app-access mode. Restricted mode
+  lists the allowlisted packages; `includeAll=true` lists every launchable app
+  available under the current mode.
+- `dhd_browse_app`: search the launchable app catalog by app or package name
+  and report whether DHD may use each match. It never launches an app.
+- `dhd_set_app_display_layout`: switch an app between the `standard` and
+  `full_size` task-display layouts. The change applies the next time the app
+  opens on a task display.
+- `dhd_list_displays`: list the active and retained DHD virtual displays with
+  their generation-safe `displayRef`.
+- `dhd_close_display`: end one virtual display by its `displayRef`.
+- `dhd_get_foreground_app`: read the current foreground package, activity, and
   display context without taking a screenshot or creating an observation ID.
   This is read-only context; call `dhd_observe` before phone input. App launch
   establishes its own pre-launch baseline.
-- `dhd_open_app` — open one allowlisted app without a caller-supplied
-  observation ID and return the actual post-action observation.
-- `dhd_execute` — execute one typed interaction and return the actual
+- `dhd_observe`: return the current screenshot and foreground context for the
+  next action. The returned observation ID is the action's preflight baseline.
+- `dhd_open_app`: open one app (it must be allowlisted in restricted mode)
+  without a caller-supplied observation ID and return the actual post-action
+  observation.
+- `dhd_execute`: execute one typed interaction and return the actual
   post-action observation. It handles tap, type, swipe, back, keypress, and
   wait; scrolling and paging use swipe. If the post-action capture fails, the
   result is unknown and the model must observe before retrying.
-- `dhd_execute_sequence` — execute up to 16 typed non-`open_app` interactions
+- `dhd_execute_sequence`: execute up to 16 typed non-`open_app` interactions
   serially from one initial observation ID. The phone captures and verifies a
   post-action observation after every step, uses that observation as the next
   step's baseline, and stops at the first failure. Use it only when later
   targets are predictable without inspecting intermediate screenshots; use
   `dhd_execute` for adaptive or branching work.
-- `dhd_request_attention` — post an attention notification without opening the
-  assistant Activity.
+- `dhd_request_attention`: block the Codex turn until the user reviews the task
+  display and taps Done in DHD, for protected screens and user-only steps such
+  as biometric or PIN entry.
 
 The phone companion registers the same `dhd_*` dynamic tools on each App
 Server thread and maps them to the same dispatcher. Session lifecycle
@@ -165,9 +179,9 @@ that route and therefore prevents dynamic phone actions from executing.
 
 ## Persistent App Server and isolated context
 
-The companion creates one `CodexAppServerClient`, prewarms it (including the
-`initialize` handshake) before it begins polling, and closes it only when the
-companion exits. If startup fails, it retries once and keeps polling; the next
+The companion creates one `CodexAppServerClient`, starts prewarming it
+(including the `initialize` handshake) in the background as it begins polling,
+and closes it only when the companion exits. If startup fails, it retries once and keeps polling; the next
 phone request retries startup again. When the DHD Activity becomes visible, it
 sets a one-shot warmup bit in the phone bridge. The next poll consumes that bit
 and warms the same connection in the background, so opening DHD can hide a
@@ -340,8 +354,9 @@ The steer appears in the local timeline beside the run it modified. Stop remains
 the urgent control: it ends the current phone session and the companion
 propagates a `turn/interrupt` to Codex. The local conversation and remote thread
 are retained. The Android composer swaps Stop for a **Play** button; Play starts
-a new `turn/start` in that same Codex context with an empty input array, so no
-synthetic user message is added. Typing in the composer swaps Play back to
+a new `turn/start` in that same Codex context with a minimal `continue` text
+input so the model can pick up from the persisted tool results. The phone keeps
+that continuation out of its local timeline. Typing in the composer swaps Play back to
 **Send**, and that text becomes a normal new turn in the same context. A tap or
 swipe already in progress may finish before the
 interrupt is observed, so use Stop when the phone needs immediate attention.
