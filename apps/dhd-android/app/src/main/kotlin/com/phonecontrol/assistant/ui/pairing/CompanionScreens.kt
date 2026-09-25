@@ -2,28 +2,17 @@
 
 package com.phonecontrol.assistant.ui.pairing
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.bridge.CompanionBridgeServer
 import com.phonecontrol.assistant.bridge.pairing.PendingCompanionPairing
+import com.phonecontrol.assistant.ui.components.CircleIconButton
 import com.phonecontrol.assistant.ui.components.DhdConfirmDialog
 import com.phonecontrol.assistant.ui.settings.SettingsSectionFooter
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
@@ -52,25 +42,12 @@ fun CompanionInstructionsScreen(
                 ),
                 title = { Text("Connect desktop companion", fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
                 navigationIcon = {
-                    Surface(
-                        shape = CircleShape,
-                        color = colors.composerBackground,
-                        border = BorderStroke(1.dp, colors.borderColor),
-                        modifier = Modifier
-                            .padding(start = 12.dp)
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable { onBack() },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_back),
-                                contentDescription = "Back",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
+                    CircleIconButton(
+                        icon = R.drawable.ic_arrow_back,
+                        contentDescription = "Back",
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
                 },
             )
         },

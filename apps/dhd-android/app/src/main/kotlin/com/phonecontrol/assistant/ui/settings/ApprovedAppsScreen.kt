@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
+import com.phonecontrol.assistant.ui.components.CircleIconButton
 import com.phonecontrol.assistant.ui.components.FullAccessConfirmDialog
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.assistantSwitchColors
@@ -207,46 +208,20 @@ fun ApprovedAppsScreen(
                         ),
                         title = { Text("Approved Apps", fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
                         navigationIcon = {
-                            Surface(
-                                shape = CircleShape,
-                                color = colors.composerBackground,
-                                border = BorderStroke(1.dp, colors.borderColor),
-                                modifier = Modifier
-                                    .padding(start = 12.dp)
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .clickable { onBack() },
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_arrow_back),
-                                        contentDescription = "Back",
-                                        tint = colors.textPrimary,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
+                            CircleIconButton(
+                                icon = R.drawable.ic_arrow_back,
+                                contentDescription = "Back",
+                                onClick = onBack,
+                                modifier = Modifier.padding(start = 12.dp),
+                            )
                         },
                         actions = {
-                            Surface(
-                                shape = CircleShape,
-                                color = colors.composerBackground,
-                                border = BorderStroke(1.dp, colors.borderColor),
-                                modifier = Modifier
-                                    .padding(end = 12.dp)
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .clickable { isSearchOpen = true },
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_search),
-                                        contentDescription = "Search",
-                                        tint = colors.textPrimary,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
+                            CircleIconButton(
+                                icon = R.drawable.ic_search,
+                                contentDescription = "Search",
+                                onClick = { isSearchOpen = true },
+                                modifier = Modifier.padding(end = 12.dp),
+                            )
                         },
                     )
                 }

@@ -5,7 +5,6 @@ package com.phonecontrol.assistant.ui.pairing
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +35,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -46,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.phonecontrol.assistant.R
 import com.phonecontrol.assistant.adb.DeveloperConnectionState
 import com.phonecontrol.assistant.adb.DeveloperModeStatus
+import com.phonecontrol.assistant.ui.components.CircleIconButton
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 
 @Composable
@@ -96,25 +95,12 @@ fun PairingScreen(
                 ),
                 title = { Text(screenTitle, fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
                 navigationIcon = {
-                    Surface(
-                        shape = CircleShape,
-                        color = colors.composerBackground,
-                        border = BorderStroke(1.dp, colors.borderColor),
-                        modifier = Modifier
-                            .padding(start = 12.dp)
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable { onBack() },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_back),
-                                contentDescription = "Back",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
+                    CircleIconButton(
+                        icon = R.drawable.ic_arrow_back,
+                        contentDescription = "Back",
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
                 },
             )
         },

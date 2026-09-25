@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +50,7 @@ import com.phonecontrol.assistant.adb.DeveloperModeStatus
 import com.phonecontrol.assistant.apps.AppPermissionRepository
 import com.phonecontrol.assistant.apps.InstalledUserApp
 import com.phonecontrol.assistant.domain.ReasoningEffort
+import com.phonecontrol.assistant.ui.components.CircleIconButton
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningMeterIcon
 import com.phonecontrol.assistant.ui.theme.LocalAssistantColors
 import com.phonecontrol.assistant.ui.theme.ThemeMode
@@ -97,25 +97,12 @@ fun SettingsScreen(
                 ),
                 title = { Text("Settings", fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
                 navigationIcon = {
-                    Surface(
-                        shape = CircleShape,
-                        color = colors.composerBackground,
-                        border = BorderStroke(1.dp, colors.borderColor),
-                        modifier = Modifier
-                            .padding(start = 12.dp)
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable { onBack() },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_back),
-                                contentDescription = "Back",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
+                    CircleIconButton(
+                        icon = R.drawable.ic_arrow_back,
+                        contentDescription = "Back",
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
                 },
             )
         },

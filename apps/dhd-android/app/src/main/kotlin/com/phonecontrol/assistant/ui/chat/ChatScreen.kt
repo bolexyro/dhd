@@ -3,10 +3,7 @@
 package com.phonecontrol.assistant.ui.chat
 
 import android.view.Surface as AndroidSurface
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,9 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,7 +38,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -52,7 +46,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -78,6 +71,7 @@ import com.phonecontrol.assistant.ui.chat.status.rememberElapsedSeconds
 import com.phonecontrol.assistant.ui.chat.timeline.ConversationTimeline
 import com.phonecontrol.assistant.ui.chat.timeline.activeTaskRunIds
 import com.phonecontrol.assistant.ui.chat.timeline.recentTimelineItems
+import com.phonecontrol.assistant.ui.components.CircleIconButton
 import com.phonecontrol.assistant.ui.components.DhdConfirmDialog
 import com.phonecontrol.assistant.ui.components.reasoning.ReasoningEffortOverlay
 import com.phonecontrol.assistant.ui.displays.LiveDisplayPreviewState
@@ -209,63 +203,32 @@ fun ChatScreen(
                 },
                 actions = {
                     // Start fresh circular button (48dp)
-                    Surface(
-                        shape = CircleShape,
-                        color = colors.composerBackground,
-                        border = BorderStroke(1.dp, colors.borderColor),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onOpenTaskDisplays),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_laptop),
-                                contentDescription = "Task displays",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
-                    }
+                    CircleIconButton(
+                        icon = R.drawable.ic_laptop,
+                        contentDescription = "Task displays",
+                        onClick = onOpenTaskDisplays,
+                        buttonSize = 48.dp,
+                        iconSize = 22.dp,
+                    )
                     Spacer(Modifier.width(8.dp))
-                    Surface(
-                        shape = CircleShape,
-                        color = colors.composerBackground,
-                        border = BorderStroke(1.dp, colors.borderColor),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable(enabled = !active) { showStartFreshConfirmation = true },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_compose_new),
-                                contentDescription = "Start fresh",
-                                tint = if (active) colors.textSecondary.copy(alpha = 0.4f) else colors.textPrimary,
-                                modifier = Modifier.size(23.dp),
-                            )
-                        }
-                    }
+                    CircleIconButton(
+                        icon = R.drawable.ic_compose_new,
+                        contentDescription = "Start fresh",
+                        onClick = { showStartFreshConfirmation = true },
+                        buttonSize = 48.dp,
+                        iconSize = 23.dp,
+                        enabled = !active,
+                        tint = if (active) colors.textSecondary.copy(alpha = 0.4f) else colors.textPrimary,
+                    )
                     Spacer(Modifier.width(10.dp))
                     // Settings circular button (48dp)
-                    Surface(
-                        shape = CircleShape,
-                        color = colors.composerBackground,
-                        border = BorderStroke(1.dp, colors.borderColor),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .clickable { onOpenSettings() },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_settings),
-                                contentDescription = "Settings",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(23.dp),
-                            )
-                        }
-                    }
+                    CircleIconButton(
+                        icon = R.drawable.ic_settings,
+                        contentDescription = "Settings",
+                        onClick = onOpenSettings,
+                        buttonSize = 48.dp,
+                        iconSize = 23.dp,
+                    )
                     Spacer(Modifier.width(12.dp))
                 },
             )
